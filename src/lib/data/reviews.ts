@@ -65,7 +65,8 @@ export async function getActionStats(userId: string, weekStart: string) {
   const weekEnd = weekEndOf(weekStart);
   const monthFrom = monthDateRange(monthOfWeek(weekStart)).from;
 
-  const [contactCounts] = await db
+  const [[contactCounts], activityRows] = await Promise.all([
+    db
     .select({
       week: sql<number>`count(*) filter (where ${schema.contacts.addedOn} >= ${weekStart})`.mapWith(Number),
       month: sql<number>`count(*)`.mapWith(Number),
@@ -76,9 +77,8 @@ export async function getActionStats(userId: string, weekStart: string) {
         eq(schema.contacts.userId, userId),
         between(schema.contacts.addedOn, monthFrom, weekEnd),
       ),
-    );
-
-  const activityRows = await db
+    ),
+    db
     .select({
       type: schema.activities.type,
       count: sql<number>`count(*)`.mapWith(Number),
@@ -90,7 +90,8 @@ export async function getActionStats(userId: string, weekStart: string) {
         between(schema.activities.date, weekStart, weekEnd),
       ),
     )
-    .groupBy(schema.activities.type);
+    .groupBy(schema.activities.type),
+  ]);
 
   const activityCounts: Record<ActivityType, number> = {
     appointment: 0,

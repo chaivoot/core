@@ -25,12 +25,13 @@ export default async function HomePage() {
   const weeks: string[] = [];
   for (let w = currentWeek; canEditWeek(w, now); w = addDays(w, -7)) weeks.push(w);
 
-  const reviews = await getReviews(user.id, weeks);
-  const byWeek = new Map(reviews.map((r) => [r.weekStart, r]));
-
   const month = monthOfDate(now);
   const range = monthDateRange(month);
-  const newContacts = await countContactsAdded(user.id, range.from, now < range.to ? now : range.to);
+  const [reviews, newContacts] = await Promise.all([
+    getReviews(user.id, weeks),
+    countContactsAdded(user.id, range.from, now < range.to ? now : range.to),
+  ]);
+  const byWeek = new Map(reviews.map((r) => [r.weekStart, r]));
   const progress = Math.min(newContacts / MONTHLY_NEW_CONTACT_GOAL, 1);
 
   return (

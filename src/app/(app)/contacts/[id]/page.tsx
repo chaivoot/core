@@ -34,10 +34,12 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
   const user = await requireUser();
   const { id } = await params;
   const sp = await searchParams;
-  const contact = await getContact(user.id, id);
+  // listActivities กรองด้วย userId อยู่แล้ว จึงดึงพร้อมกันได้
+  const [contact, activities] = await Promise.all([
+    getContact(user.id, id),
+    listActivities(user.id, id),
+  ]);
   if (!contact) notFound();
-
-  const activities = await listActivities(user.id, contact.id);
   const now = today();
   const minDate = addDays(now, -EDIT_WINDOW_DAYS);
   const error = typeof sp.e === "string" ? MESSAGES[sp.e] : undefined;
