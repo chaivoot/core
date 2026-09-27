@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { countContactsAdded } from "@/lib/data/contacts";
 import { getReviews } from "@/lib/data/reviews";
+import { getUserById } from "@/lib/data/users";
 import {
   MONTHLY_NEW_CONTACT_GOAL,
   canEditWeek,
@@ -37,11 +38,18 @@ export default async function MonthSummaryPage({ params }: PageProps<"/summary/[
 
   const now = today();
   const currentMonth = monthOfDate(now);
-  const reviews = await getReviews(user.id, weeksOfMonth(month));
-  const summary = summarizeMonth({ month, today: now, userCreatedAt: user.createdAt, reviews });
-
   const range = monthDateRange(month);
-  const newContacts = await countContactsAdded(user.id, range.from, range.to);
+  const [reviews, newContacts, profile] = await Promise.all([
+    getReviews(user.id, weeksOfMonth(month)),
+    countContactsAdded(user.id, range.from, range.to),
+    getUserById(user.id),
+  ]);
+  const summary = summarizeMonth({
+    month,
+    today: now,
+    userCreatedAt: profile?.createdAt ?? new Date(),
+    reviews,
+  });
   const progress = Math.min(newContacts / MONTHLY_NEW_CONTACT_GOAL, 1);
 
   return (

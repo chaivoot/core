@@ -30,7 +30,10 @@ export default async function ReviewStepPage({
   if (!isWeekStart(week)) notFound();
   if (week > today()) redirect("/");
 
-  const review = await getReview(user.id, week);
+  const [review, stats] = await Promise.all([
+    getReview(user.id, week),
+    stepParam === "4" ? getActionStats(user.id, week) : null,
+  ]);
   const editable = canEditWeek(week);
 
   if (stepParam === "summary") {
@@ -65,7 +68,7 @@ export default async function ReviewStepPage({
             {step === 1 && <PriorityStep review={review} />}
             {step === 2 && <ProductsStep review={review} />}
             {step === 3 && <LearningStep review={review} />}
-            {step === 4 && <ActionStep userId={user.id} week={week} review={review} />}
+            {step === 4 && stats && <ActionStep stats={stats} week={week} review={review} />}
           </section>
 
           <section className="card space-y-3">
@@ -191,16 +194,15 @@ function LearningStep({ review }: { review: WeeklyReview | null }) {
   );
 }
 
-async function ActionStep({
-  userId,
+function ActionStep({
+  stats,
   week,
   review,
 }: {
-  userId: string;
+  stats: Awaited<ReturnType<typeof getActionStats>>;
   week: string;
   review: WeeklyReview | null;
 }) {
-  const stats = await getActionStats(userId, week);
   const month = monthOfWeek(week);
   const progress = Math.min(stats.newContactsMonthToDate / MONTHLY_NEW_CONTACT_GOAL, 1);
 
