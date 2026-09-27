@@ -19,6 +19,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       {error && (
         <p className="mt-6 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
           เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้งนะ
+          <span className="mt-1 block text-xs text-amber-700/80">รหัส: {String(error)}</span>
         </p>
       )}
 
