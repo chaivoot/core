@@ -109,14 +109,28 @@ function ReviewHeader({ week, step }: { week: string; step: number | "summary" }
       <ol className="flex gap-1.5" aria-label="ขั้นตอน">
         {CATEGORIES.map((c) => {
           const active = step === "summary" || c.step <= step;
+          const current = step === c.step;
           return (
             <li key={c.step} className="flex-1">
               <Link
                 href={`/review/${week}/${c.step}`}
-                className={`block h-1.5 rounded-full ${active ? "bg-teal-600" : "bg-stone-200"}`}
+                className="block"
                 aria-label={`หมวด ${c.step} ${c.title}`}
-                aria-current={step === c.step ? "step" : undefined}
-              />
+                aria-current={current ? "step" : undefined}
+              >
+                <span className={`block h-1.5 rounded-full ${active ? "bg-teal-600" : "bg-stone-200"}`} />
+                <span
+                  className={`mt-1.5 block text-center text-xs ${
+                    current
+                      ? "font-semibold text-teal-800"
+                      : active
+                        ? "text-teal-700"
+                        : "text-stone-400"
+                  }`}
+                >
+                  {c.tab}
+                </span>
+              </Link>
             </li>
           );
         })}

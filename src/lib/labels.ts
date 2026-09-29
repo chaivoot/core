@@ -15,10 +15,10 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
 export const ACTIVITY_TYPES = Object.keys(ACTIVITY_LABELS) as ActivityType[];
 
 export const CATEGORIES = [
-  { step: 1, key: "priorityScore", title: "Priority" },
-  { step: 2, key: "productsScore", title: "สินค้า" },
-  { step: 3, key: "learningScore", title: "การเรียนรู้" },
-  { step: 4, key: "actionScore", title: "ลงมือทำธุรกิจ" },
+  { step: 1, key: "priorityScore", title: "Priority", tab: "สมัคร" },
+  { step: 2, key: "productsScore", title: "สินค้า", tab: "สินค้า" },
+  { step: 3, key: "learningScore", title: "การเรียนรู้", tab: "เรียนรู้" },
+  { step: 4, key: "actionScore", title: "ลงมือทำธุรกิจ", tab: "ลงมือทำ" },
 ] as const;
 
 export const LEARNING_ITEMS = [
