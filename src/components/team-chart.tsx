@@ -1,3 +1,4 @@
+import { ChartScroller } from "@/components/chart-scroller";
 import { TEAM_STATUSES } from "@/lib/labels";
 import type { ChartLink, ChartNode, TeamStatus } from "@/lib/team";
 
@@ -47,8 +48,8 @@ export function TeamChart({
   const width = slots * SLOT;
   const height = PAD_TOP + (levels - 1) * LEVEL + R * 2 + LABEL + 4;
 
-  return (
-    <div className={fit ? "" : "-mx-4 overflow-x-auto px-4"}>
+  const me = nodes.find((n) => n.id === null);
+  const svg = (
       <svg
         width={fit ? "100%" : width}
         height={fit ? undefined : height}
@@ -128,8 +129,11 @@ export function TeamChart({
           );
         })}
       </svg>
-    </div>
   );
+
+  if (fit) return svg;
+  // + 16px = padding ซ้ายของกล่องเลื่อน
+  return <ChartScroller centerX={(me ? cx(me) : width / 2) + 16}>{svg}</ChartScroller>;
 }
 
 export function StatusDot({ status }: { status: TeamStatus }) {
