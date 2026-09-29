@@ -22,6 +22,27 @@ export const users = pgTable("users", {
   lineUserId: text("line_user_id").notNull().unique(),
   name: text("name"),
   image: text("image"),
+  /**
+   * ใช้ผังสายงานร่วมกับคู่ (ธุรกิจเดียวกัน คนละบัญชี LINE):
+   * ถ้าไม่ว่าง = ใช้ผังของผู้ใช้คนนี้แทนผังของตัวเอง (ผังเดิมไม่ถูกลบ แค่ซ่อน)
+   * คะแนนและรายชื่อยังแยกเป็นของแต่ละคนเสมอ
+   */
+  teamOwnerId: uuid("team_owner_id").references((): AnyPgColumn => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** ลิงก์เชิญคู่มาใช้ผังสายงานร่วมกัน (ใช้ได้ครั้งเดียว มีวันหมดอายุ) */
+export const teamInvites = pgTable("team_invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  token: text("token").notNull().unique(),
+  inviterId: uuid("inviter_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  usedBy: uuid("used_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

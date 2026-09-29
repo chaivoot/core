@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   addTeamMemberAction,
+  createInviteAction,
+  unlinkPartnerAction,
   deleteTeamMemberAction,
   setStatusAction,
   updateTeamMemberAction,
@@ -9,6 +11,8 @@ import { ConfirmSubmitButton } from "@/components/confirm-button";
 import { SubmitButton } from "@/components/submit-button";
 import { StatusDot, TeamChart } from "@/components/team-chart";
 import { ToggleChip } from "@/components/toggle-chip";
+import { headers } from "next/headers";
+import { getOpenInvite, getTeamContext } from "@/lib/data/partner";
 import { listTeamMembers } from "@/lib/data/team";
 import type { TeamMember } from "@/lib/db/schema";
 import { TEAM_STATUSES, TEAM_STATUS_LABELS } from "@/lib/labels";
@@ -25,15 +29,31 @@ const MESSAGES: Record<string, string> = {
   parent: "เลือกอัพไลน์นี้ไม่ได้ (เป็นตัวเองหรือคนที่อยู่ในสายของตัวเอง)",
   added: "เพิ่มแล้ว",
   saved: "บันทึกแล้ว",
+  joined: "เชื่อมผังกับคู่เรียบร้อย ตอนนี้ใช้ผังสายงานร่วมกันแล้ว",
+  unlinked: "เลิกใช้ผังร่วมแล้ว",
 };
 
 export default async function TeamPage({ searchParams }: PageProps<"/team">) {
   const user = await requireUser();
   const sp = await searchParams;
-  const members = await listTeamMembers(user.id);
+  const ctx = await getTeamContext(user.id);
+  const members = await listTeamMembers(ctx.ownerId);
   const { roots, legs, totals } = buildTeamTree(members);
 
-  const myName = user.name ?? "คุณ";
+  // ชื่อบนสุดของผัง: ใช้ผังร่วมกับคู่ = ชื่อทั้งคู่
+  const myName = ctx.names.join(" & ");
+  const rootOption = ctx.role === "solo" ? `${myName} (คุณ)` : `${myName} (บนสุด)`;
+
+  // ลิงก์เชิญที่เพิ่งสร้าง (แสดงให้เจ้าของลิงก์เท่านั้น)
+  const invite =
+    typeof sp.invite === "string" && ctx.role === "solo" ? await getOpenInvite(sp.invite) : null;
+  let inviteUrl: string | null = null;
+  if (invite && invite.inviterId === user.id) {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    const proto = h.get("x-forwarded-proto") ?? "https";
+    inviteUrl = `${proto}://${host}/join/${invite.token}`;
+  }
   const chart = layoutChart(roots, myName);
 
   // ตัวเลือกอัพไลน์ และลำดับการแสดงรายชื่อ เรียงตามผัง
@@ -52,7 +72,10 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
       <header>
         <h1 className="text-2xl font-bold text-stone-900">สายงาน</h1>
         <p className="mt-1 text-sm text-stone-500">
-          ผังที่คุณบันทึกเอง เห็นเฉพาะคุณคนเดียว ·{" "}
+          {ctx.role === "solo"
+            ? "ผังที่คุณบันทึกเอง เห็นเฉพาะคุณคนเดียว"
+            : `ผังที่ใช้ร่วมกับ ${ctx.other?.name ?? "คู่"} เห็นเฉพาะคุณสองคน`}{" "}
+          ·{" "}
           <Link href="/report" className="text-teal-700 underline">
             Counseling Form
           </Link>
@@ -88,9 +111,9 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
         </div>
         <div>
           <label className="label" htmlFor="add-parent">อัพไลน์</label>
-          <ParentSelect id="add-parent" myName={myName} options={options} defaultValue={presetParent} />
+          <ParentSelect id="add-parent" myName={rootOption} options={options} defaultValue={presetParent} />
           <p className="mt-1 text-xs text-stone-500">
-            เลือกชื่อคุณ = ต่อจากคุณโดยตรง (สายใหม่) · เลือกคนในสายงาน = ต่อใต้คนนั้น
+            เลือกชื่อบนสุด = ต่อจากบนสุดโดยตรง (สายใหม่) · เลือกคนในสายงาน = ต่อใต้คนนั้น
           </p>
           {presetParent && (
             <Link href="/team#add" className="mt-1 inline-block text-sm text-stone-500">
@@ -184,7 +207,7 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
               <MemberCard
                 key={n.id}
                 node={n}
-                myName={myName}
+                myName={rootOption}
                 upline={n.parentId ? (nameOf.get(n.parentId) ?? myName) : myName}
                 options={options}
                 members={members}
@@ -193,6 +216,53 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
           </ul>
         </section>
       )}
+      <section id="partner" className="card scroll-mt-4 space-y-3">
+        <h2 className="font-semibold text-stone-900">ใช้ผังร่วมกับคู่</h2>
+        {ctx.role === "solo" ? (
+          <>
+            <p className="text-sm text-stone-600">
+              ถ้าทำธุรกิจร่วมกับคู่ (รหัสเดียวกัน แต่ล็อกอินคนละ LINE) เชิญคู่มาใช้ผังสายงานนี้ร่วมกันได้
+              ส่วนคะแนนและรายชื่อยังแยกเป็นของแต่ละคน
+            </p>
+            {inviteUrl ? (
+              <div className="space-y-2">
+                <p className="text-sm text-stone-600">ส่งลิงก์นี้ให้คู่ (ใช้ได้ครั้งเดียว ภายใน 7 วัน)</p>
+                <input readOnly value={inviteUrl} className="input text-sm" aria-label="ลิงก์เชิญ" />
+                <a
+                  href={`https://line.me/R/share?text=${encodeURIComponent(`มาใช้ผังสายงานร่วมกันใน Core ${inviteUrl}`)}`}
+                  className="btn w-full bg-[#06C755] text-white hover:bg-[#05b34c]"
+                >
+                  ส่งทาง LINE
+                </a>
+              </div>
+            ) : (
+              <form action={createInviteAction}>
+                <SubmitButton className="btn-secondary w-full">สร้างลิงก์เชิญคู่</SubmitButton>
+              </form>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-stone-600">
+              {ctx.role === "owner"
+                ? `ใช้ผังนี้ร่วมกับ ${ctx.other?.name ?? "คู่"} อยู่ แก้ไขได้ทั้งสองคน`
+                : `ใช้ผังของ ${ctx.other?.name ?? "คู่"} ร่วมกันอยู่ แก้ไขได้ทั้งสองคน`}
+            </p>
+            <form action={unlinkPartnerAction}>
+              <ConfirmSubmitButton
+                message={
+                  ctx.role === "owner"
+                    ? "เลิกใช้ผังร่วม? ผังนี้ยังอยู่กับคุณ ส่วนคู่จะกลับไปใช้ผังเดิมของตัวเอง"
+                    : "เลิกใช้ผังร่วม? คุณจะกลับไปใช้ผังเดิมของตัวเอง ผังนี้ยังอยู่กับคู่"
+                }
+                className="btn-danger w-full"
+              >
+                เลิกใช้ผังร่วม
+              </ConfirmSubmitButton>
+            </form>
+          </>
+        )}
+      </section>
     </div>
   );
 }
@@ -221,7 +291,7 @@ function ParentSelect({
 }) {
   return (
     <select id={id} name="parentId" defaultValue={defaultValue} className="input">
-      <option value="">{myName} (คุณ)</option>
+      <option value="">{myName}</option>
       {options
         .filter((o) => !exclude?.has(o.id))
         .map((o) => (

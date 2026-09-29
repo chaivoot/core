@@ -36,6 +36,13 @@
       "when": 1790671210631,
       "tag": "0004_team_status_none",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790673356163,
+      "tag": "0005_team_partner",
+      "breakpoints": true
     }
   ]
 }
