@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   check,
   date,
@@ -122,9 +123,32 @@ export const activities = pgTable(
   ],
 );
 
+// ผังสายงาน: ผู้ใช้กรอกเอง เป็นข้อมูลส่วนตัวของผู้ใช้ (ไม่ผูกกับบัญชีผู้ใช้อื่น)
+// parent_id = null หมายถึงอยู่ใต้ผู้ใช้โดยตรง (หัวสาย)
+export const teamMembers = pgTable(
+  "team_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id").references((): AnyPgColumn => teamMembers.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    /** ผู้ใช้ประเมินว่าคนนี้ทำ 40 คะแนนได้ด้วยตัวเองแล้ว */
+    selfForty: boolean("self_forty").notNull().default(false),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("team_members_user_idx").on(t.userId)],
+);
+
 export type User = typeof users.$inferSelect;
 export type WeeklyReview = typeof weeklyReviews.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
 export type Interest = (typeof interestEnum.enumValues)[number];
 export type ActivityType = (typeof activityTypeEnum.enumValues)[number];
+export type TeamMember = typeof teamMembers.$inferSelect;
