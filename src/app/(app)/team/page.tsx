@@ -85,7 +85,8 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
       {error && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{error}</p>}
       {ok && !error && <p className="rounded-xl bg-teal-50 p-3 text-sm text-teal-800">{ok}</p>}
 
-      <section className="card space-y-3">
+      {/* บนจอกว้าง ขยายกรอบชาร์ตออกนอกคอลัมน์หลัก (ส่วนอื่นของหน้ายังกว้างเท่าเดิม) */}
+      <section className="card space-y-3 md:relative md:left-1/2 md:w-[min(calc(100vw-4rem),1400px)] md:-translate-x-1/2">
         <TeamChart {...chart} />
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
           {TEAM_STATUSES.map((st) => (
