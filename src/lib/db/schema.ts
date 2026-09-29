@@ -30,6 +30,21 @@ export const users = pgTable("users", {
   teamOwnerId: uuid("team_owner_id").references((): AnyPgColumn => users.id, {
     onDelete: "set null",
   }),
+  /** ได้สิทธิ์ใช้ระบบเมื่อไหร่ (null = ล็อกอินได้แต่ยังไม่ได้รับเชิญ) */
+  accessGrantedAt: timestamp("access_granted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** ลิงก์เชิญคนใหม่มาใช้ระบบ (ใช้ได้ครั้งเดียว มีวันหมดอายุ) */
+export const accessInvites = pgTable("access_invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  token: text("token").notNull().unique(),
+  inviterId: uuid("inviter_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  usedBy: uuid("used_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

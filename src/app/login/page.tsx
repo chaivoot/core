@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { getCurrentUser } from "@/lib/session";
+import { CallButton } from "@/components/call-button";
 import { SubmitButton } from "@/components/submit-button";
 
 export const metadata = { title: "เข้าสู่ระบบ · 3S1M" };
@@ -40,6 +41,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           เข้าสู่ระบบด้วย LINE
         </SubmitButton>
       </form>
+
+      <div className="mt-8 border-t border-stone-200 pt-6">
+        <p className="mb-3 text-sm text-stone-600">สนใจทดสอบระบบ</p>
+        <CallButton />
+      </div>
 
       <p className="mt-6 text-xs text-stone-500">
         ข้อมูลของคุณ (คะแนนและรายชื่อ) เห็นได้เฉพาะคุณคนเดียว

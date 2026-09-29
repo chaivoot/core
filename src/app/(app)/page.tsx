@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/auth";
+import { AccessInviteCard } from "@/components/access-invite-card";
 import { QuickAddContact } from "@/components/quick-add-contact";
 import { countContactsAdded } from "@/lib/data/contacts";
 import { getReviews, isReviewComplete, reviewTotal } from "@/lib/data/reviews";
@@ -16,8 +17,9 @@ import {
 } from "@/lib/dates";
 import { requireUser } from "@/lib/session";
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: PageProps<"/">) {
   const user = await requireUser();
+  const { invite } = await searchParams;
   const now = today();
   const currentWeek = weekStartOf(now);
 
@@ -107,6 +109,8 @@ export default async function HomePage() {
         </div>
         <div className="mt-2 text-sm text-teal-700">ดูสรุปเดือนนี้ →</div>
       </Link>
+
+      <AccessInviteCard userId={user.id} token={typeof invite === "string" ? invite : undefined} />
     </div>
   );
 }

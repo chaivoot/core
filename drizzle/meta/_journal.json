@@ -43,6 +43,13 @@
       "when": 1790673356163,
       "tag": "0005_team_partner",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790697665618,
+      "tag": "0006_access_invites",
+      "breakpoints": true
     }
   ]
 }
