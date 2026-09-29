@@ -50,3 +50,41 @@ describe("ผังสายงาน", () => {
     expect([...subtreeIds(members, "A1")].sort()).toEqual(["A1", "A11", "A111"]);
   });
 });
+
+describe("จัดตำแหน่งชาร์ต", () => {
+  it("แม่อยู่กึ่งกลางเหนือลูก และใบไม้เรียงช่องละคน", async () => {
+    const { layoutChart } = await import("@/lib/team");
+    // ตามรูป: ผู้ใช้มี 4 สาย สายที่ 2 มีลูก 1 คน
+    const { roots } = buildTeamTree([
+      m("A", null),
+      m("B", null),
+      m("B1", "B"),
+      m("C", null),
+      m("D", null),
+    ]);
+    const { nodes, links, slots, levels } = layoutChart(roots, "ฉัน");
+    const pos = Object.fromEntries(nodes.map((n) => [n.id ?? "me", [n.x, n.level]]));
+    expect(pos).toEqual({
+      A: [0, 1],
+      B1: [1, 2],
+      B: [1, 1],
+      C: [2, 1],
+      D: [3, 1],
+      me: [1.5, 0],
+    });
+    expect(slots).toBe(4);
+    expect(levels).toBe(3);
+    expect(links.map((l) => [l.parent.id, l.children.map((c) => c.id)])).toEqual([
+      ["B", ["B1"]],
+      [null, ["A", "B", "C", "D"]],
+    ]);
+  });
+
+  it("ยังไม่มีใครในผัง", async () => {
+    const { layoutChart } = await import("@/lib/team");
+    const { nodes, slots, levels } = layoutChart([], "ฉัน");
+    expect(nodes).toHaveLength(1);
+    expect(slots).toBe(1);
+    expect(levels).toBe(1);
+  });
+});
