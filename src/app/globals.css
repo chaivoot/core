@@ -9,7 +9,12 @@
 }
 
 body {
-  @apply bg-stone-50 text-stone-800;
+  @apply bg-stone-50 text-stone-800 print:bg-white;
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
 }
 
 @utility card {

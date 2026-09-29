@@ -34,20 +34,24 @@ export function TeamChart({
   links,
   slots,
   levels,
+  fit = false,
 }: {
   nodes: ChartNode[];
   links: ChartLink[];
   slots: number;
   levels: number;
+  /** ย่อให้พอดีความกว้าง (ใช้ตอนพิมพ์) แทนการเลื่อนซ้ายขวา */
+  fit?: boolean;
 }) {
   const width = slots * SLOT;
   const height = PAD_TOP + (levels - 1) * LEVEL + R * 2 + LABEL + 4;
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4">
+    <div className={fit ? "" : "-mx-4 overflow-x-auto px-4"}>
       <svg
-        width={width}
-        height={height}
+        width={fit ? "100%" : width}
+        height={fit ? undefined : height}
+        style={fit ? { maxWidth: width, maxHeight: "9in" } : undefined}
         viewBox={`0 0 ${width} ${height}`}
         className="mx-auto block"
         role="img"

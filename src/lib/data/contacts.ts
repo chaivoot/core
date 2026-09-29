@@ -47,6 +47,7 @@ export async function listContacts(
       name: schema.contacts.name,
       channel: schema.contacts.channel,
       interest: schema.contacts.interest,
+      note: schema.contacts.note,
       addedOn: schema.contacts.addedOn,
       lastActivity,
     })
@@ -105,6 +106,27 @@ export async function countContactsAdded(userId: string, from: string, to: strin
     .from(schema.contacts)
     .where(and(eq(schema.contacts.userId, userId), between(schema.contacts.addedOn, from, to)));
   return row?.count ?? 0;
+}
+
+export async function countActivitiesByType(userId: string, from: string, to: string) {
+  const rows = await db
+    .select({
+      type: schema.activities.type,
+      count: sql<number>`count(*)`.mapWith(Number),
+    })
+    .from(schema.activities)
+    .where(
+      and(eq(schema.activities.userId, userId), between(schema.activities.date, from, to)),
+    )
+    .groupBy(schema.activities.type);
+  const counts: Record<ActivityType, number> = {
+    appointment: 0,
+    product_intro: 0,
+    business_plan: 0,
+    follow_up: 0,
+  };
+  for (const r of rows) counts[r.type] = r.count;
+  return counts;
 }
 
 // ---------- กิจกรรม ----------

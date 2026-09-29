@@ -143,6 +143,9 @@ export default async function MonthSummaryPage({ params }: PageProps<"/summary/[
           })}
         </ul>
       </section>
+      <Link href={`/report?month=${month}`} className="btn-secondary w-full">
+        Counseling Form (พิมพ์ / PDF)
+      </Link>
     </div>
   );
 }

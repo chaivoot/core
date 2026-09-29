@@ -51,7 +51,12 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
     <div className="space-y-5">
       <header>
         <h1 className="text-2xl font-bold text-stone-900">สายงาน</h1>
-        <p className="mt-1 text-sm text-stone-500">ผังที่คุณบันทึกเอง เห็นเฉพาะคุณคนเดียว</p>
+        <p className="mt-1 text-sm text-stone-500">
+          ผังที่คุณบันทึกเอง เห็นเฉพาะคุณคนเดียว ·{" "}
+          <Link href="/report" className="text-teal-700 underline">
+            Counseling Form
+          </Link>
+        </p>
       </header>
 
       {error && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{error}</p>}
