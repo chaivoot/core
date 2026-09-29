@@ -44,8 +44,36 @@ describe("ผังสายงาน", () => {
       m("B", null, false, "forty"),
     ]);
     expect(totals.statusCounts).toEqual({ product: 1, sop: 1, business: 0, forty: 1 });
-    expect(legs[0].selfForty).toBe(0);
+    expect(legs.find((l) => l.root.id === "A")?.selfForty).toBe(0);
     expect(totals.legsWithSelfForty).toBe(1);
+  });
+
+  it("เรียงสาย: 40 มากสุดอยู่ซ้าย ถ้าเท่ากันเอาสายที่ลึกกว่า ถ้าเท่ากันอีกตามลำดับที่เพิ่ม", () => {
+    const { roots } = buildTeamTree([
+      m("P", null), // ไม่มี 40 ลึก 1
+      m("Q", null), // ไม่มี 40 ลึก 3
+      m("Q1", "Q"),
+      m("Q11", "Q1"),
+      m("R", null), // 40 สองคน
+      m("R1", "R", true),
+      m("R2", "R", true),
+      m("S", null, true), // 40 หนึ่งคน ลึก 1
+      m("T", null), // 40 หนึ่งคน ลึก 2
+      m("T1", "T", true),
+      m("U", null), // ไม่มี 40 ลึก 1 (เพิ่มหลัง P)
+    ]);
+    expect(roots.map((r) => r.id)).toEqual(["R", "T", "S", "Q", "P", "U"]);
+  });
+
+  it("เรียงลูกทีมในแต่ละชั้นด้วยกฎเดียวกัน", () => {
+    const { roots } = buildTeamTree([
+      m("A", null),
+      m("A1", "A"),
+      m("A2", "A"),
+      m("A21", "A2"),
+      m("A3", "A", true),
+    ]);
+    expect(roots[0].children.map((c) => c.id)).toEqual(["A3", "A2", "A1"]);
   });
 
   it("ไม่มีคนเลย", () => {
@@ -66,7 +94,7 @@ describe("ผังสายงาน", () => {
 describe("จัดตำแหน่งชาร์ต", () => {
   it("แม่อยู่กึ่งกลางเหนือลูก และใบไม้เรียงช่องละคน", async () => {
     const { layoutChart } = await import("@/lib/team");
-    // ตามรูป: ผู้ใช้มี 4 สาย สายที่ 2 มีลูก 1 คน
+    // ผู้ใช้มี 4 สาย สาย B ลึกกว่าจึงถูกเรียงไปซ้ายสุด
     const { roots } = buildTeamTree([
       m("A", null),
       m("B", null),
@@ -77,9 +105,9 @@ describe("จัดตำแหน่งชาร์ต", () => {
     const { nodes, links, slots, levels } = layoutChart(roots, "ฉัน");
     const pos = Object.fromEntries(nodes.map((n) => [n.id ?? "me", [n.x, n.level]]));
     expect(pos).toEqual({
-      A: [0, 1],
-      B1: [1, 2],
-      B: [1, 1],
+      B1: [0, 2],
+      B: [0, 1],
+      A: [1, 1],
       C: [2, 1],
       D: [3, 1],
       me: [1.5, 0],
@@ -88,7 +116,7 @@ describe("จัดตำแหน่งชาร์ต", () => {
     expect(levels).toBe(3);
     expect(links.map((l) => [l.parent.id, l.children.map((c) => c.id)])).toEqual([
       ["B", ["B1"]],
-      [null, ["A", "B", "C", "D"]],
+      [null, ["B", "A", "C", "D"]],
     ]);
   });
 
