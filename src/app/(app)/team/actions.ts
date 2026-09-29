@@ -11,7 +11,7 @@ import {
 } from "@/lib/data/team";
 import { formObject, optionalText } from "@/lib/forms";
 import { acceptInvite, createInvite, getTeamContext, unlinkPartner } from "@/lib/data/partner";
-import { requireUser } from "@/lib/session";
+import { requireSignedIn, requireUser } from "@/lib/session";
 
 /** ผังที่ผู้ใช้คนนี้ใช้อยู่ (ของตัวเอง หรือของคู่ถ้าใช้ผังร่วม) */
 async function teamOwner() {
@@ -73,7 +73,8 @@ export async function createInviteAction() {
 }
 
 export async function acceptInviteAction(token: string) {
-  const user = await requireUser();
+  // คนที่ยังไม่ได้รับเชิญใช้ระบบ รับเชิญผังร่วมได้ (จะได้สิทธิ์ใช้ระบบไปด้วย)
+  const user = await requireSignedIn();
   const result = await acceptInvite(token, user.id);
   revalidatePath("/", "layout");
   redirect(result === "ok" ? "/team?ok=joined" : `/join/${encodeURIComponent(token)}?e=${result}`);

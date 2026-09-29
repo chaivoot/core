@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { grantAccess } from "@/lib/data/access";
 
 // ผังสายงานร่วมกับคู่: คนเชิญเป็นเจ้าของผัง (owner) คนที่รับเชิญ (partner) ใช้ผังของ owner
 // จับคู่ได้ทีละ 2 คนเท่านั้น และแชร์เฉพาะผังสายงาน
@@ -120,6 +121,8 @@ export async function acceptInvite(token: string, userId: string): Promise<Accep
     .update(schema.users)
     .set({ teamOwnerId: invite.inviterId })
     .where(and(eq(schema.users.id, userId), isNull(schema.users.teamOwnerId)));
+  // คู่ที่รับเชิญผังร่วม ได้สิทธิ์ใช้ระบบไปด้วย
+  await grantAccess(userId);
   return "ok";
 }
 
