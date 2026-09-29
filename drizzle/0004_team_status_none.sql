@@ -1,0 +1,1 @@
+ALTER TYPE "public"."team_status" ADD VALUE 'none' BEFORE 'product';

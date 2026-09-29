@@ -29,10 +29,11 @@ export const LEARNING_ITEMS = [
 ] as const;
 
 export const TEAM_STATUSES = [
-  { value: "product", label: "ใช้สินค้า", short: "สินค้า" },
-  { value: "sop", label: "มี SOP", short: "SOP" },
-  { value: "business", label: "ทำธุรกิจ", short: "ธุรกิจ" },
-  { value: "forty", label: "ทำ 40 ได้เอง", short: "40" },
+  { value: "none", label: "ไม่มีสถานะ", short: "", tab: "ไม่มี" },
+  { value: "product", label: "ใช้สินค้า", short: "สินค้า", tab: "สินค้า" },
+  { value: "sop", label: "มี SOP", short: "SOP", tab: "SOP" },
+  { value: "business", label: "ทำธุรกิจ", short: "ธุรกิจ", tab: "ธุรกิจ" },
+  { value: "forty", label: "ทำ 40 ได้เอง", short: "40", tab: "40 ได้เอง" },
 ] as const;
 
 export const TEAM_STATUS_LABELS = Object.fromEntries(

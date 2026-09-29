@@ -24,7 +24,7 @@ describe("ผังสายงาน", () => {
     expect(totals).toEqual({
       people: 7,
       selfForty: 2,
-      statusCounts: { product: 0, sop: 0, business: 5, forty: 2 },
+      statusCounts: { none: 0, product: 0, sop: 0, business: 5, forty: 2 },
       legs: 3,
       legsWithSelfForty: 1,
       depth: 4,
@@ -43,7 +43,7 @@ describe("ผังสายงาน", () => {
       m("A1", "A", false, "sop"),
       m("B", null, false, "forty"),
     ]);
-    expect(totals.statusCounts).toEqual({ product: 1, sop: 1, business: 0, forty: 1 });
+    expect(totals.statusCounts).toEqual({ none: 0, product: 1, sop: 1, business: 0, forty: 1 });
     expect(legs.find((l) => l.root.id === "A")?.selfForty).toBe(0);
     expect(totals.legsWithSelfForty).toBe(1);
   });
@@ -74,6 +74,16 @@ describe("ผังสายงาน", () => {
       m("A3", "A", true),
     ]);
     expect(roots[0].children.map((c) => c.id)).toEqual(["A3", "A2", "A1"]);
+  });
+
+  it("คนที่ไม่มีสถานะ (เป็นแค่อัพไลน์) นับแยก และไม่นับเป็น 40", () => {
+    const { totals } = buildTeamTree([
+      m("A", null, false, "none"),
+      m("A1", "A", true),
+    ]);
+    expect(totals.statusCounts.none).toBe(1);
+    expect(totals.selfForty).toBe(1);
+    expect(totals.selfFortyDepth).toBe(2);
   });
 
   it("ไม่มีคนเลย", () => {

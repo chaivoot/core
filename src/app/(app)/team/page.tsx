@@ -102,7 +102,14 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
           <span className="label">สถานะ</span>
           <div className="flex flex-wrap gap-2">
             {TEAM_STATUSES.map((st) => (
-              <ToggleChip key={st.value} type="radio" name="status" value={st.value} required>
+              <ToggleChip
+                key={st.value}
+                type="radio"
+                name="status"
+                value={st.value}
+                defaultChecked={st.value === "none"}
+                required
+              >
                 {st.label}
               </ToggleChip>
             ))}
@@ -258,7 +265,7 @@ function MemberCard({
 
       <form
         action={setStatusAction.bind(null, node.id)}
-        className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-stone-100 p-1"
+        className="mt-3 grid grid-cols-5 gap-1 rounded-xl bg-stone-100 p-1"
         aria-label={`สถานะของ ${node.name}`}
       >
         {TEAM_STATUSES.map((st) => {
@@ -270,11 +277,12 @@ function MemberCard({
               name="status"
               value={st.value}
               aria-pressed={active}
+              aria-label={st.label}
               className={`min-h-9 rounded-lg px-1 text-xs font-medium leading-tight ${
                 active ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-300" : "text-stone-500"
               }`}
             >
-              {st.label}
+              {st.tab}
             </button>
           );
         })}

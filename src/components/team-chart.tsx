@@ -3,6 +3,7 @@ import type { ChartLink, ChartNode, TeamStatus } from "@/lib/team";
 
 // สีตามสถานะ: เขียวอ่อน / เขียวเข้ม / ฟ้าอ่อน / น้ำเงินเข้ม ใช้ร่วมกับตัวหนังสือในวงกลม ไม่พึ่งสีอย่างเดียว
 export const STATUS_STYLE: Record<TeamStatus, { circle: string; text: string; dot: string }> = {
+  none: { circle: "fill-white stroke-stone-400", text: "fill-stone-400", dot: "border-2 border-stone-400 bg-white" },
   product: { circle: "fill-green-100 stroke-green-500", text: "fill-green-800", dot: "border-2 border-green-500 bg-green-100" },
   sop: { circle: "fill-green-700 stroke-green-800", text: "fill-white", dot: "border-2 border-green-800 bg-green-700" },
   business: { circle: "fill-sky-100 stroke-sky-500", text: "fill-sky-800", dot: "border-2 border-sky-500 bg-sky-100" },
