@@ -9,7 +9,7 @@ const thai = IBM_Plex_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: "Core",
+  title: "3S1M",
   description: "ทบทวนตัวเองรายสัปดาห์ และระบบรายชื่อ",
 };
 

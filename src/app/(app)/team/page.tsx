@@ -19,7 +19,7 @@ import { TEAM_STATUSES, TEAM_STATUS_LABELS } from "@/lib/labels";
 import { requireUser } from "@/lib/session";
 import { buildTeamTree, layoutChart, subtreeIds, walk, type TeamNode } from "@/lib/team";
 
-export const metadata = { title: "สายงาน · Core" };
+export const metadata = { title: "สายงาน · 3S1M" };
 
 type Node = TeamNode<TeamMember>;
 type Option = { id: string; label: string; depth: number };
@@ -230,7 +230,7 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
                 <p className="text-sm text-stone-600">ส่งลิงก์นี้ให้คู่ (ใช้ได้ครั้งเดียว ภายใน 7 วัน)</p>
                 <input readOnly value={inviteUrl} className="input text-sm" aria-label="ลิงก์เชิญ" />
                 <a
-                  href={`https://line.me/R/share?text=${encodeURIComponent(`มาใช้ผังสายงานร่วมกันใน Core ${inviteUrl}`)}`}
+                  href={`https://line.me/R/share?text=${encodeURIComponent(`มาใช้ผังสายงานร่วมกันใน 3S1M ${inviteUrl}`)}`}
                   className="btn w-full bg-[#06C755] text-white hover:bg-[#05b34c]"
                 >
                   ส่งทาง LINE

@@ -5,7 +5,7 @@ import { listContacts, type ContactSort, type InterestFilter } from "@/lib/data/
 import { daysBetween, formatDateShort, today } from "@/lib/dates";
 import { requireUser } from "@/lib/session";
 
-export const metadata = { title: "รายชื่อ · Core" };
+export const metadata = { title: "รายชื่อ · 3S1M" };
 
 const SORTS: { value: ContactSort; label: string }[] = [
   { value: "added", label: "เพิ่มล่าสุด" },

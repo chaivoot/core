@@ -3,7 +3,7 @@ import { signIn } from "@/auth";
 import { getCurrentUser } from "@/lib/session";
 import { SubmitButton } from "@/components/submit-button";
 
-export const metadata = { title: "เข้าสู่ระบบ · Core" };
+export const metadata = { title: "เข้าสู่ระบบ · 3S1M" };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { error, next } = await searchParams;
@@ -14,7 +14,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-10">
-      <h1 className="text-3xl font-bold text-stone-900">Core</h1>
+      <h1 className="text-3xl font-bold text-stone-900">3S1M</h1>
       <p className="mt-3 text-stone-600">
         ทบทวนตัวเองรายสัปดาห์ และจดรายชื่อที่อยู่ในหัวออกมาให้เป็นจริง
       </p>

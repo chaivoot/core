@@ -32,7 +32,7 @@ import { requireUser } from "@/lib/session";
 import { summarizeMonth, type WeekStatus } from "@/lib/summary";
 import { buildTeamTree, layoutChart, walk, type TeamNode } from "@/lib/team";
 
-export const metadata = { title: "Counseling Form · Core" };
+export const metadata = { title: "Counseling Form · 3S1M" };
 
 const WEEK_STATUS_TEXT: Record<Exclude<WeekStatus, "filled">, string> = {
   missing: "ไม่ได้กรอก (นับเป็น 0)",
