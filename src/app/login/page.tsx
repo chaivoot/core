@@ -6,8 +6,11 @@ import { SubmitButton } from "@/components/submit-button";
 export const metadata = { title: "เข้าสู่ระบบ · Core" };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  if (await getCurrentUser()) redirect("/");
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  // กลับไปหน้าที่ตั้งใจจะเข้า (เช่น ลิงก์เชิญ) เฉพาะ path ภายในเว็บนี้
+  const target =
+    typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  if (await getCurrentUser()) redirect(target);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-10">
@@ -27,7 +30,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         className="mt-8"
         action={async () => {
           "use server";
-          await signIn("line", { redirectTo: "/" });
+          await signIn("line", { redirectTo: target });
         }}
       >
         <SubmitButton

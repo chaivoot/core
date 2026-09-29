@@ -21,9 +21,9 @@ const MAX_NAME = 8; // ความยาวชื่อที่แสดงใ
 
 const segmenter = new Intl.Segmenter("th", { granularity: "grapheme" });
 
-function shortName(name: string) {
+function shortName(name: string, max = MAX_NAME) {
   const chars = Array.from(segmenter.segment(name), (s) => s.segment);
-  return chars.length > MAX_NAME ? `${chars.slice(0, MAX_NAME - 1).join("")}…` : name;
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : name;
 }
 
 const cx = (n: ChartNode) => n.x * SLOT + SLOT / 2;
@@ -111,7 +111,7 @@ export function TeamChart({
                 textAnchor="middle"
                 className="fill-stone-800 text-[13px] font-medium"
               >
-                {shortName(n.name)}
+                {shortName(n.name, isMe ? 24 : MAX_NAME)}
               </text>
               <title>
                 {n.name}

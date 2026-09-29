@@ -3,6 +3,7 @@ import { PrintButton } from "@/components/print-button";
 import { StatusDot, TeamChart } from "@/components/team-chart";
 import { countActivitiesByType, countContactsAdded, listContacts } from "@/lib/data/contacts";
 import { getReviews } from "@/lib/data/reviews";
+import { getTeamContext } from "@/lib/data/partner";
 import { listTeamMembers } from "@/lib/data/team";
 import { getUserById } from "@/lib/data/users";
 import type { TeamMember, WeeklyReview } from "@/lib/db/schema";
@@ -68,7 +69,12 @@ export default async function ReportPage({ searchParams }: PageProps<"/report">)
     getReviews(user.id, weeksOfMonth(month)),
     countContactsAdded(user.id, range.from, range.to),
     countActivitiesByType(user.id, range.from, range.to),
-    show.team ? listTeamMembers(user.id) : Promise.resolve([]),
+    show.team
+      ? getTeamContext(user.id).then(async (ctx) => ({
+          names: ctx.names.join(" & "),
+          list: await listTeamMembers(ctx.ownerId),
+        }))
+      : Promise.resolve({ names: "", list: [] }),
     show.contacts ? listContacts(user.id, { sort: "added" }) : Promise.resolve([]),
   ]);
 
@@ -176,7 +182,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/report">)
         </Section>
       )}
 
-      {show.team && <TeamSection members={members} myName={myName} />}
+      {show.team && <TeamSection members={members.list} myName={members.names} />}
 
       {show.contacts && (
         <Section title={`รายชื่อคน (${contacts.length})`}>
