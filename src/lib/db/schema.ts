@@ -123,6 +123,8 @@ export const activities = pgTable(
   ],
 );
 
+export const teamStatusEnum = pgEnum("team_status", ["product", "sop", "business", "forty"]);
+
 // ผังสายงาน: ผู้ใช้กรอกเอง เป็นข้อมูลส่วนตัวของผู้ใช้ (ไม่ผูกกับบัญชีผู้ใช้อื่น)
 // parent_id = null หมายถึงอยู่ใต้ผู้ใช้โดยตรง (หัวสาย)
 export const teamMembers = pgTable(
@@ -136,8 +138,8 @@ export const teamMembers = pgTable(
       onDelete: "set null",
     }),
     name: text("name").notNull(),
-    /** ผู้ใช้ประเมินว่าคนนี้ทำ 40 คะแนนได้ด้วยตัวเองแล้ว */
-    selfForty: boolean("self_forty").notNull().default(false),
+    /** สถานะที่ผู้ใช้ประเมินเอง: ใช้สินค้า / มี SOP / ทำธุรกิจ / ทำ 40 คะแนนได้เอง */
+    status: teamStatusEnum("status").notNull().default("business"),
     note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -152,3 +154,4 @@ export type Activity = typeof activities.$inferSelect;
 export type Interest = (typeof interestEnum.enumValues)[number];
 export type ActivityType = (typeof activityTypeEnum.enumValues)[number];
 export type TeamMember = typeof teamMembers.$inferSelect;
+export type TeamStatus = (typeof teamStatusEnum.enumValues)[number];

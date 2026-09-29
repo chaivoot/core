@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import type { TeamStatus } from "@/lib/db/schema";
 import { subtreeIds } from "@/lib/team";
 
 // ทุกฟังก์ชันรับ userId และกรองด้วย userId เสมอ
@@ -11,7 +12,7 @@ const isUuid = (v: string) => UUID_RE.test(v);
 export type TeamMemberInput = {
   name: string;
   parentId: string | null;
-  selfForty: boolean;
+  status: TeamStatus;
   note: string | null;
 };
 
@@ -50,11 +51,11 @@ export async function updateTeamMember(userId: string, id: string, input: TeamMe
   return rows.length > 0;
 }
 
-export async function setSelfForty(userId: string, id: string, value: boolean) {
+export async function setTeamStatus(userId: string, id: string, status: TeamStatus) {
   if (!isUuid(id)) return false;
   await db
     .update(schema.teamMembers)
-    .set({ selfForty: value, updatedAt: sql`now()` })
+    .set({ status, updatedAt: sql`now()` })
     .where(and(eq(schema.teamMembers.id, id), eq(schema.teamMembers.userId, userId)));
   return true;
 }

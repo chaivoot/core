@@ -27,3 +27,14 @@ export const LEARNING_ITEMS = [
   { key: "learnMeeting", detailKey: "learnMeetingDetail", label: "เข้างานประชุม", placeholder: "เช่น ชื่องาน / งานใหญ่" },
   { key: "learnAcademy", detailKey: "learnAcademyDetail", label: "อบรมสินค้า (Academy)", placeholder: "รายละเอียด" },
 ] as const;
+
+export const TEAM_STATUSES = [
+  { value: "product", label: "ใช้สินค้า", short: "สินค้า" },
+  { value: "sop", label: "มี SOP", short: "SOP" },
+  { value: "business", label: "ทำธุรกิจ", short: "ธุรกิจ" },
+  { value: "forty", label: "ทำ 40 ได้เอง", short: "40" },
+] as const;
+
+export const TEAM_STATUS_LABELS = Object.fromEntries(
+  TEAM_STATUSES.map((s) => [s.value, s.label]),
+) as Record<(typeof TEAM_STATUSES)[number]["value"], string>;
