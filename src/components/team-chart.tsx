@@ -1,12 +1,12 @@
 import { TEAM_STATUSES } from "@/lib/labels";
 import type { ChartLink, ChartNode, TeamStatus } from "@/lib/team";
 
-// สีตามสถานะ: เขียว / ฟ้า / แดง / ม่วง ใช้ร่วมกับตัวหนังสือในวงกลม ไม่พึ่งสีอย่างเดียว
+// สีตามสถานะ: เขียวอ่อน / เขียวเข้ม / ฟ้าอ่อน / น้ำเงินเข้ม ใช้ร่วมกับตัวหนังสือในวงกลม ไม่พึ่งสีอย่างเดียว
 export const STATUS_STYLE: Record<TeamStatus, { circle: string; text: string; dot: string }> = {
-  product: { circle: "fill-green-100 stroke-green-600", text: "fill-green-800", dot: "border-2 border-green-600 bg-green-100" },
-  sop: { circle: "fill-sky-100 stroke-sky-600", text: "fill-sky-800", dot: "border-2 border-sky-600 bg-sky-100" },
-  business: { circle: "fill-red-100 stroke-red-600", text: "fill-red-800", dot: "border-2 border-red-600 bg-red-100" },
-  forty: { circle: "fill-purple-600 stroke-purple-700", text: "fill-white", dot: "border-2 border-purple-700 bg-purple-600" },
+  product: { circle: "fill-green-100 stroke-green-500", text: "fill-green-800", dot: "border-2 border-green-500 bg-green-100" },
+  sop: { circle: "fill-green-700 stroke-green-800", text: "fill-white", dot: "border-2 border-green-800 bg-green-700" },
+  business: { circle: "fill-sky-100 stroke-sky-500", text: "fill-sky-800", dot: "border-2 border-sky-500 bg-sky-100" },
+  forty: { circle: "fill-blue-900 stroke-blue-950", text: "fill-white", dot: "border-2 border-blue-950 bg-blue-900" },
 };
 
 const SHORT = Object.fromEntries(TEAM_STATUSES.map((s) => [s.value, s.short])) as Record<TeamStatus, string>;
