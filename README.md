@@ -1,4 +1,4 @@
-# core.chaivoot.com
+# 3S1M (3s1m.com)
 
 ทบทวนตัวเองรายสัปดาห์ (40 คะแนน) และระบบรายชื่อ ดูรายละเอียดในสเปก
 
@@ -17,7 +17,7 @@
 ### 2. LINE Login channel
 ที่ LINE Developers Console > LINE Login channel
 - เปิด **Web app**
-- Callback URL: `https://core.chaivoot.com/api/auth/callback/line`
+- Callback URL: `https://3s1m.com/api/auth/callback/line`
 - OpenID Connect ใช้ `openid profile` (ไม่ต้องขอสิทธิ์อีเมล)
 
 ### 3. Vercel > Settings > Environment Variables (Production)

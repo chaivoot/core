@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { getOpenInvite, getTeamContext } from "@/lib/data/partner";
 import { getCurrentUser } from "@/lib/session";
 
-export const metadata = { title: "ใช้ผังสายงานร่วมกัน · Core" };
+export const metadata = { title: "ใช้ผังสายงานร่วมกัน · 3S1M" };
 
 const ERRORS: Record<string, string> = {
   invalid: "ลิงก์นี้ใช้ไม่ได้แล้ว (ถูกใช้ไปแล้ว หรือหมดอายุ) ขอลิงก์ใหม่จากคู่ได้เลย",
