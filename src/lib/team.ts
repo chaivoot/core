@@ -50,7 +50,7 @@ export function buildTeamTree<T extends TeamMemberLike>(members: T[]) {
         return { ...m, depth, children: build(m.id, depth + 1) };
       });
 
-  const roots = build(null, 1);
+  const roots = sortBranches(build(null, 1));
 
   const legs: LegSummary<T>[] = roots.map((root) => {
     let people = 0;
@@ -86,6 +86,36 @@ export function buildTeamTree<T extends TeamMemberLike>(members: T[]) {
       selfFortyDepth: Math.max(0, ...legs.map((l) => l.selfFortyDepth)),
     },
   };
+}
+
+/**
+ * เรียงสายจากซ้ายไปขวา (ทุกชั้น):
+ * 1) มีคนทำ 40 ได้เองมากกว่าอยู่ก่อน  2) ลึกกว่าอยู่ก่อน  3) ตามลำดับที่เพิ่ม
+ */
+function sortBranches<T extends TeamMemberLike>(nodes: TeamNode<T>[]): TeamNode<T>[] {
+  const stats = new Map<TeamNode<T>, { forty: number; depth: number }>();
+  const measure = (n: TeamNode<T>): { forty: number; depth: number } => {
+    let forty = n.status === "forty" ? 1 : 0;
+    let depth = n.depth;
+    for (const c of n.children) {
+      const s = measure(c);
+      forty += s.forty;
+      depth = Math.max(depth, s.depth);
+    }
+    const s = { forty, depth };
+    stats.set(n, s);
+    return s;
+  };
+  nodes.forEach(measure);
+
+  const sort = (list: TeamNode<T>[]): TeamNode<T>[] => {
+    for (const n of list) n.children = sort(n.children);
+    return list
+      .map((n, i) => ({ n, i, s: stats.get(n)! }))
+      .sort((a, b) => b.s.forty - a.s.forty || b.s.depth - a.s.depth || a.i - b.i)
+      .map((x) => x.n);
+  };
+  return sort(nodes);
 }
 
 export function walk<T extends TeamMemberLike>(node: TeamNode<T>, fn: (n: TeamNode<T>) => void) {
