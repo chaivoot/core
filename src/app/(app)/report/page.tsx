@@ -31,7 +31,7 @@ import { requireUser } from "@/lib/session";
 import { summarizeMonth, type WeekStatus } from "@/lib/summary";
 import { buildTeamTree, layoutChart, walk, type TeamNode } from "@/lib/team";
 
-export const metadata = { title: "รายงานสำหรับพิมพ์ · Core" };
+export const metadata = { title: "Counseling Form · Core" };
 
 const WEEK_STATUS_TEXT: Record<Exclude<WeekStatus, "filled">, string> = {
   missing: "ไม่ได้กรอก (นับเป็น 0)",
@@ -54,12 +54,12 @@ export default async function ReportPage({ searchParams }: PageProps<"/report">)
       ? sp.month
       : currentMonth;
 
-  // ส่งฟอร์มแล้วใช้ค่าที่ติ๊ก ถ้ายังไม่เคยส่งใช้ค่าเริ่มต้น (รายชื่อคนปิดไว้ เพราะเป็นข้อมูลบุคคลที่สาม)
+  // ส่งฟอร์มแล้วใช้ค่าที่ติ๊ก ถ้ายังไม่เคยส่งใส่ทุกหัวข้อ
   const submitted = sp.s === "1";
   const show = {
     weeks: submitted ? sp.weeks === "1" : true,
     team: submitted ? sp.team === "1" : true,
-    contacts: submitted ? sp.contacts === "1" : false,
+    contacts: submitted ? sp.contacts === "1" : true,
   };
 
   const range = monthDateRange(month);
@@ -86,9 +86,9 @@ export default async function ReportPage({ searchParams }: PageProps<"/report">)
   return (
     <div className="space-y-5 print:space-y-4 print:text-[12px]">
       <form className="card space-y-3 print:hidden">
-        <h1 className="text-xl font-bold text-stone-900">รายงานสำหรับพิมพ์</h1>
+        <h1 className="text-xl font-bold text-stone-900">Counseling Form</h1>
         <p className="text-sm text-stone-500">
-          เลือกเดือนและหัวข้อ แล้วกดพิมพ์ หรือบันทึกเป็น PDF เพื่อนำไปคุยกับอัพไลน์
+          เลือกเดือนและหัวข้อ แล้วกดพิมพ์ หรือบันทึกเป็น PDF เพื่อนำไปปรึกษากับอัพไลน์
         </p>
         <input type="hidden" name="s" value="1" />
         <div>
@@ -107,7 +107,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/report">)
           <Check name="weeks" checked={show.weeks}>รายละเอียดรายสัปดาห์</Check>
           <Check name="team" checked={show.team}>ผังสายงาน</Check>
           <Check name="contacts" checked={show.contacts}>
-            รายชื่อคน (ชื่อ ความสนใจ กิจกรรมล่าสุด)
+            รายชื่อคน (ชื่อ ความสนใจ กิจกรรมล่าสุด โน้ต)
           </Check>
         </fieldset>
         <button type="submit" className="btn-secondary w-full">
@@ -121,7 +121,8 @@ export default async function ReportPage({ searchParams }: PageProps<"/report">)
 
       {/* ---------- เนื้อหารายงาน ---------- */}
       <header className="border-b border-stone-300 pb-3">
-        <h2 className="text-2xl font-bold text-stone-900">รายงาน{formatMonth(month)}</h2>
+        <h2 className="text-2xl font-bold text-stone-900">Counseling Form</h2>
+        <p className="text-lg font-semibold text-stone-800">{formatMonth(month)}</p>
         <p className="text-stone-600">
           {myName} · พิมพ์เมื่อ {formatDate(now)}
         </p>
@@ -183,13 +184,14 @@ export default async function ReportPage({ searchParams }: PageProps<"/report">)
             <p className="text-stone-500">ยังไม่มีรายชื่อ</p>
           ) : (
             <Table
-              head={["ชื่อ", "ความสนใจ", "เพิ่มเมื่อ", "กิจกรรมล่าสุด"]}
+              head={["ชื่อ", "ความสนใจ", "เพิ่มเมื่อ", "กิจกรรมล่าสุด", "โน้ต"]}
               right={[]}
               rows={contacts.map((c) => [
                 c.name,
                 c.interest ? INTEREST_LABELS[c.interest] : "–",
                 formatDate(c.addedOn),
                 c.lastActivity ? formatDate(c.lastActivity) : "–",
+                c.note ?? "",
               ])}
             />
           )}

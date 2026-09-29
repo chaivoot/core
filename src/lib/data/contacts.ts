@@ -47,6 +47,7 @@ export async function listContacts(
       name: schema.contacts.name,
       channel: schema.contacts.channel,
       interest: schema.contacts.interest,
+      note: schema.contacts.note,
       addedOn: schema.contacts.addedOn,
       lastActivity,
     })

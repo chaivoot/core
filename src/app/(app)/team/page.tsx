@@ -54,7 +54,7 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
         <p className="mt-1 text-sm text-stone-500">
           ผังที่คุณบันทึกเอง เห็นเฉพาะคุณคนเดียว ·{" "}
           <Link href="/report" className="text-teal-700 underline">
-            พิมพ์รายงาน
+            Counseling Form
           </Link>
         </p>
       </header>
