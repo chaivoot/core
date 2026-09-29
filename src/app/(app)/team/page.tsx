@@ -7,20 +7,21 @@ import {
 } from "./actions";
 import { ConfirmSubmitButton } from "@/components/confirm-button";
 import { SubmitButton } from "@/components/submit-button";
+import { TeamChart } from "@/components/team-chart";
 import { ToggleChip } from "@/components/toggle-chip";
 import { listTeamMembers } from "@/lib/data/team";
 import type { TeamMember } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
-import { buildTeamTree, subtreeIds, walk, type TeamNode } from "@/lib/team";
+import { buildTeamTree, layoutChart, subtreeIds, walk, type TeamNode } from "@/lib/team";
 
 export const metadata = { title: "สายงาน · Core" };
 
 type Node = TeamNode<TeamMember>;
-type Option = { id: string; label: string };
+type Option = { id: string; label: string; depth: number };
 
 const MESSAGES: Record<string, string> = {
   invalid: "ข้อมูลไม่ครบหรือไม่ถูกต้อง ลองตรวจอีกครั้ง",
-  parent: "ย้ายไปอยู่ใต้คนนี้ไม่ได้ (เป็นตัวเองหรือคนที่อยู่ใต้ตัวเอง)",
+  parent: "เลือกอัพไลน์นี้ไม่ได้ (เป็นตัวเองหรือคนที่อยู่ในสายของตัวเอง)",
   added: "เพิ่มแล้ว",
   saved: "บันทึกแล้ว",
 };
@@ -31,10 +32,14 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
   const members = await listTeamMembers(user.id);
   const { roots, legs, totals } = buildTeamTree(members);
 
-  // ตัวเลือก "อยู่ใต้" เรียงตามผัง
-  const options: (Option & { depth: number })[] = [];
-  for (const r of roots)
-    walk(r, (n) => options.push({ id: n.id, depth: n.depth, label: n.name }));
+  const myName = user.name ?? "คุณ";
+  const chart = layoutChart(roots, myName);
+
+  // ตัวเลือกอัพไลน์ และลำดับการแสดงรายชื่อ เรียงตามผัง
+  const ordered: Node[] = [];
+  for (const r of roots) walk(r, (n) => ordered.push(n));
+  const options: Option[] = ordered.map((n) => ({ id: n.id, depth: n.depth, label: n.name }));
+  const nameOf = new Map(members.map((m) => [m.id, m.name]));
 
   const presetParent =
     typeof sp.parent === "string" && members.some((m) => m.id === sp.parent) ? sp.parent : "";
@@ -50,6 +55,47 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
 
       {error && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{error}</p>}
       {ok && !error && <p className="rounded-xl bg-teal-50 p-3 text-sm text-teal-800">{ok}</p>}
+
+      <section className="card space-y-3">
+        <TeamChart {...chart} />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-3 w-3 rounded-full bg-teal-600" /> ทำ 40 คะแนนได้เอง
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-3 w-3 rounded-full border-2 border-slate-700" /> ยังไม่ได้ติ๊ก
+          </span>
+          {chart.slots > 4 && <span>เลื่อนซ้าย-ขวาเพื่อดูทั้งผัง</span>}
+        </div>
+      </section>
+
+      {/* key: ให้ฟอร์มสร้างใหม่เมื่อกด "+ เพิ่มคนต่อใต้" จะได้เลือกอัพไลน์ให้ถูก */}
+      <form
+        key={presetParent}
+        id="add"
+        action={addTeamMemberAction}
+        className="card scroll-mt-4 space-y-3"
+      >
+        <h2 className="font-semibold text-stone-900">เพิ่มคนในสายงาน</h2>
+        <div>
+          <label className="label" htmlFor="add-name">ชื่อ</label>
+          <input id="add-name" name="name" required maxLength={200} autoComplete="off" className="input" />
+        </div>
+        <div>
+          <label className="label" htmlFor="add-parent">อัพไลน์</label>
+          <ParentSelect id="add-parent" myName={myName} options={options} defaultValue={presetParent} />
+          <p className="mt-1 text-xs text-stone-500">
+            เลือกชื่อคุณ = ต่อจากคุณโดยตรง (สายใหม่) · เลือกคนในสายงาน = ต่อใต้คนนั้น
+          </p>
+          {presetParent && (
+            <Link href="/team#add" className="mt-1 inline-block text-sm text-stone-500">
+              ล้าง
+            </Link>
+          )}
+        </div>
+        <ToggleChip name="selfForty">ทำ 40 คะแนนได้ด้วยตัวเองแล้ว</ToggleChip>
+        <SubmitButton className="btn-primary w-full">เพิ่ม</SubmitButton>
+      </form>
 
       {members.length > 0 && (
         <section className="card space-y-4">
@@ -94,41 +140,24 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
         </section>
       )}
 
-      {/* key: ให้ฟอร์มสร้างใหม่เมื่อกด "+ เพิ่มคนใต้" จะได้เลือก "อยู่ใต้" ให้ถูก */}
-      <form
-        key={presetParent}
-        id="add"
-        action={addTeamMemberAction}
-        className="card scroll-mt-4 space-y-3"
-      >
-        <h2 className="font-semibold text-stone-900">เพิ่มคนในสายงาน</h2>
-        <div>
-          <label className="label" htmlFor="add-name">ชื่อ</label>
-          <input id="add-name" name="name" required maxLength={200} autoComplete="off" className="input" />
-        </div>
-        <div>
-          <label className="label" htmlFor="add-parent">อยู่ใต้</label>
-          <ParentSelect id="add-parent" options={options} defaultValue={presetParent} />
-          {presetParent && (
-            <Link href="/team#add" className="mt-1 inline-block text-sm text-stone-500">
-              ล้าง
-            </Link>
-          )}
-        </div>
-        <ToggleChip name="selfForty">ทำ 40 คะแนนได้ด้วยตัวเองแล้ว</ToggleChip>
-        <SubmitButton className="btn-primary w-full">เพิ่ม</SubmitButton>
-      </form>
-
-      {roots.length === 0 ? (
+      {ordered.length === 0 ? (
         <p className="card text-center text-stone-500">
-          ยังไม่มีคนในสายงาน เริ่มจากคนที่อยู่ใต้คุณโดยตรงก่อนก็ได้
+          ยังไม่มีคนในสายงาน เริ่มจากคนที่ต่อจากคุณโดยตรงก่อนก็ได้
         </p>
       ) : (
         <section className="space-y-2">
-          <h2 className="font-semibold text-stone-900">ผัง</h2>
+          <h2 className="font-semibold text-stone-900">คนในผัง</h2>
+          <p className="text-sm text-stone-500">กดวงกลมในชาร์ตเพื่อเลื่อนมาที่คนนั้น</p>
           <ul className="space-y-2">
-            {roots.map((r) => (
-              <TreeNode key={r.id} node={r} options={options} members={members} />
+            {ordered.map((n) => (
+              <MemberCard
+                key={n.id}
+                node={n}
+                myName={myName}
+                upline={n.parentId ? (nameOf.get(n.parentId) ?? myName) : myName}
+                options={options}
+                members={members}
+              />
             ))}
           </ul>
         </section>
@@ -148,23 +177,25 @@ function Stat({ value, label }: { value: number; label: string }) {
 
 function ParentSelect({
   id,
+  myName,
   options,
   defaultValue,
   exclude,
 }: {
   id: string;
-  options: (Option & { depth: number })[];
+  myName: string;
+  options: Option[];
   defaultValue: string;
   exclude?: Set<string>;
 }) {
   return (
     <select id={id} name="parentId" defaultValue={defaultValue} className="input">
-      <option value="">คุณ (เป็นหัวสายใหม่)</option>
+      <option value="">{myName} (คุณ)</option>
       {options
         .filter((o) => !exclude?.has(o.id))
         .map((o) => (
           <option key={o.id} value={o.id}>
-            {" ".repeat(o.depth - 1)}
+            {"\u2003".repeat(o.depth)}
             {o.label} (ชั้น {o.depth})
           </option>
         ))}
@@ -172,89 +203,84 @@ function ParentSelect({
   );
 }
 
-function TreeNode({
+function MemberCard({
   node,
+  myName,
+  upline,
   options,
   members,
 }: {
   node: Node;
-  options: (Option & { depth: number })[];
+  myName: string;
+  upline: string;
+  options: Option[];
   members: TeamMember[];
 }) {
   return (
-    <li>
-      <div className="card p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="truncate font-medium text-stone-900">{node.name}</div>
-            <div className="text-xs text-stone-500">
-              ชั้น {node.depth}
-              {node.children.length > 0 && ` · ใต้ ${node.children.length} คน`}
-            </div>
+    <li id={`m-${node.id}`} className="card scroll-mt-4 p-3 target:ring-2 target:ring-teal-600">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate font-medium text-stone-900">{node.name}</div>
+          <div className="truncate text-xs text-stone-500">
+            ชั้น {node.depth} · อัพไลน์ {upline}
+            {node.children.length > 0 && ` · ต่อใต้ ${node.children.length} คน`}
           </div>
-          <form action={toggleSelfFortyAction.bind(null, node.id, !node.selfForty)}>
-            <SubmitButton
-              pendingText="…"
-              className={`btn min-h-9 shrink-0 rounded-full px-3 text-sm ${
-                node.selfForty
-                  ? "bg-teal-700 text-white"
-                  : "bg-white text-stone-600 ring-1 ring-stone-300"
-              }`}
-              aria-pressed={node.selfForty}
-            >
-              {node.selfForty ? "✓ ทำ 40 ได้เอง" : "ทำ 40 ได้เอง?"}
-            </SubmitButton>
-          </form>
         </div>
-        {node.note && <p className="mt-1 whitespace-pre-wrap text-sm text-stone-600">{node.note}</p>}
+        <form action={toggleSelfFortyAction.bind(null, node.id, !node.selfForty)}>
+          <SubmitButton
+            pendingText="…"
+            className={`btn min-h-9 shrink-0 rounded-full px-3 text-sm ${
+              node.selfForty
+                ? "bg-teal-700 text-white"
+                : "bg-white text-stone-600 ring-1 ring-stone-300"
+            }`}
+            aria-pressed={node.selfForty}
+          >
+            {node.selfForty ? "✓ ทำ 40 ได้เอง" : "ทำ 40 ได้เอง?"}
+          </SubmitButton>
+        </form>
+      </div>
+      {node.note && <p className="mt-1 whitespace-pre-wrap text-sm text-stone-600">{node.note}</p>}
 
-        <div className="mt-2 flex items-center gap-3 text-sm">
-          <Link href={`/team?parent=${node.id}#add`} className="text-teal-700">
-            + เพิ่มคนใต้ {node.name}
-          </Link>
-        </div>
-
-        <details className="mt-2">
-          <summary className="cursor-pointer text-sm text-stone-500 select-none">แก้ไข</summary>
-          <form action={updateTeamMemberAction.bind(null, node.id)} className="mt-3 space-y-3">
-            <input type="hidden" name="selfForty" value={node.selfForty ? "on" : ""} />
-            <div>
-              <label className="label" htmlFor={`${node.id}-name`}>ชื่อ</label>
-              <input id={`${node.id}-name`} name="name" required maxLength={200} defaultValue={node.name} className="input" />
-            </div>
-            <div>
-              <label className="label" htmlFor={`${node.id}-parent`}>อยู่ใต้</label>
-              <ParentSelect
-                id={`${node.id}-parent`}
-                options={options}
-                defaultValue={node.parentId ?? ""}
-                exclude={subtreeIds(members, node.id)}
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor={`${node.id}-note`}>โน้ต</label>
-              <textarea id={`${node.id}-note`} name="note" rows={2} maxLength={2000} defaultValue={node.note ?? ""} className="input" />
-            </div>
-            <SubmitButton className="btn-primary w-full">บันทึก</SubmitButton>
-          </form>
-          <form action={deleteTeamMemberAction.bind(null, node.id)} className="mt-2">
-            <ConfirmSubmitButton
-              message={`ลบ "${node.name}" ออกจากผัง? คนที่อยู่ใต้จะเลื่อนขึ้นมาแทนที่`}
-              className="btn-danger w-full"
-            >
-              ลบออกจากผัง
-            </ConfirmSubmitButton>
-          </form>
-        </details>
+      <div className="mt-2 text-sm">
+        <Link href={`/team?parent=${node.id}#add`} className="text-teal-700">
+          + เพิ่มคนต่อใต้ {node.name}
+        </Link>
       </div>
 
-      {node.children.length > 0 && (
-        <ul className="mt-2 space-y-2 border-l-2 border-stone-200 pl-3">
-          {node.children.map((c) => (
-            <TreeNode key={c.id} node={c} options={options} members={members} />
-          ))}
-        </ul>
-      )}
+      <details className="mt-2">
+        <summary className="cursor-pointer text-sm text-stone-500 select-none">แก้ไข</summary>
+        <form action={updateTeamMemberAction.bind(null, node.id)} className="mt-3 space-y-3">
+          <input type="hidden" name="selfForty" value={node.selfForty ? "on" : ""} />
+          <div>
+            <label className="label" htmlFor={`${node.id}-name`}>ชื่อ</label>
+            <input id={`${node.id}-name`} name="name" required maxLength={200} defaultValue={node.name} className="input" />
+          </div>
+          <div>
+            <label className="label" htmlFor={`${node.id}-parent`}>อัพไลน์</label>
+            <ParentSelect
+              id={`${node.id}-parent`}
+              myName={myName}
+              options={options}
+              defaultValue={node.parentId ?? ""}
+              exclude={subtreeIds(members, node.id)}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor={`${node.id}-note`}>โน้ต</label>
+            <textarea id={`${node.id}-note`} name="note" rows={2} maxLength={2000} defaultValue={node.note ?? ""} className="input" />
+          </div>
+          <SubmitButton className="btn-primary w-full">บันทึก</SubmitButton>
+        </form>
+        <form action={deleteTeamMemberAction.bind(null, node.id)} className="mt-2">
+          <ConfirmSubmitButton
+            message={`ลบ "${node.name}" ออกจากผัง? คนที่ต่อใต้จะเลื่อนขึ้นมาแทนที่`}
+            className="btn-danger w-full"
+          >
+            ลบออกจากผัง
+          </ConfirmSubmitButton>
+        </form>
+      </details>
     </li>
   );
 }

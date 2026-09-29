@@ -96,3 +96,51 @@ export function subtreeIds(members: TeamMemberLike[], id: string): Set<string> {
   }
   return out;
 }
+
+// ---------- จัดตำแหน่งสำหรับวาดชาร์ต ----------
+
+export type ChartNode = {
+  id: string | null; // null = ตัวผู้ใช้เอง (บนสุด)
+  name: string;
+  selfForty: boolean;
+  /** ตำแหน่งแนวนอน หน่วยเป็นช่อง (slot) */
+  x: number;
+  /** ชั้น: 0 = ผู้ใช้ */
+  level: number;
+};
+
+export type ChartLink = { parent: ChartNode; children: ChartNode[] };
+
+/**
+ * จัดตำแหน่งแบบต้นไม้: ใบไม้เรียงช่องละคนจากซ้ายไปขวา
+ * แม่อยู่กึ่งกลางเหนือลูกคนแรกกับคนสุดท้าย
+ */
+export function layoutChart<T extends TeamMemberLike>(roots: TeamNode<T>[], me: string) {
+  const nodes: ChartNode[] = [];
+  const links: ChartLink[] = [];
+  let nextSlot = 0;
+
+  const place = (
+    item: { id: string | null; name: string; selfForty: boolean },
+    children: TeamNode<T>[],
+    level: number,
+  ): ChartNode => {
+    const placed = children.map((c) => place(c, c.children, level + 1));
+    const x =
+      placed.length === 0
+        ? nextSlot++
+        : (placed[0].x + placed[placed.length - 1].x) / 2;
+    const node: ChartNode = { id: item.id, name: item.name, selfForty: item.selfForty, x, level };
+    nodes.push(node);
+    if (placed.length > 0) links.push({ parent: node, children: placed });
+    return node;
+  };
+
+  place({ id: null, name: me, selfForty: false }, roots, 0);
+  return {
+    nodes,
+    links,
+    slots: Math.max(nextSlot, 1),
+    levels: Math.max(...nodes.map((n) => n.level)) + 1,
+  };
+}
