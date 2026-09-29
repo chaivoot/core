@@ -1,9 +1,9 @@
 // คำนวณผังสายงาน (ฟังก์ชันล้วน ไม่แตะฐานข้อมูล)
 
-export type TeamStatus = "product" | "sop" | "business" | "forty";
+export type TeamStatus = "none" | "product" | "sop" | "business" | "forty";
 export type StatusCounts = Record<TeamStatus, number>;
 
-const emptyCounts = (): StatusCounts => ({ product: 0, sop: 0, business: 0, forty: 0 });
+const emptyCounts = (): StatusCounts => ({ none: 0, product: 0, sop: 0, business: 0, forty: 0 });
 
 export type TeamMemberLike = {
   id: string;

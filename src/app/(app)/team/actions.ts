@@ -12,7 +12,7 @@ import {
 import { formObject, optionalText } from "@/lib/forms";
 import { requireUser } from "@/lib/session";
 
-const statusSchema = z.enum(["product", "sop", "business", "forty"]);
+const statusSchema = z.enum(["none", "product", "sop", "business", "forty"]);
 
 const memberSchema = z.object({
   name: z.string().trim().min(1).max(200),

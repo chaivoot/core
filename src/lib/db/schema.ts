@@ -123,7 +123,13 @@ export const activities = pgTable(
   ],
 );
 
-export const teamStatusEnum = pgEnum("team_status", ["product", "sop", "business", "forty"]);
+export const teamStatusEnum = pgEnum("team_status", [
+  "none",
+  "product",
+  "sop",
+  "business",
+  "forty",
+]);
 
 // ผังสายงาน: ผู้ใช้กรอกเอง เป็นข้อมูลส่วนตัวของผู้ใช้ (ไม่ผูกกับบัญชีผู้ใช้อื่น)
 // parent_id = null หมายถึงอยู่ใต้ผู้ใช้โดยตรง (หัวสาย)
