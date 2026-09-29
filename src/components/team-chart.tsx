@@ -1,12 +1,12 @@
 import { TEAM_STATUSES } from "@/lib/labels";
 import type { ChartLink, ChartNode, TeamStatus } from "@/lib/team";
 
-// สีตามสถานะ: เข้มขึ้นตามระดับ ใช้ร่วมกับตัวหนังสือในวงกลม ไม่พึ่งสีอย่างเดียว
+// สีตามสถานะ: เขียว / ฟ้า / แดง / ม่วง ใช้ร่วมกับตัวหนังสือในวงกลม ไม่พึ่งสีอย่างเดียว
 export const STATUS_STYLE: Record<TeamStatus, { circle: string; text: string; dot: string }> = {
-  product: { circle: "fill-white stroke-slate-400", text: "fill-slate-500", dot: "border-2 border-slate-400 bg-white" },
-  sop: { circle: "fill-amber-100 stroke-amber-600", text: "fill-amber-800", dot: "border-2 border-amber-600 bg-amber-100" },
-  business: { circle: "fill-teal-100 stroke-teal-700", text: "fill-teal-800", dot: "border-2 border-teal-700 bg-teal-100" },
-  forty: { circle: "fill-teal-600 stroke-teal-700", text: "fill-white", dot: "border-2 border-teal-700 bg-teal-600" },
+  product: { circle: "fill-green-100 stroke-green-600", text: "fill-green-800", dot: "border-2 border-green-600 bg-green-100" },
+  sop: { circle: "fill-sky-100 stroke-sky-600", text: "fill-sky-800", dot: "border-2 border-sky-600 bg-sky-100" },
+  business: { circle: "fill-red-100 stroke-red-600", text: "fill-red-800", dot: "border-2 border-red-600 bg-red-100" },
+  forty: { circle: "fill-purple-600 stroke-purple-700", text: "fill-white", dot: "border-2 border-purple-700 bg-purple-600" },
 };
 
 const SHORT = Object.fromEntries(TEAM_STATUSES.map((s) => [s.value, s.short])) as Record<TeamStatus, string>;
