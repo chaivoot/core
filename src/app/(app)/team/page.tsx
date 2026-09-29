@@ -2,15 +2,16 @@ import Link from "next/link";
 import {
   addTeamMemberAction,
   deleteTeamMemberAction,
-  toggleSelfFortyAction,
+  setStatusAction,
   updateTeamMemberAction,
 } from "./actions";
 import { ConfirmSubmitButton } from "@/components/confirm-button";
 import { SubmitButton } from "@/components/submit-button";
-import { TeamChart } from "@/components/team-chart";
+import { StatusDot, TeamChart } from "@/components/team-chart";
 import { ToggleChip } from "@/components/toggle-chip";
 import { listTeamMembers } from "@/lib/data/team";
 import type { TeamMember } from "@/lib/db/schema";
+import { TEAM_STATUSES, TEAM_STATUS_LABELS } from "@/lib/labels";
 import { requireUser } from "@/lib/session";
 import { buildTeamTree, layoutChart, subtreeIds, walk, type TeamNode } from "@/lib/team";
 
@@ -59,12 +60,11 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
       <section className="card space-y-3">
         <TeamChart {...chart} />
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-3 w-3 rounded-full bg-teal-600" /> ทำ 40 คะแนนได้เอง
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-3 w-3 rounded-full border-2 border-slate-700" /> ยังไม่ได้ติ๊ก
-          </span>
+          {TEAM_STATUSES.map((st) => (
+            <span key={st.value} className="inline-flex items-center gap-1.5">
+              <StatusDot status={st.value} /> {st.label}
+            </span>
+          ))}
           {chart.slots > 4 && <span>เลื่อนซ้าย-ขวาเพื่อดูทั้งผัง</span>}
         </div>
       </section>
@@ -93,7 +93,16 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
             </Link>
           )}
         </div>
-        <ToggleChip name="selfForty">ทำ 40 คะแนนได้ด้วยตัวเองแล้ว</ToggleChip>
+        <div>
+          <span className="label">สถานะ</span>
+          <div className="flex flex-wrap gap-2">
+            {TEAM_STATUSES.map((st) => (
+              <ToggleChip key={st.value} type="radio" name="status" value={st.value} required>
+                {st.label}
+              </ToggleChip>
+            ))}
+          </div>
+        </div>
         <SubmitButton className="btn-primary w-full">เพิ่ม</SubmitButton>
       </form>
 
@@ -104,9 +113,19 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
             <Stat value={totals.depth} label="ชั้นลึกสุด" />
             <Stat value={totals.selfForty} label="ทำ 40 ได้เอง" />
           </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            {TEAM_STATUSES.map((st) => (
+              <div key={st.value} className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-stone-600">
+                  <StatusDot status={st.value} /> {st.label}
+                </span>
+                <span className="font-semibold text-stone-900">{totals.statusCounts[st.value]}</span>
+              </div>
+            ))}
+          </div>
           <p className="text-sm text-stone-600">
             {totals.selfForty === 0
-              ? "ยังไม่มีคนที่ติ๊กว่าทำ 40 คะแนนได้เอง"
+              ? "ยังไม่มีคนที่ทำ 40 คะแนนได้เอง"
               : `มีคนทำ 40 คะแนนได้เองใน ${totals.legsWithSelfForty} จาก ${totals.legs} สาย ลึกถึงชั้นที่ ${totals.selfFortyDepth}`}
           </p>
 
@@ -226,21 +245,35 @@ function MemberCard({
             {node.children.length > 0 && ` · ต่อใต้ ${node.children.length} คน`}
           </div>
         </div>
-        <form action={toggleSelfFortyAction.bind(null, node.id, !node.selfForty)}>
-          <SubmitButton
-            pendingText="…"
-            className={`btn min-h-9 shrink-0 rounded-full px-3 text-sm ${
-              node.selfForty
-                ? "bg-teal-700 text-white"
-                : "bg-white text-stone-600 ring-1 ring-stone-300"
-            }`}
-            aria-pressed={node.selfForty}
-          >
-            {node.selfForty ? "✓ ทำ 40 ได้เอง" : "ทำ 40 ได้เอง?"}
-          </SubmitButton>
-        </form>
+        <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-stone-700">
+          <StatusDot status={node.status} /> {TEAM_STATUS_LABELS[node.status]}
+        </span>
       </div>
       {node.note && <p className="mt-1 whitespace-pre-wrap text-sm text-stone-600">{node.note}</p>}
+
+      <form
+        action={setStatusAction.bind(null, node.id)}
+        className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-stone-100 p-1"
+        aria-label={`สถานะของ ${node.name}`}
+      >
+        {TEAM_STATUSES.map((st) => {
+          const active = node.status === st.value;
+          return (
+            <button
+              key={st.value}
+              type="submit"
+              name="status"
+              value={st.value}
+              aria-pressed={active}
+              className={`min-h-9 rounded-lg px-1 text-xs font-medium leading-tight ${
+                active ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-300" : "text-stone-500"
+              }`}
+            >
+              {st.label}
+            </button>
+          );
+        })}
+      </form>
 
       <div className="mt-2 text-sm">
         <Link href={`/team?parent=${node.id}#add`} className="text-teal-700">
@@ -251,7 +284,7 @@ function MemberCard({
       <details className="mt-2">
         <summary className="cursor-pointer text-sm text-stone-500 select-none">แก้ไข</summary>
         <form action={updateTeamMemberAction.bind(null, node.id)} className="mt-3 space-y-3">
-          <input type="hidden" name="selfForty" value={node.selfForty ? "on" : ""} />
+          <input type="hidden" name="status" value={node.status} />
           <div>
             <label className="label" htmlFor={`${node.id}-name`}>ชื่อ</label>
             <input id={`${node.id}-name`} name="name" required maxLength={200} defaultValue={node.name} className="input" />

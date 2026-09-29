@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildTeamTree, subtreeIds } from "@/lib/team";
+import { buildTeamTree, subtreeIds, type TeamStatus } from "@/lib/team";
 
-const m = (id: string, parentId: string | null, selfForty = false) => ({
-  id,
-  parentId,
-  name: id,
-  selfForty,
-});
+const m = (
+  id: string,
+  parentId: string | null,
+  selfForty = false,
+  status: TeamStatus = selfForty ? "forty" : "business",
+) => ({ id, parentId, name: id, status });
 
 describe("ผังสายงาน", () => {
   const members = [
@@ -24,6 +24,7 @@ describe("ผังสายงาน", () => {
     expect(totals).toEqual({
       people: 7,
       selfForty: 2,
+      statusCounts: { product: 0, sop: 0, business: 5, forty: 2 },
       legs: 3,
       legsWithSelfForty: 1,
       depth: 4,
@@ -34,6 +35,17 @@ describe("ผังสายงาน", () => {
       ["B", 2, 0, 2, 0],
       ["C", 1, 0, 1, 0],
     ]);
+  });
+
+  it("นับตามสถานะ และเปลี่ยนสถานะกลับได้", () => {
+    const { totals, legs } = buildTeamTree([
+      m("A", null, false, "product"),
+      m("A1", "A", false, "sop"),
+      m("B", null, false, "forty"),
+    ]);
+    expect(totals.statusCounts).toEqual({ product: 1, sop: 1, business: 0, forty: 1 });
+    expect(legs[0].selfForty).toBe(0);
+    expect(totals.legsWithSelfForty).toBe(1);
   });
 
   it("ไม่มีคนเลย", () => {

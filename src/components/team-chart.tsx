@@ -1,4 +1,15 @@
-import type { ChartLink, ChartNode } from "@/lib/team";
+import { TEAM_STATUSES } from "@/lib/labels";
+import type { ChartLink, ChartNode, TeamStatus } from "@/lib/team";
+
+// สีตามสถานะ: เข้มขึ้นตามระดับ ใช้ร่วมกับตัวหนังสือในวงกลม ไม่พึ่งสีอย่างเดียว
+export const STATUS_STYLE: Record<TeamStatus, { circle: string; text: string; dot: string }> = {
+  product: { circle: "fill-white stroke-slate-400", text: "fill-slate-500", dot: "border-2 border-slate-400 bg-white" },
+  sop: { circle: "fill-amber-100 stroke-amber-600", text: "fill-amber-800", dot: "border-2 border-amber-600 bg-amber-100" },
+  business: { circle: "fill-teal-100 stroke-teal-700", text: "fill-teal-800", dot: "border-2 border-teal-700 bg-teal-100" },
+  forty: { circle: "fill-teal-600 stroke-teal-700", text: "fill-white", dot: "border-2 border-teal-700 bg-teal-600" },
+};
+
+const SHORT = Object.fromEntries(TEAM_STATUSES.map((s) => [s.value, s.short])) as Record<TeamStatus, string>;
 
 const SLOT = 80; // ความกว้างต่อคน (4 สายพอดีจอมือถือ)
 const LEVEL = 120; // ระยะห่างแต่ละชั้น
@@ -73,24 +84,22 @@ export function TeamChart({
                 r={R}
                 strokeWidth={2.5}
                 className={
-                  isMe
-                    ? "fill-teal-50 stroke-teal-700"
-                    : n.selfForty
-                      ? "fill-teal-600 stroke-teal-700"
-                      : "fill-white stroke-slate-700"
+                  n.status === null ? "fill-stone-50 stroke-slate-700" : STATUS_STYLE[n.status].circle
                 }
               />
-              {(isMe || n.selfForty) && (
-                <text
-                  x={x}
-                  y={y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  className={isMe ? "fill-teal-800 text-xs font-semibold" : "fill-white text-sm font-bold"}
-                >
-                  {isMe ? "คุณ" : "40"}
-                </text>
-              )}
+              <text
+                x={x}
+                y={y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className={
+                  n.status === null
+                    ? "fill-slate-800 text-xs font-semibold"
+                    : `${STATUS_STYLE[n.status].text} ${n.status === "forty" ? "text-sm font-bold" : "text-[11px] font-semibold"}`
+                }
+              >
+                {n.status === null ? "คุณ" : SHORT[n.status]}
+              </text>
               <text
                 x={x}
                 y={y + R + 18}
@@ -101,7 +110,7 @@ export function TeamChart({
               </text>
               <title>
                 {n.name}
-                {n.selfForty ? " · ทำ 40 คะแนนได้เอง" : ""}
+                {n.status ? ` · ${TEAM_STATUSES.find((s) => s.value === n.status)?.label}` : ""}
               </title>
             </>
           );
@@ -116,4 +125,8 @@ export function TeamChart({
       </svg>
     </div>
   );
+}
+
+export function StatusDot({ status }: { status: TeamStatus }) {
+  return <span className={`inline-block h-3 w-3 shrink-0 rounded-full ${STATUS_STYLE[status].dot}`} />;
 }

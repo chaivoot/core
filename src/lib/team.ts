@@ -1,10 +1,15 @@
 // คำนวณผังสายงาน (ฟังก์ชันล้วน ไม่แตะฐานข้อมูล)
 
+export type TeamStatus = "product" | "sop" | "business" | "forty";
+export type StatusCounts = Record<TeamStatus, number>;
+
+const emptyCounts = (): StatusCounts => ({ product: 0, sop: 0, business: 0, forty: 0 });
+
 export type TeamMemberLike = {
   id: string;
   parentId: string | null;
   name: string;
-  selfForty: boolean;
+  status: TeamStatus;
 };
 
 export type TeamNode<T extends TeamMemberLike> = T & {
@@ -18,6 +23,7 @@ export type LegSummary<T extends TeamMemberLike> = {
   /** จำนวนคนในสายนี้ (รวมหัวสาย) */
   people: number;
   selfForty: number;
+  statusCounts: StatusCounts;
   /** ชั้นลึกสุดของสายนี้ */
   depth: number;
   /** ชั้นลึกสุดที่มีคนทำ 40 คะแนนได้เอง (0 = ยังไม่มี) */
@@ -51,15 +57,17 @@ export function buildTeamTree<T extends TeamMemberLike>(members: T[]) {
     let selfForty = 0;
     let depth = 0;
     let selfFortyDepth = 0;
+    const statusCounts = emptyCounts();
     walk(root, (n) => {
       people++;
+      statusCounts[n.status]++;
       depth = Math.max(depth, n.depth);
-      if (n.selfForty) {
+      if (n.status === "forty") {
         selfForty++;
         selfFortyDepth = Math.max(selfFortyDepth, n.depth);
       }
     });
-    return { root, people, selfForty, depth, selfFortyDepth };
+    return { root, people, selfForty, statusCounts, depth, selfFortyDepth };
   });
 
   return {
@@ -68,6 +76,10 @@ export function buildTeamTree<T extends TeamMemberLike>(members: T[]) {
     totals: {
       people: legs.reduce((s, l) => s + l.people, 0),
       selfForty: legs.reduce((s, l) => s + l.selfForty, 0),
+      statusCounts: legs.reduce((acc, l) => {
+        for (const k of Object.keys(acc) as TeamStatus[]) acc[k] += l.statusCounts[k];
+        return acc;
+      }, emptyCounts()),
       legs: legs.length,
       legsWithSelfForty: legs.filter((l) => l.selfForty > 0).length,
       depth: Math.max(0, ...legs.map((l) => l.depth)),
@@ -102,7 +114,8 @@ export function subtreeIds(members: TeamMemberLike[], id: string): Set<string> {
 export type ChartNode = {
   id: string | null; // null = ตัวผู้ใช้เอง (บนสุด)
   name: string;
-  selfForty: boolean;
+  /** null = ตัวผู้ใช้ */
+  status: TeamStatus | null;
   /** ตำแหน่งแนวนอน หน่วยเป็นช่อง (slot) */
   x: number;
   /** ชั้น: 0 = ผู้ใช้ */
@@ -121,7 +134,7 @@ export function layoutChart<T extends TeamMemberLike>(roots: TeamNode<T>[], me: 
   let nextSlot = 0;
 
   const place = (
-    item: { id: string | null; name: string; selfForty: boolean },
+    item: { id: string | null; name: string; status: TeamStatus | null },
     children: TeamNode<T>[],
     level: number,
   ): ChartNode => {
@@ -130,13 +143,13 @@ export function layoutChart<T extends TeamMemberLike>(roots: TeamNode<T>[], me: 
       placed.length === 0
         ? nextSlot++
         : (placed[0].x + placed[placed.length - 1].x) / 2;
-    const node: ChartNode = { id: item.id, name: item.name, selfForty: item.selfForty, x, level };
+    const node: ChartNode = { id: item.id, name: item.name, status: item.status, x, level };
     nodes.push(node);
     if (placed.length > 0) links.push({ parent: node, children: placed });
     return node;
   };
 
-  place({ id: null, name: me, selfForty: false }, roots, 0);
+  place({ id: null, name: me, status: null }, roots, 0);
   return {
     nodes,
     links,

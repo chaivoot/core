@@ -6,11 +6,13 @@ import { z } from "zod";
 import {
   createTeamMember,
   deleteTeamMember,
-  setSelfForty,
+  setTeamStatus,
   updateTeamMember,
 } from "@/lib/data/team";
-import { checkbox, formObject, optionalText } from "@/lib/forms";
+import { formObject, optionalText } from "@/lib/forms";
 import { requireUser } from "@/lib/session";
+
+const statusSchema = z.enum(["product", "sop", "business", "forty"]);
 
 const memberSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -18,7 +20,7 @@ const memberSchema = z.object({
     .string()
     .nullish()
     .transform((v) => (v ? v : null)),
-  selfForty: checkbox,
+  status: statusSchema,
   note: optionalText(2000),
 });
 
@@ -40,9 +42,11 @@ export async function updateTeamMemberAction(id: string, formData: FormData) {
   redirect(ok ? "/team?ok=saved" : "/team?e=parent");
 }
 
-export async function toggleSelfFortyAction(id: string, value: boolean) {
+export async function setStatusAction(id: string, formData: FormData) {
   const user = await requireUser();
-  await setSelfForty(user.id, id, value);
+  const status = statusSchema.safeParse(formData.get("status"));
+  if (!status.success) return;
+  await setTeamStatus(user.id, id, status.data);
   revalidatePath("/team");
 }
 
