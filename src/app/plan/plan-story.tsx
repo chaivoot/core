@@ -53,7 +53,8 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
   const home: Household = manual
     ? { pv: MANUAL_BV / PV_TO_BV, bv: MANUAL_BV }
     : { pv: basket.pv, bv: basket.bv };
-  const cust = manual ? 0 : customers;
+  // สมาชิกเริ่มนับตั้งแต่ขั้นที่ 2 (ขั้นที่ 1 = บ้านเราอย่างเดียว)
+  const cust = manual || step < 2 ? 0 : customers;
 
   // แต่ละขั้นเล่าเพิ่มทีละชั้น
   const depth = step <= 3 ? 0 : step === 4 ? 1 : step === 5 ? 2 : 3;
