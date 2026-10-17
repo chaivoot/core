@@ -8,6 +8,7 @@ import {
   RETAIL_PROFIT,
   basketPerMonth,
   corePlus,
+  corePlusMonthly,
   evaluate,
   fmt,
   fmt0,
@@ -60,6 +61,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
   const tree = uniformTree(home, cust, levels.slice(0, depth));
   const result = evaluate(tree);
   const income = planIncome(result);
+  const extra = depth > 0 ? corePlusMonthly(corePlus(tree)) : 0;
 
   const go = (n: number) => {
     setStep(Math.min(Math.max(n, 0), LAST));
@@ -68,113 +70,123 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
   const setLevel = (i: number, v: number) => setLevels((l) => l.map((x, j) => (j === i ? v : x)));
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-4 pt-5 pb-28">
-      <Progress step={step} onGo={go} />
+    <div className="mx-auto grid min-h-dvh w-full max-w-5xl gap-6 px-4 pt-5 pb-28 md:grid-cols-[minmax(0,1fr)_15rem]">
+      <div className="min-w-0">
+        <Progress step={step} onGo={go} />
 
-      <div className="mt-5 flex-1 space-y-4">
-        {step === 0 && <Intro />}
+        <div className="sticky top-0 z-10 -mx-4 mt-3 space-y-2 bg-stone-50/95 px-4 py-2 backdrop-blur md:mx-0 md:px-0">
+          <RateStrip r={result} />
+          {step === 1 && !manual && <BasketSummary basket={basket} />}
+        </div>
 
-        {step === 1 && (
-          <ProductStep
-            products={products}
-            qty={qty}
-            setQty={setQty}
-            basket={basket}
-            manual={manual}
-            setManual={(m) => {
-              setManual(m);
-              if (m) setLevels([3, 0, 0]);
-            }}
-          />
-        )}
+        <div className="mt-4 space-y-4">
+          {step === 0 && <Intro />}
 
-        {step === 2 && (
-          <>
-            <Title
-              kicker="ขั้นที่ 2"
-              title={manual ? "ขายให้ลูกค้า" : "ลูกค้าที่ใช้แบบเดียวกับเรา"}
-              text={
-                manual
-                  ? "ตัวอย่างในคู่มือ: แต่ละบ้านขายสินค้าได้เดือนละ 18,000 บาท"
-                  : "บ้านที่ซื้อสินค้าชุดเดียวกับบ้านเราผ่านเรา เราได้กำไรขายปลีก และยอดนับรวมเป็นของเรา"
-              }
+          {step === 1 && (
+            <ProductStep
+              products={products}
+              qty={qty}
+              setQty={setQty}
+              manual={manual}
+              setManual={(m) => {
+                setManual(m);
+                if (m) setLevels([3, 0, 0]);
+              }}
             />
-            {!manual && (
-              <Stepper label="ลูกค้า" unit="บ้าน" value={customers} max={20} onChange={setCustomers} />
-            )}
-            <Result r={result} node={tree} />
-          </>
-        )}
+          )}
 
-        {step === 3 && <TableStep r={result} />}
+          {step === 2 && (
+            <>
+              <Title
+                kicker="ขั้นที่ 2"
+                title={manual ? "ขายให้ลูกค้า" : "ลูกค้าที่ใช้แบบเดียวกับเรา"}
+                text={
+                  manual
+                    ? "ตัวอย่างในคู่มือ: แต่ละบ้านขายสินค้าได้เดือนละ 18,000 บาท"
+                    : "บ้านที่ซื้อสินค้าชุดเดียวกับบ้านเราผ่านเรา เราได้กำไรขายปลีก และยอดนับรวมเป็นของเรา"
+                }
+              />
+              {!manual && (
+                <Stepper label="ลูกค้า" unit="บ้าน" value={customers} max={20} onChange={setCustomers} />
+              )}
+              <Result r={result} node={tree} />
+            </>
+          )}
 
-        {step === 4 && (
-          <>
-            <Title
-              kicker="ขั้นที่ 4"
-              title="แนะนำเพื่อนให้ทำแบบเดียวกับเรา"
-              text="คนที่เราสปอนเซอร์ใช้สินค้าและมีลูกค้าเท่ากับบ้านเรา ยอดของทุกคนนับรวมเป็นกลุ่มของเรา"
+          {step === 3 && <TableStep r={result} />}
+
+          {step === 4 && (
+            <>
+              <Title
+                kicker="ขั้นที่ 4"
+                title="แนะนำเพื่อนให้ทำแบบเดียวกับเรา"
+                text="คนที่เราสปอนเซอร์ใช้สินค้าและมีลูกค้าเท่ากับบ้านเรา ยอดของทุกคนนับรวมเป็นกลุ่มของเรา"
+              />
+              <Stepper label="เราแนะนำ" unit="คน" value={levels[0]} max={10} onChange={(v) => setLevel(0, v)} />
+              <Diagram r={result} node={tree} levels={levels.slice(0, 1)} />
+              <Result r={result} node={tree} />
+              <CorePlusCard node={tree} />
+            </>
+          )}
+
+          {step === 5 && (
+            <>
+              <Title
+                kicker="ขั้นที่ 5"
+                title="ถ่ายทอดแบบอย่าง"
+                text="คนที่เราแนะนำ ทำแบบเดียวกับเรา คือแนะนำต่อคนละกี่คน"
+              />
+              <Stepper
+                label="แต่ละคนแนะนำต่อ"
+                unit="คน"
+                value={levels[1]}
+                max={10}
+                onChange={(v) => setLevel(1, v)}
+              />
+              <Diagram r={result} node={tree} levels={levels.slice(0, 2)} />
+              <Result r={result} node={tree} />
+              <CorePlusCard node={tree} />
+            </>
+          )}
+
+          {step === 6 && (
+            <>
+              <Title kicker="ขั้นที่ 6" title="ขยายต่ออีกชั้น" text="แล้วคนในชั้นที่ 2 แนะนำต่ออีกคนละกี่คน" />
+              <Stepper
+                label="ชั้นที่ 2 แนะนำต่อ"
+                unit="คน"
+                value={levels[2]}
+                max={10}
+                onChange={(v) => setLevel(2, v)}
+              />
+              <Diagram r={result} node={tree} levels={levels} />
+              <Result r={result} node={tree} />
+              <CorePlusCard node={tree} />
+            </>
+          )}
+
+          {step === 7 && (
+            <Summary
+              r={result}
+              node={tree}
+              onRestart={() => {
+                setQty({});
+                setManual(false);
+                setCustomers(2);
+                setLevels([3, 3, 0]);
+                go(0);
+              }}
             />
-            <Stepper label="เราแนะนำ" unit="คน" value={levels[0]} max={10} onChange={(v) => setLevel(0, v)} />
-            <Diagram r={result} levels={levels.slice(0, 1)} />
-            <Result r={result} node={tree} />
-            <CorePlusCard node={tree} />
-          </>
-        )}
-
-        {step === 5 && (
-          <>
-            <Title
-              kicker="ขั้นที่ 5"
-              title="ถ่ายทอดแบบอย่าง"
-              text="คนที่เราแนะนำ ทำแบบเดียวกับเรา คือแนะนำต่อคนละกี่คน"
-            />
-            <Stepper
-              label="แต่ละคนแนะนำต่อ"
-              unit="คน"
-              value={levels[1]}
-              max={10}
-              onChange={(v) => setLevel(1, v)}
-            />
-            <Diagram r={result} levels={levels.slice(0, 2)} />
-            <Result r={result} node={tree} />
-            <CorePlusCard node={tree} />
-          </>
-        )}
-
-        {step === 6 && (
-          <>
-            <Title kicker="ขั้นที่ 6" title="ขยายต่ออีกชั้น" text="แล้วคนในชั้นที่ 2 แนะนำต่ออีกคนละกี่คน" />
-            <Stepper
-              label="ชั้นที่ 2 แนะนำต่อ"
-              unit="คน"
-              value={levels[2]}
-              max={10}
-              onChange={(v) => setLevel(2, v)}
-            />
-            <Diagram r={result} levels={levels} />
-            <Result r={result} node={tree} />
-            <CorePlusCard node={tree} />
-          </>
-        )}
-
-        {step === 7 && (
-          <Summary
-            r={result}
-            node={tree}
-            onRestart={() => {
-              setQty({});
-              setManual(false);
-              setCustomers(2);
-              setLevels([3, 3, 0]);
-              go(0);
-            }}
-          />
-        )}
+          )}
+        </div>
       </div>
 
+      <aside className="hidden md:block">
+        <RateSide r={result} />
+      </aside>
+
       <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur print:hidden">
-        <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-2">
+        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2">
           <button type="button" className="btn-secondary" disabled={step === 0} onClick={() => go(step - 1)}>
             ย้อน
           </button>
@@ -183,6 +195,9 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
               <>
                 <div className="text-xs text-stone-500">ประมาณต่อเดือน</div>
                 <div className="text-lg leading-tight font-bold text-teal-800">฿{fmt0(income)}</div>
+                {extra > 0 && (
+                  <div className="text-xs font-medium text-violet-700">+ คอร์พลัส ฿{fmt0(extra)}</div>
+                )}
               </>
             )}
           </div>
@@ -281,14 +296,12 @@ function ProductStep({
   products,
   qty,
   setQty,
-  basket,
   manual,
   setManual,
 }: {
   products: PlanProduct[];
   qty: Record<string, number>;
   setQty: (f: (q: Record<string, number>) => Record<string, number>) => void;
-  basket: ReturnType<typeof basketPerMonth>;
   manual: boolean;
   setManual: (m: boolean) => void;
 }) {
@@ -322,23 +335,6 @@ function ProductStep({
   return (
     <>
       <Title kicker="ขั้นที่ 1" title="สินค้าที่บ้านเราใช้" text="แตะเพื่อเพิ่ม · บ้านละ 2 คน ใส่ 2 ชุด" />
-
-      <div className="sticky top-0 z-10 -mx-4 bg-stone-50/95 px-4 py-2 backdrop-blur">
-        <div className="card grid grid-cols-3 gap-2 text-center">
-          <div>
-            <div className="text-xs text-stone-500">วันละ</div>
-            <div className="text-xl font-bold text-teal-800">฿{fmt(basket.perDay)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-stone-500">เดือนละ (30 วัน)</div>
-            <div className="text-xl font-bold text-stone-900">฿{fmt0(basket.price)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-stone-500">ยอดต่อเดือน</div>
-            <div className="text-xl font-bold text-stone-900">{fmt0(basket.pv)} PV</div>
-          </div>
-        </div>
-      </div>
 
       {products.length === 0 && (
         <p className="card text-stone-600">ยังไม่มีข้อมูลสินค้า (ผู้ดูแลเพิ่มได้ที่หน้าข้อมูลสินค้า)</p>
@@ -395,6 +391,25 @@ function ProductStep({
         ใช้ตัวอย่างในคู่มือบริษัทแทน (18,000 บาท)
       </button>
     </>
+  );
+}
+
+function BasketSummary({ basket }: { basket: ReturnType<typeof basketPerMonth> }) {
+  return (
+    <div className="card grid grid-cols-3 gap-2 text-center">
+          <div>
+            <div className="text-xs text-stone-500">วันละ</div>
+            <div className="text-xl font-bold text-teal-800">฿{fmt(basket.perDay)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-stone-500">เดือนละ (30 วัน)</div>
+            <div className="text-xl font-bold text-stone-900">฿{fmt0(basket.price)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-stone-500">ยอดต่อเดือน</div>
+            <div className="text-xl font-bold text-stone-900">{fmt0(basket.pv)} PV</div>
+          </div>
+        </div>
   );
 }
 
@@ -563,21 +578,27 @@ function TableStep({ r }: { r: NodeResult }) {
   );
 }
 
-/** แผนภาพวงกลม: เราอยู่กลาง สายงานรอบตัว */
-function Diagram({ r, levels }: { r: NodeResult; levels: number[] }) {
+/** แผนภาพวงกลม: เราอยู่กลาง สายงานรอบตัว พร้อมยอดในทุกวง */
+function Diagram({ r, node, levels }: { r: NodeResult; node: PlanNode; levels: number[] }) {
   const n = levels[0] ?? 0;
   if (n === 0) return null;
-  const size = 300;
+  const size = 340;
   const c = size / 2;
-  const ring = 105;
-  const perLeg = levels.slice(1).reduce((acc, k, i) => acc + levels.slice(1, i + 2).reduce((m, x) => m * x, 1), 0);
+  const ring = 122;
+  // จำนวนคนใต้แต่ละสาย (ไม่นับหัวสาย)
+  let below = 0;
+  let width = 1;
+  for (const k of levels.slice(1)) {
+    width *= k;
+    below += width;
+  }
   const leg = r.legs[0];
   const legRate = leg?.rate ?? 21;
-  const legPv = leg?.groupPv ?? r.groupPv;
+  const legPv = leg?.groupPv ?? (r.groupPv - node.pv) / n;
 
   return (
     <figure className="card">
-      <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto w-full max-w-sm" role="img" aria-label="ผังสายงาน">
+      <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto w-full max-w-md" role="img" aria-label="ผังสายงาน">
         {Array.from({ length: n }, (_, i) => {
           const a = (2 * Math.PI * i) / n - Math.PI / 2;
           const x = c + ring * Math.cos(a);
@@ -585,30 +606,124 @@ function Diagram({ r, levels }: { r: NodeResult; levels: number[] }) {
           return (
             <g key={i}>
               <line x1={c} y1={c} x2={x} y2={y} className="stroke-stone-300" strokeWidth={2} />
-              <circle cx={x} cy={y} r={30} className="fill-teal-50 stroke-teal-600" strokeWidth={2} />
-              <text x={x} y={y - 2} textAnchor="middle" className="fill-teal-900 text-[13px] font-semibold">
+              <circle cx={x} cy={y} r={36} className="fill-teal-50 stroke-teal-600" strokeWidth={2} />
+              <text x={x} y={y - 8} textAnchor="middle" className="fill-teal-900 text-[14px] font-bold">
                 {legRate}%
               </text>
-              {perLeg > 0 && (
-                <text x={x} y={y + 13} textAnchor="middle" className="fill-stone-500 text-[10px]">
-                  +{perLeg} คน
-                </text>
-              )}
+              <text x={x} y={y + 7} textAnchor="middle" className="fill-stone-700 text-[10px] font-medium">
+                {fmt0(legPv)}
+              </text>
+              <text x={x} y={y + 19} textAnchor="middle" className="fill-stone-500 text-[9px]">
+                {below > 0 ? `PV · ${1 + below} รหัส` : "PV"}
+              </text>
             </g>
           );
         })}
-        <circle cx={c} cy={c} r={44} className="fill-teal-700" />
-        <text x={c} y={c - 4} textAnchor="middle" className="fill-white text-[14px] font-semibold">
+        <circle cx={c} cy={c} r={50} className="fill-teal-700" />
+        <text x={c} y={c - 16} textAnchor="middle" className="fill-white text-[12px]">
           เรา
         </text>
-        <text x={c} y={c + 16} textAnchor="middle" className="fill-white text-[15px] font-bold">
+        <text x={c} y={c + 4} textAnchor="middle" className="fill-white text-[18px] font-bold">
           {r.rate}%
         </text>
+        <text x={c} y={c + 21} textAnchor="middle" className="fill-teal-50 text-[10px]">
+          {fmt0(r.groupPv)} PV
+        </text>
       </svg>
-      <figcaption className="mt-2 text-center text-sm text-stone-600">
-        {n} สาย · แต่ละสาย {fmt0(legPv)} PV ({1 + perLeg} รหัส)
+      <figcaption className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+        <div className="rounded-lg bg-stone-50 p-2">
+          <div className="text-xs text-stone-500">แต่ละรหัส</div>
+          <div className="font-semibold text-stone-900">{fmt0(node.pv)} PV</div>
+        </div>
+        <div className="rounded-lg bg-stone-50 p-2">
+          <div className="text-xs text-stone-500">แต่ละสาย ({1 + below} รหัส)</div>
+          <div className="font-semibold text-stone-900">{fmt0(legPv)} PV</div>
+        </div>
+        <div className="rounded-lg bg-teal-50 p-2">
+          <div className="text-xs text-teal-800">ทั้งกลุ่มของเรา</div>
+          <div className="font-semibold text-teal-900">{fmt0(r.groupPv)} PV</div>
+        </div>
       </figcaption>
     </figure>
+  );
+}
+
+/** ตารางส่วนลด แถบบนจอมือถือ: เราอยู่ขั้นไหน สายงานอยู่ขั้นไหน */
+function RateStrip({ r }: { r: NodeResult }) {
+  const legRate = r.legs[0]?.rate ?? (r.leaderLegs > 0 ? 21 : null);
+  return (
+    <div className="md:hidden">
+      <ol className="grid grid-cols-7 gap-1 text-center" aria-label="ตารางส่วนลดประจำเดือน">
+        {[...DISCOUNT_TABLE].reverse().map((row) => {
+          const me = row.rate === r.rate;
+          const leg = !me && row.rate === legRate;
+          return (
+            <li
+              key={row.rate}
+              className={`rounded-md py-1 ${
+                me ? "bg-teal-700 text-white" : leg ? "bg-teal-50 ring-2 ring-teal-500" : "bg-white ring-1 ring-stone-200"
+              }`}
+            >
+              <div className="text-sm leading-tight font-bold">{row.rate}%</div>
+              <div className={`text-[10px] leading-tight ${me ? "text-teal-50" : "text-stone-500"}`}>
+                {fmt0(row.pv)}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="mt-1 text-center text-[11px] text-stone-500">
+        ตารางส่วนลด (PV) · <span className="font-semibold text-teal-800">■ เรา</span>
+        {legRate != null && <span className="text-teal-700"> · □ สายงาน</span>}
+      </p>
+    </div>
+  );
+}
+
+/** ตารางส่วนลด ด้านข้าง (iPad / คอมพิวเตอร์) */
+function RateSide({ r }: { r: NodeResult }) {
+  const legRate = r.legs[0]?.rate ?? (r.leaderLegs > 0 ? 21 : null);
+  return (
+    <div className="sticky top-5 space-y-3">
+      <div className="card p-0">
+        <h2 className="px-3 pt-3 text-sm font-semibold text-stone-900">ตารางส่วนลดประจำเดือน</h2>
+        <table className="mt-2 w-full text-sm">
+          <thead className="text-xs text-stone-500">
+            <tr>
+              <th className="px-3 py-1 text-left font-medium">ยอดกลุ่ม</th>
+              <th className="px-3 py-1 text-right font-medium">ส่วนลด</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DISCOUNT_TABLE.map((row) => {
+              const me = row.rate === r.rate;
+              const leg = !me && row.rate === legRate;
+              return (
+                <tr
+                  key={row.rate}
+                  className={me ? "bg-teal-700 text-white" : leg ? "bg-teal-50" : "border-t border-stone-100"}
+                >
+                  <td className="px-3 py-1.5">
+                    {fmt0(row.pv)} PV
+                    {me && <span className="ml-1 text-xs">← เรา</span>}
+                    {leg && <span className="ml-1 text-xs text-teal-700">← สายงาน</span>}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-bold">{row.rate}%</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="px-3 py-2 text-xs text-stone-500">บีวี (บาท) = PV × {PV_TO_BV}</p>
+      </div>
+      {r.groupPv > 0 && (
+        <div className="card space-y-2 text-center">
+          <div className="text-xs text-stone-500">ยอดกลุ่มของเรา</div>
+          <div className="text-xl font-bold text-stone-900">{fmt0(r.groupPv)} PV</div>
+          <NextHint pv={r.groupPv} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -630,51 +745,35 @@ function CorePlusCard({ node }: { node: PlanNode }) {
   const legs6 = kids.filter((k) => k.rate >= 6).length;
 
   return (
-    <section className="card space-y-3 bg-violet-50 ring-violet-200">
+    <section className="card space-y-4 bg-violet-50 ring-violet-200">
       <header>
         <p className="text-xs font-medium text-violet-700">โปรแกรมคอร์พลัส ปีคุณสมบัติ 2569/70</p>
         <h2 className="font-semibold text-stone-900">รางวัลเพิ่มสำหรับนักธุรกิจรายใหม่</h2>
       </header>
 
-      <div className="space-y-1">
-        <div className="flex items-baseline justify-between">
-          <span className="font-medium text-stone-800">โก-บรอนซ์</span>
-          <span className="font-semibold">฿{fmt(cp.goBronze)}</span>
-        </div>
-        <ul className="space-y-0.5">
-          <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย 1,000 PV</Check>
-          <Check ok={cp.goBronzeLegs >= 2}>
-            รายใหม่ที่มีกลุ่ม 1,500 PV ขึ้นไป: {cp.goBronzeLegs} รหัส (2 รหัส ฿1,000 · 3 รหัส ฿1,500)
-          </Check>
-        </ul>
-      </div>
+      <CoreItem title="โก-บรอนซ์" amount={cp.goBronze}>
+        <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย 1,000 PV (ตอนนี้ {fmt0(node.pv)} PV)</Check>
+        <Check ok={cp.goBronzeLegs >= 2}>
+          รายใหม่ติดตัวที่มีกลุ่ม 1,500 PV ขึ้นไป: {cp.goBronzeLegs} รหัส
+        </Check>
+        <li className="pl-6 text-xs text-stone-500">2 รหัส ได้ ฿1,000 · 3 รหัสขึ้นไป ได้ ฿1,500</li>
+      </CoreItem>
 
-      <div className="space-y-1">
-        <div className="flex items-baseline justify-between">
-          <span className="font-medium text-stone-800">
-            {cp.bronze?.kind === "builder" ? "บรอนซ์บิวเดอร์ (+30%)" : "บรอนซ์ฟาวน์เดชั่น (+20%)"}
-          </span>
-          <span className="font-semibold">฿{fmt(cp.bronze?.amount ?? 0)}</span>
-        </div>
-        {cp.bronze?.kind === "builder" ? (
-          <ul className="space-y-0.5">
-            <Check ok>ได้ 15% ขึ้นไป และมี 3 สายที่ได้ 6% ขึ้นไป ({legs6} สาย)</Check>
-            <Check ok>30% ของส่วนลดประจำเดือน (฿{fmt(r.own + r.differential)})</Check>
-          </ul>
-        ) : (
-          <ul className="space-y-0.5">
-            <Check ok={r.rate >= 9}>เราได้ 9% ขึ้นไป (ตอนนี้ {r.rate}%)</Check>
-            <Check ok={legs3 >= 3}>มีอย่างน้อย 3 สายที่ได้ 3% ขึ้นไป (ตอนนี้ {legs3} สาย)</Check>
-            <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย 1,000 PV</Check>
-            <Check ok={!!cp.bronze}>20% ของส่วนลดประจำเดือน (฿{fmt(r.own + r.differential)})</Check>
-          </ul>
-        )}
-        {cp.bronze?.kind !== "builder" && (
-          <p className="text-xs text-stone-500">
-            ถ้าได้ 15% และมี 3 สายที่ได้ 6% ขึ้นไป จะเป็นบรอนซ์บิวเดอร์ +30% แทน
-          </p>
-        )}
-      </div>
+      <CoreItem title="บรอนซ์ฟาวน์เดชั่น +20%" amount={cp.foundation}>
+        <Check ok={r.rate >= 9}>เราได้ 9% ขึ้นไป (ตอนนี้ {r.rate}%)</Check>
+        <Check ok={legs3 >= 3}>มี 3 สายที่ได้ 3% ขึ้นไป (ตอนนี้ {legs3} สาย)</Check>
+        <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย 1,000 PV</Check>
+        <li className="pl-6 text-xs text-stone-500">20% ของส่วนลดประจำเดือน (฿{fmt(cp.base)})</li>
+      </CoreItem>
+
+      <CoreItem title="บรอนซ์บิวเดอร์ +30%" amount={cp.builder}>
+        <Check ok={r.rate >= 15}>เราได้ 15% ขึ้นไป (ตอนนี้ {r.rate}%)</Check>
+        <Check ok={legs6 >= 3}>มี 3 สายที่ได้ 6% ขึ้นไป (ตอนนี้ {legs6} สาย)</Check>
+        <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย 1,000 PV</Check>
+        <li className="pl-6 text-xs text-stone-500">
+          30% ของส่วนลดประจำเดือน (฿{fmt(cp.base)}) · ได้พร้อมบรอนซ์ฟาวน์เดชั่น และเข็มบรอนซ์
+        </li>
+      </CoreItem>
 
       {cp.newSilver > 0 && (
         <p className="rounded-lg bg-white px-3 py-2 text-sm text-stone-700">
@@ -683,18 +782,31 @@ function CorePlusCard({ node }: { node: PlanNode }) {
       )}
       <div className="flex items-baseline justify-between border-t border-violet-200 pt-2">
         <span className="font-semibold text-stone-900">คอร์พลัสต่อเดือน</span>
-        <span className="text-xl font-bold text-violet-800">
-          ฿{fmt(cp.goBronze + (cp.bronze?.amount ?? 0))}
-        </span>
+        <span className="text-xl font-bold text-violet-800">฿{fmt(corePlusMonthly(cp))}</span>
       </div>
+      <p className="text-xs text-stone-500">
+        ฟาวน์เดชั่น/บิวเดอร์ จ่ายสูงสุด 12 ครั้ง ภายใน 2–3 ปีคุณสมบัติ · สมมติว่าทุกคนเป็นนักธุรกิจรายใหม่
+      </p>
     </section>
+  );
+}
+
+function CoreItem({ title, amount, children }: { title: string; amount: number; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between">
+        <span className={`font-medium ${amount > 0 ? "text-stone-900" : "text-stone-500"}`}>{title}</span>
+        <span className={`font-semibold ${amount > 0 ? "text-violet-800" : "text-stone-400"}`}>฿{fmt(amount)}</span>
+      </div>
+      <ul className="space-y-0.5">{children}</ul>
+    </div>
   );
 }
 
 function Summary({ r, node, onRestart }: { r: NodeResult; node: PlanNode; onRestart: () => void }) {
   const cp = corePlus(node);
   const plan = planIncome(r);
-  const extra = cp.goBronze + (cp.bronze?.amount ?? 0);
+  const extra = corePlusMonthly(cp);
   return (
     <>
       <Title kicker="สรุป" title="รายได้ตามแผนธุรกิจ" text="ถ้ายอดของทุกคนเป็นแบบนี้ในเดือนนั้น" />

@@ -117,7 +117,12 @@ export function monthlyDiscount(r: NodeResult) {
 export type CorePlus = {
   goBronze: number;
   goBronzeLegs: number;
-  bronze: { kind: "foundation" | "builder"; percent: number; amount: number } | null;
+  /** ฐานของรางวัลบรอนซ์ = ส่วนลดประจำเดือน */
+  base: number;
+  /** บรอนซ์ฟาวน์เดชั่น 20% (0 = ยังไม่ผ่านเงื่อนไข) */
+  foundation: number;
+  /** บรอนซ์บิวเดอร์ 30% - ถึงบิวเดอร์ก็ได้ฟาวน์เดชั่นด้วย */
+  builder: number;
   /** เงินรางวัลครั้งแรกที่ทำคุณสมบัติเข็มเงิน (21%) */
   newSilver: number;
 };
@@ -135,14 +140,22 @@ export function corePlus(node: PlanNode): CorePlus {
   const goBronze = !ppvOk ? 0 : goBronzeLegs >= 3 ? 1_500 : goBronzeLegs === 2 ? 1_000 : 0;
 
   const base = monthlyDiscount(r);
-  let bronze: CorePlus["bronze"] = null;
-  if (ppvOk && r.rate >= 15 && kids.filter((k) => k.rate >= 6).length >= 3) {
-    bronze = { kind: "builder", percent: 30, amount: base * 0.3 };
-  } else if (ppvOk && r.rate >= 9 && kids.filter((k) => k.rate >= 3).length >= 3) {
-    bronze = { kind: "foundation", percent: 20, amount: base * 0.2 };
-  }
+  const foundationOk = ppvOk && r.rate >= 9 && kids.filter((k) => k.rate >= 3).length >= 3;
+  const builderOk = ppvOk && r.rate >= 15 && kids.filter((k) => k.rate >= 6).length >= 3;
 
-  return { goBronze, goBronzeLegs, bronze, newSilver: r.rate === 21 ? 10_000 : 0 };
+  return {
+    goBronze,
+    goBronzeLegs,
+    base,
+    foundation: foundationOk ? base * 0.2 : 0,
+    builder: builderOk ? base * 0.3 : 0,
+    newSilver: r.rate === 21 ? 10_000 : 0,
+  };
+}
+
+/** คอร์พลัสต่อเดือนรวม (ไม่รวมเงินรางวัลครั้งเดียว) */
+export function corePlusMonthly(cp: CorePlus) {
+  return cp.goBronze + cp.foundation + cp.builder;
 }
 
 /** ยอดของหนึ่งบ้าน */

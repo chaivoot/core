@@ -86,16 +86,17 @@ describe("คอร์พลัส 2569/70", () => {
     const me = pvNode(15_000, [pvNode(4_000), pvNode(4_000), pvNode(4_000), pvNode(2_000)]);
     const r = evaluate(me);
     expect(r.own + r.differential).toBeCloseTo(7_267.5, 6);
-    expect(corePlus(me).bronze).toMatchObject({ kind: "foundation" });
-    expect(corePlus(me).bronze?.amount).toBeCloseTo(1_453.5, 6);
+    expect(corePlus(me).foundation).toBeCloseTo(1_453.5, 6);
+    expect(corePlus(me).builder).toBe(0);
   });
 
   it("บรอนซ์บิวเดอร์ ตามตัวอย่าง (46,230.99 บาท)", () => {
     const me = pvNode(53_000, [pvNode(10_000), pvNode(10_000), pvNode(10_000), pvNode(3_000)]);
     const r = evaluate(me);
     expect(r.own + r.differential).toBeCloseTo(35_562.3, 6);
-    expect(corePlus(me).bronze).toMatchObject({ kind: "builder" });
-    expect(corePlus(me).bronze?.amount).toBeCloseTo(10_668.69, 6);
+    expect(corePlus(me).builder).toBeCloseTo(10_668.69, 6);
+    // ถึงบรอนซ์บิวเดอร์ ก็ได้บรอนซ์ฟาวน์เดชั่นด้วย
+    expect(corePlus(me).foundation).toBeCloseTo(7_112.46, 6);
   });
 
   it("โก-บรอนซ์ 2 รหัส 1,000 / 3 รหัส 1,500", () => {
