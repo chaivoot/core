@@ -32,7 +32,7 @@ export type PlanProduct = {
   image: string | null;
 };
 
-const STEPS = ["เริ่ม", "สินค้า", "สมาชิก", "ตาราง", "แนะนำ", "ถ่ายทอด", "ชั้นที่ 3", "สรุป"];
+const STEPS = ["เริ่ม", "สินค้า", "สมาชิก", "แนะนำ", "ถ่ายทอด", "ชั้นที่ 3", "สรุป"];
 const LAST = STEPS.length - 1;
 /** ตัวอย่างในคู่มือ: แต่ละบ้านมียอดซื้อ 18,000 บาท (บีวี) */
 const MANUAL_BV = 18_000;
@@ -59,7 +59,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
   const cust = manual || step < 2 ? 0 : customers;
 
   // แต่ละขั้นเล่าเพิ่มทีละชั้น
-  const depth = step <= 3 ? 0 : step === 4 ? 1 : step === 5 ? 2 : 3;
+  const depth = step <= 2 ? 0 : step === 3 ? 1 : step === 4 ? 2 : 3;
   const tree = uniformTree(home, cust, levels.slice(0, depth));
   const result = evaluate(tree);
   const income = planIncome(result);
@@ -105,7 +105,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
                 text={
                   manual
                     ? "ตัวอย่างในคู่มือ: แต่ละบ้านมียอดซื้อเดือนละ 18,000 บาท (ไม่คิดกำไรขายปลีก ตัวเลขจึงน้อยกว่าในคู่มือ 1,800 บาท)"
-                    : "บ้านที่สมัครสมาชิกกับเรา ซื้อสินค้าชุดเดียวกันในราคาเดียวกับเรา ยอดนับรวมเป็นของเรา"
+                    : "บ้านที่สมัครสมาชิกกับเรา ซื้อสินค้าชุดเดียวกันในราคาเดียวกับเรา ยอดนับรวมเป็นของเรา · ยอดกลุ่มยิ่งมาก % ยิ่งสูง (ดูตารางด้านบน) คิดใหม่ทุกเดือน"
                 }
               />
               {!manual && (
@@ -115,12 +115,10 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
             </>
           )}
 
-          {step === 3 && <TableStep r={result} />}
-
-          {step === 4 && (
+          {step === 3 && (
             <>
               <Title
-                kicker="ขั้นที่ 4"
+                kicker="ขั้นที่ 3"
                 title="แนะนำเพื่อนให้ทำแบบเดียวกับเรา"
                 text="คนที่เราสปอนเซอร์ใช้สินค้าและมีสมาชิกเท่ากับบ้านเรา ยอดของทุกคนนับรวมเป็นกลุ่มของเรา"
               />
@@ -131,16 +129,16 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
                 max={10}
                 onChange={(v) => setLevel(0, v)}
               />
-              <Diagram r={result} node={tree} levels={levels.slice(0, 1)} />
+              <Diagram r={result} node={tree} levels={levels.slice(0, 1)} members={cust} />
               <Result r={result} node={tree} />
               <CorePlusCard node={tree} />
             </>
           )}
 
-          {step === 5 && (
+          {step === 4 && (
             <>
               <Title
-                kicker="ขั้นที่ 5"
+                kicker="ขั้นที่ 4"
                 title="ถ่ายทอดแบบอย่าง"
                 text="คนที่เราแนะนำ ทำแบบเดียวกับเรา คือแนะนำต่อคนละกี่คน"
               />
@@ -151,16 +149,16 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
                 max={10}
                 onChange={(v) => setLevel(1, v)}
               />
-              <Diagram r={result} node={tree} levels={levels.slice(0, 2)} />
+              <Diagram r={result} node={tree} levels={levels.slice(0, 2)} members={cust} />
               <Result r={result} node={tree} />
               <CorePlusCard node={tree} />
             </>
           )}
 
-          {step === 6 && (
+          {step === 5 && (
             <>
               <Title
-                kicker="ขั้นที่ 6"
+                kicker="ขั้นที่ 5"
                 title="ขยายต่ออีกชั้น"
                 text="แล้วคนในชั้นที่ 2 แนะนำต่ออีกคนละกี่คน"
               />
@@ -171,13 +169,13 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
                 max={10}
                 onChange={(v) => setLevel(2, v)}
               />
-              <Diagram r={result} node={tree} levels={levels} />
+              <Diagram r={result} node={tree} levels={levels} members={cust} />
               <Result r={result} node={tree} />
               <CorePlusCard node={tree} />
             </>
           )}
 
-          {step === 7 && (
+          {step === 6 && (
             <Summary
               r={result}
               node={tree}
@@ -563,50 +561,19 @@ function NextHint({ pv }: { pv: number }) {
   );
 }
 
-function TableStep({ r }: { r: NodeResult }) {
-  return (
-    <>
-      <Title
-        kicker="ขั้นที่ 3"
-        title="ตารางส่วนลดประจำเดือน"
-        text="ยอดรวมของกลุ่มยิ่งมาก เปอร์เซ็นต์ส่วนลดยิ่งสูง คิดใหม่ทุกเดือน"
-      />
-      <div className="card overflow-hidden p-0">
-        <table className="w-full text-center">
-          <thead className="bg-stone-100 text-sm text-stone-600">
-            <tr>
-              <th className="py-2 font-medium">ยอดซื้อของกลุ่มต่อเดือน</th>
-              <th className="py-2 font-medium">ส่วนลด</th>
-            </tr>
-          </thead>
-          <tbody>
-            {DISCOUNT_TABLE.map((row) => {
-              const here = row.rate === r.rate;
-              return (
-                <tr key={row.rate} className={here ? "bg-teal-700 text-white" : "border-t border-stone-100"}>
-                  <td className="py-2">฿{fmt0(row.bv)}</td>
-                  <td className="py-2 font-semibold">
-                    {row.rate}%{here && " ← เรา"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="card text-center">
-        <div className="text-sm text-stone-500">ตอนนี้ยอดของเรา</div>
-        <Baht bv={r.groupBv} className="text-2xl font-bold text-stone-900" />
-        <div className="mt-2">
-          <NextHint pv={r.groupPv} />
-        </div>
-      </div>
-    </>
-  );
-}
-
 /** แผนภาพวงกลม: เราอยู่กลาง สายงานรอบตัว พร้อมยอดในทุกวง */
-function Diagram({ r, node, levels }: { r: NodeResult; node: PlanNode; levels: number[] }) {
+function Diagram({
+  r,
+  node,
+  levels,
+  members,
+}: {
+  r: NodeResult;
+  node: PlanNode;
+  levels: number[];
+  /** สมาชิกต่อรหัส (บ้าน) */
+  members: number;
+}) {
   const n = levels[0] ?? 0;
   if (n === 0) return null;
   const size = 360;
@@ -622,6 +589,9 @@ function Diagram({ r, node, levels }: { r: NodeResult; node: PlanNode; levels: n
   const leg = r.legs[0];
   const legRate = leg?.rate ?? 21;
   const legBv = leg?.groupBv ?? (r.groupBv - node.bv) / n;
+  // นักธุรกิจทั้งผัง (รวมเรา) และบ้านสมาชิกของทุกคน
+  const codes = 1 + n * (1 + below);
+  const memberHomes = codes * members;
 
   return (
     <figure className="card">
@@ -664,7 +634,12 @@ function Diagram({ r, node, levels }: { r: NodeResult; node: PlanNode; levels: n
           ฿{fmt0(r.groupBv)}
         </text>
       </svg>
-      <figcaption className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+      <div className="mt-3 flex flex-wrap items-baseline justify-center gap-x-4 gap-y-1 rounded-lg bg-teal-700 px-3 py-2 text-white">
+        <span className="text-sm">รวมทั้งผัง</span>
+        <span className="text-xl font-bold">{fmt0(codes)} คน</span>
+        {memberHomes > 0 && <span className="text-sm">+ สมาชิก {fmt0(memberHomes)} บ้าน</span>}
+      </div>
+      <figcaption className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
         <div className="rounded-lg bg-stone-50 p-2">
           <div className="text-xs text-stone-500">แต่ละรหัส</div>
           <Baht bv={node.bv} className="font-semibold text-stone-900" />
