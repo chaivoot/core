@@ -212,6 +212,8 @@ export const products = pgTable(
     days: integer("days").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
     active: boolean("active").notNull().default(true),
+    /** เวลาที่เปลี่ยนรูปล่าสุด (null = ไม่มีรูป) ใช้ต่อท้าย URL รูปเพื่อไม่ให้ติดแคชเก่า */
+    imageUpdatedAt: timestamp("image_updated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -220,6 +222,16 @@ export const products = pgTable(
     check("products_price_nonneg", sql`${t.price} >= 0 and ${t.pv} >= 0 and ${t.bv} >= 0`),
   ],
 );
+
+/** รูปสินค้า แยกตารางไว้ไม่ให้รายการสินค้าต้องโหลดรูปไปด้วย (เก็บเป็น base64 ใช้ได้ทั้ง neon-http และ pg) */
+export const productImages = pgTable("product_images", {
+  productId: uuid("product_id")
+    .primaryKey()
+    .references(() => products.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  data: text("data").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export type Product = typeof products.$inferSelect;
 export type User = typeof users.$inferSelect;

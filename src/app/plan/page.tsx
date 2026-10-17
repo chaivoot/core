@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isAdmin, listActiveProducts } from "@/lib/data/products";
+import { isAdmin, listActiveProducts, productImageUrl } from "@/lib/data/products";
 import { getCurrentUser } from "@/lib/session";
 import { PlanStory, type PlanProduct } from "./plan-story";
 
@@ -18,6 +18,7 @@ export default async function PlanPage() {
     pv: p.pv,
     bv: p.bv,
     days: p.days,
+    image: productImageUrl(p),
   }));
 
   return (
