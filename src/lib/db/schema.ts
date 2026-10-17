@@ -3,8 +3,10 @@ import {
   type AnyPgColumn,
   boolean,
   check,
+  integer,
   date,
   index,
+  numeric,
   pgEnum,
   pgTable,
   smallint,
@@ -32,6 +34,8 @@ export const users = pgTable("users", {
   }),
   /** ได้สิทธิ์ใช้ระบบเมื่อไหร่ (null = ล็อกอินได้แต่ยังไม่ได้รับเชิญ) */
   accessGrantedAt: timestamp("access_granted_at", { withTimezone: true }),
+  /** จัดการข้อมูลสินค้า (หลังบ้าน) ได้ */
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -189,6 +193,35 @@ export const teamMembers = pgTable(
   (t) => [index("team_members_user_idx").on(t.userId)],
 );
 
+// สินค้าสำหรับหน้าอธิบายแผน (ข้อมูลกลาง ใช้ร่วมกันทุกคน แก้ไขได้เฉพาะผู้ดูแล)
+const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: "number" });
+
+export const products = pgTable(
+  "products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    category: text("category"),
+    /** รายละเอียด เช่น ในชุดมีอะไรบ้าง */
+    description: text("description"),
+    /** ราคานักธุรกิจ (บาท) */
+    price: money("price").notNull(),
+    pv: money("pv").notNull(),
+    bv: money("bv").notNull(),
+    /** ใช้ได้กี่วันต่อชิ้น (ต่อคน) */
+    days: integer("days").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("products_days_positive", sql`${t.days} > 0`),
+    check("products_price_nonneg", sql`${t.price} >= 0 and ${t.pv} >= 0 and ${t.bv} >= 0`),
+  ],
+);
+
+export type Product = typeof products.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type WeeklyReview = typeof weeklyReviews.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;

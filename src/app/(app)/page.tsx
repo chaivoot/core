@@ -110,6 +110,11 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         <div className="mt-2 text-sm text-teal-700">ดูสรุปเดือนนี้ →</div>
       </Link>
 
+      <Link href="/plan" className="card flex items-center justify-between hover:bg-stone-50">
+        <span className="text-stone-700">อธิบายแผนธุรกิจ</span>
+        <span className="text-sm text-teal-700">เปิด →</span>
+      </Link>
+
       <AccessInviteCard userId={user.id} token={typeof invite === "string" ? invite : undefined} />
     </div>
   );

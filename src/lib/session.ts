@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { isAdmin } from "@/lib/data/products";
 
 export type SessionUser = { id: string; name: string | null; granted: boolean };
 
@@ -24,5 +25,12 @@ export async function requireSignedIn() {
 export async function requireUser() {
   const user = await requireSignedIn();
   if (!user.granted) redirect("/no-access");
+  return user;
+}
+
+/** หลังบ้าน (ข้อมูลสินค้า): ต้องเป็นผู้ดูแล */
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!(await isAdmin(user.id))) redirect("/plan");
   return user;
 }
