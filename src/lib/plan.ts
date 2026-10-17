@@ -3,8 +3,6 @@
 
 /** อัตราส่วน พีวี : บีวี (ตั้งแต่ 1 ม.ค. 2566) */
 export const PV_TO_BV = 3.23;
-/** กำไรขายปลีกโดยเฉลี่ย (ของราคานักธุรกิจ) */
-export const RETAIL_PROFIT = 0.1;
 export const TOP_PV = 150_000;
 export const LEADER_RATE = 0.06;
 
@@ -29,12 +27,10 @@ export function nextStep(pv: number) {
   return next ? { ...next, missingPv: next.pv - pv } : null;
 }
 
-/** หนึ่งรหัสธุรกิจ: ยอดส่วนตัว (รวมลูกค้า) และคนที่สปอนเซอร์ */
+/** หนึ่งรหัสธุรกิจ: ยอดส่วนตัว (รวมสมาชิกติดตัว) และคนที่สปอนเซอร์ */
 export type PlanNode = {
   pv: number;
   bv: number;
-  /** ส่วนของ bv ที่ขายให้ลูกค้า (ได้กำไรขายปลีก) */
-  retailBv: number;
   children: PlanNode[];
 };
 
@@ -44,7 +40,6 @@ export type NodeResult = {
   rate: number;
   /** ยอดกลุ่มส่วนตัว ไม่รวมสายที่ได้ 21% */
   personalGroupPv: number;
-  retail: number;
   own: number;
   differential: number;
   /** ส่วนลดแตกต่างแยกตามสาย */
@@ -97,7 +92,6 @@ export function evaluate(node: PlanNode): NodeResult {
     groupBv,
     rate,
     personalGroupPv,
-    retail: node.retailBv * RETAIL_PROFIT,
     own: (node.bv * rate) / 100,
     differential: legs.reduce((s, l) => s + l.differential, 0),
     legs,
@@ -159,17 +153,17 @@ export function corePlusMonthly(cp: CorePlus) {
 }
 
 /** ยอดของหนึ่งบ้าน */
-export type Household = { pv: number; bv: number; retailBv: number };
+export type Household = { pv: number; bv: number };
 
 /**
  * ผังที่ทุกคนทำเหมือนกัน: เราสปอนเซอร์ levels[0] คน แต่ละคนสปอนเซอร์ต่อ levels[1] คน ...
- * customers = จำนวนลูกค้าที่ใช้สินค้าแบบเดียวกับบ้านเรา (นับรวมเป็นยอดของแต่ละรหัส)
+ * members = จำนวนบ้านสมาชิกที่ซื้อสินค้าแบบเดียวกับบ้านเรา ในราคาเดียวกัน (นับรวมเป็นยอดของแต่ละรหัส)
+ * ไม่คิดกำไรขายปลีก เพราะสมาชิกซื้อราคาเดียวกับนักธุรกิจ
  */
-export function uniformTree(home: Household, customers: number, levels: number[]): PlanNode {
+export function uniformTree(home: Household, members: number, levels: number[]): PlanNode {
   const unit = {
-    pv: home.pv * (1 + customers),
-    bv: home.bv * (1 + customers),
-    retailBv: home.retailBv + home.bv * customers,
+    pv: home.pv * (1 + members),
+    bv: home.bv * (1 + members),
   };
   let node: PlanNode = { ...unit, children: [] };
   for (let i = levels.length - 1; i >= 0; i--) {
@@ -181,7 +175,7 @@ export function uniformTree(home: Household, customers: number, levels: number[]
 
 /** ผลรวมรายได้ต่อเดือนตามแผนหลัก (ไม่รวมคอร์พลัส) */
 export function planIncome(r: NodeResult) {
-  return r.retail + r.own + r.differential + r.leader;
+  return r.own + r.differential + r.leader;
 }
 
 export type ProductUse = { price: number; pv: number; bv: number; days: number; qty: number };
