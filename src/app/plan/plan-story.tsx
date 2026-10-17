@@ -5,7 +5,6 @@ import {
   DISCOUNT_TABLE,
   LEADER_RATE,
   PV_TO_BV,
-  RETAIL_PROFIT,
   basketPerMonth,
   corePlus,
   corePlusMonthly,
@@ -31,9 +30,9 @@ export type PlanProduct = {
   days: number;
 };
 
-const STEPS = ["เริ่ม", "สินค้า", "ลูกค้า", "ตาราง", "แนะนำ", "ถ่ายทอด", "ชั้นที่ 3", "สรุป"];
+const STEPS = ["เริ่ม", "สินค้า", "สมาชิก", "ตาราง", "แนะนำ", "ถ่ายทอด", "ชั้นที่ 3", "สรุป"];
 const LAST = STEPS.length - 1;
-/** ตัวอย่างในคู่มือ: แต่ละบ้านขายสินค้าได้ 18,000 บาท */
+/** ตัวอย่างในคู่มือ: แต่ละบ้านมียอด 18,000 บีวี */
 const MANUAL_BV = 18_000;
 
 export function PlanStory({ products }: { products: PlanProduct[] }) {
@@ -52,8 +51,8 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
   );
 
   const home: Household = manual
-    ? { pv: MANUAL_BV / PV_TO_BV, bv: MANUAL_BV, retailBv: MANUAL_BV }
-    : { pv: basket.pv, bv: basket.bv, retailBv: 0 };
+    ? { pv: MANUAL_BV / PV_TO_BV, bv: MANUAL_BV }
+    : { pv: basket.pv, bv: basket.bv };
   const cust = manual ? 0 : customers;
 
   // แต่ละขั้นเล่าเพิ่มทีละชั้น
@@ -99,15 +98,15 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
             <>
               <Title
                 kicker="ขั้นที่ 2"
-                title={manual ? "ขายให้ลูกค้า" : "ลูกค้าที่ใช้แบบเดียวกับเรา"}
+                title={manual ? "ยอดต่อบ้าน" : "สมาชิกที่ใช้แบบเดียวกับเรา"}
                 text={
                   manual
-                    ? "ตัวอย่างในคู่มือ: แต่ละบ้านขายสินค้าได้เดือนละ 18,000 บาท"
-                    : "บ้านที่ซื้อสินค้าชุดเดียวกับบ้านเราผ่านเรา เราได้กำไรขายปลีก และยอดนับรวมเป็นของเรา"
+                    ? "ตัวอย่างในคู่มือ: แต่ละบ้านมียอดเดือนละ 18,000 BV (ไม่คิดกำไรขายปลีก ตัวเลขจึงน้อยกว่าในคู่มือ 1,800 บาท)"
+                    : "บ้านที่สมัครสมาชิกกับเรา ซื้อสินค้าชุดเดียวกันในราคาเดียวกับเรา ยอดนับรวมเป็นของเรา"
                 }
               />
               {!manual && (
-                <Stepper label="ลูกค้า" unit="บ้าน" value={customers} max={20} onChange={setCustomers} />
+                <Stepper label="สมาชิก" unit="บ้าน" value={customers} max={20} onChange={setCustomers} />
               )}
               <Result r={result} node={tree} />
             </>
@@ -120,7 +119,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
               <Title
                 kicker="ขั้นที่ 4"
                 title="แนะนำเพื่อนให้ทำแบบเดียวกับเรา"
-                text="คนที่เราสปอนเซอร์ใช้สินค้าและมีลูกค้าเท่ากับบ้านเรา ยอดของทุกคนนับรวมเป็นกลุ่มของเรา"
+                text="คนที่เราสปอนเซอร์ใช้สินค้าและมีสมาชิกเท่ากับบ้านเรา ยอดของทุกคนนับรวมเป็นกลุ่มของเรา"
               />
               <Stepper label="เราแนะนำ" unit="คน" value={levels[0]} max={10} onChange={(v) => setLevel(0, v)} />
               <Diagram r={result} node={tree} levels={levels.slice(0, 1)} />
@@ -274,7 +273,7 @@ function Intro() {
       <ol className="space-y-3">
         {[
           ["เลือกสินค้าที่บ้านเราใช้", "รู้ว่าวันละกี่บาท และได้ยอด PV เท่าไหร่"],
-          ["ลูกค้าที่ใช้แบบเดียวกัน", "ได้กำไรขายปลีก และยอดเพิ่มขึ้น"],
+          ["สมาชิกที่ใช้แบบเดียวกัน", "ซื้อราคาเดียวกับเรา ยอดนับรวมเป็นของเรา"],
           ["แนะนำเพื่อน และถ่ายทอดแบบอย่าง", "ยอดของทุกคนรวมเป็นกลุ่มของเรา"],
           ["ดูรายได้ตามสูตรของบริษัท", "ส่วนลดรายเดือน ส่วนลดแตกต่าง ผู้นำ 6% และคอร์พลัส"],
         ].map(([t, d], i) => (
@@ -322,7 +321,7 @@ function ProductStep({
   if (manual) {
     return (
       <>
-        <Title kicker="ขั้นที่ 1" title="ตัวอย่างในคู่มือบริษัท" text="แต่ละบ้านมียอดขายเดือนละ 18,000 บาท (บีวี)" />
+        <Title kicker="ขั้นที่ 1" title="ตัวอย่างในคู่มือบริษัท" text="แต่ละบ้านมียอดเดือนละ 18,000 BV" />
         <div className="card text-center">
           <div className="text-4xl font-bold text-stone-900">฿{fmt0(MANUAL_BV)}</div>
           <Volume pv={MANUAL_BV / PV_TO_BV} bv={MANUAL_BV} className="mt-1 text-lg text-stone-600" />
@@ -393,7 +392,7 @@ function ProductStep({
       ))}
 
       <button type="button" className="btn-ghost w-full text-sm" onClick={() => setManual(true)}>
-        ใช้ตัวอย่างในคู่มือบริษัทแทน (18,000 บาท)
+        ใช้ตัวอย่างในคู่มือบริษัทแทน (18,000 BV ต่อบ้าน)
       </button>
     </>
   );
@@ -492,13 +491,6 @@ function Result({ r, node }: { r: NodeResult; node: PlanNode }) {
       </div>
       <NextHint pv={r.groupPv} />
       <ul className="divide-y divide-stone-100">
-        {r.retail > 0 && (
-          <Line
-            label="กำไรขายปลีก"
-            formula={`${fmt0(node.retailBv)} × ${RETAIL_PROFIT * 100}%`}
-            amount={r.retail}
-          />
-        )}
         <Line label="ส่วนลดจากยอดซื้อส่วนตัว" formula={`${fmt0(node.bv)} × ${r.rate}%`} amount={r.own} />
         {leg && (
           <Line

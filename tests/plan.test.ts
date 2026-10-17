@@ -11,12 +11,13 @@ import {
   type PlanNode,
 } from "@/lib/plan";
 
-// ตัวอย่างในคู่มือใช้ยอดเป็นบีวี (บาท) และให้ลูกค้าซื้อทั้งหมด
-const sold = (bv: number) => ({ pv: bv / PV_TO_BV, bv, retailBv: bv });
+// ตัวอย่างในคู่มือใช้ยอดเป็นบีวี (บาท) และรวมกำไรขายปลีก 18,000 × 10% = 1,800 บาทไว้ด้วย
+// ระบบไม่คิดกำไรขายปลีก (สมาชิกซื้อราคาเดียวกับเรา) จึงเทียบกับยอดในคู่มือหักออก 1,800
+const RETAIL = 1_800;
+const sold = (bv: number) => ({ pv: bv / PV_TO_BV, bv });
 const pvNode = (pv: number, children: PlanNode[] = []): PlanNode => ({
   pv,
   bv: pv * PV_TO_BV,
-  retailBv: 0,
   children,
 });
 
@@ -35,26 +36,26 @@ describe("ตัวอย่างในคู่มือดำเนินธ�
   it("สปอนเซอร์ 3 คน คนละ 18,000 บีวี = 5,040 บาท", () => {
     const r = evaluate(uniformTree(sold(18_000), 0, [3]));
     expect(r.rate).toBe(9);
-    expect([r.own, r.differential, r.retail]).toEqual([1_620, 1_620, 1_800]);
-    expect(planIncome(r)).toBe(5_040);
+    expect([r.own, r.differential]).toEqual([1_620, 1_620]);
+    expect(planIncome(r) + RETAIL).toBe(5_040);
   });
 
   it("แต่ละสาย 72,000 บีวี = 17,460 บาท", () => {
     const r = evaluate(uniformTree(sold(18_000), 0, [3, 3]));
     expect(r.rate).toBe(15);
-    expect(planIncome(r)).toBeCloseTo(17_460, 6);
+    expect(planIncome(r) + RETAIL).toBeCloseTo(17_460, 6);
   });
 
   it("แต่ละสาย 234,000 บีวี = 47,700 บาท", () => {
     const r = evaluate(uniformTree(sold(18_000), 0, [3, 3, 3]));
     expect(r.rate).toBe(21);
-    expect(planIncome(r)).toBeCloseTo(47_700, 6);
+    expect(planIncome(r) + RETAIL).toBeCloseTo(47_700, 6);
   });
 
   it("ถ่ายทอดแบบอย่าง 7 x 7 = 96,300 บาท", () => {
     const r = evaluate(uniformTree(sold(18_000), 0, [7, 7]));
     expect(r.legs[0].rate).toBe(12);
-    expect(planIncome(r)).toBeCloseTo(96_300, 6);
+    expect(planIncome(r) + RETAIL).toBeCloseTo(96_300, 6);
   });
 
   it("ส่วนลดพิเศษผู้นำ 6% จาก 3 สาย และ 7 สาย", () => {
