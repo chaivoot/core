@@ -32,7 +32,7 @@ export type PlanProduct = {
   image: string | null;
 };
 
-const STEPS = ["เริ่ม", "สินค้า", "สมาชิก", "แนะนำ", "ถ่ายทอด", "ชั้นที่ 3", "สรุป"];
+const STEPS = ["เริ่ม", "สินค้า", "สมาชิก", "แนะนำ", "ถ่ายทอด", "สรุป"];
 const LAST = STEPS.length - 1;
 /** ตัวอย่างในคู่มือ: แต่ละบ้านมียอดซื้อ 18,000 บาท (บีวี) */
 const MANUAL_BV = 18_000;
@@ -42,7 +42,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [manual, setManual] = useState(false);
   const [customers, setCustomers] = useState(2);
-  const [levels, setLevels] = useState([3, 3, 0]);
+  const [levels, setLevels] = useState([3, 3]);
 
   const basket = useMemo(
     () =>
@@ -59,7 +59,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
   const cust = manual || step < 2 ? 0 : customers;
 
   // แต่ละขั้นเล่าเพิ่มทีละชั้น
-  const depth = step <= 2 ? 0 : step === 3 ? 1 : step === 4 ? 2 : 3;
+  const depth = step <= 2 ? 0 : step === 3 ? 1 : 2;
   const tree = uniformTree(home, cust, levels.slice(0, depth));
   const result = evaluate(tree);
   const income = planIncome(result);
@@ -92,7 +92,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
               manual={manual}
               setManual={(m) => {
                 setManual(m);
-                if (m) setLevels([3, 0, 0]);
+                if (m) setLevels([3, 0]);
               }}
             />
           )}
@@ -156,26 +156,6 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
           )}
 
           {step === 5 && (
-            <>
-              <Title
-                kicker="ขั้นที่ 5"
-                title="ขยายต่ออีกชั้น"
-                text="แล้วคนในชั้นที่ 2 แนะนำต่ออีกคนละกี่คน"
-              />
-              <Stepper
-                label="ชั้นที่ 2 แนะนำต่อ"
-                unit="คน"
-                value={levels[2]}
-                max={10}
-                onChange={(v) => setLevel(2, v)}
-              />
-              <Diagram r={result} node={tree} levels={levels} members={cust} />
-              <Result r={result} node={tree} />
-              <CorePlusCard node={tree} />
-            </>
-          )}
-
-          {step === 6 && (
             <Summary
               r={result}
               node={tree}
@@ -183,7 +163,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
                 setQty({});
                 setManual(false);
                 setCustomers(2);
-                setLevels([3, 3, 0]);
+                setLevels([3, 3]);
                 go(0);
               }}
             />
