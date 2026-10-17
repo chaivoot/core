@@ -193,10 +193,12 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
           <div className="min-w-0 flex-1 text-center">
             {step >= 2 && (
               <>
-                <div className="text-xs text-stone-500">ประมาณต่อเดือน</div>
-                <div className="text-lg leading-tight font-bold text-teal-800">฿{fmt0(income)}</div>
+                <div className="text-xs text-stone-500">{extra > 0 ? "รวมต่อเดือน" : "ประมาณต่อเดือน"}</div>
+                <div className="text-lg leading-tight font-bold text-teal-800">฿{fmt0(Math.round(income) + Math.round(extra))}</div>
                 {extra > 0 && (
-                  <div className="text-xs font-medium text-violet-700">+ คอร์พลัส ฿{fmt0(extra)}</div>
+                  <div className="text-xs text-stone-600">
+                    แผนหลัก ฿{fmt0(income)} <span className="text-violet-700">+ คอร์พลัส ฿{fmt0(extra)}</span>
+                  </div>
                 )}
               </>
             )}
@@ -835,19 +837,29 @@ function Summary({ r, node, onRestart }: { r: NodeResult; node: PlanNode; onRest
   const cp = corePlus(node);
   const plan = planIncome(r);
   const extra = corePlusMonthly(cp);
+  // ปัดแต่ละส่วนก่อนรวม ให้บวกตามจอแล้วได้ตรงกัน
+  const total = Math.round(plan) + Math.round(extra);
   return (
     <>
       <Title kicker="สรุป" title="รายได้ตามแผนธุรกิจ" text="ถ้ายอดของทุกคนเป็นแบบนี้ในเดือนนั้น" />
       <Result r={r} node={node} />
       <CorePlusCard node={node} />
       <section className="card space-y-2">
-        <div className="flex items-baseline justify-between">
-          <span className="text-stone-700">แผนหลัก + คอร์พลัส ต่อเดือน</span>
-          <span className="text-2xl font-bold text-stone-900">฿{fmt0(plan + extra)}</span>
+        <div className="flex items-baseline justify-between text-stone-700">
+          <span>แผนหลัก</span>
+          <span className="font-semibold text-teal-800">฿{fmt0(plan)}</span>
+        </div>
+        <div className="flex items-baseline justify-between text-stone-700">
+          <span>คอร์พลัส</span>
+          <span className="font-semibold text-violet-800">+ ฿{fmt0(extra)}</span>
+        </div>
+        <div className="flex items-baseline justify-between border-t border-stone-200 pt-2">
+          <span className="font-semibold text-stone-900">รวมต่อเดือน</span>
+          <span className="text-2xl font-bold text-stone-900">฿{fmt0(total)}</span>
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-stone-700">ถ้าเท่านี้ทุกเดือน ต่อปี</span>
-          <span className="text-2xl font-bold text-teal-800">฿{fmt0((plan + extra) * 12)}</span>
+          <span className="text-2xl font-bold text-teal-800">฿{fmt0(total * 12)}</span>
         </div>
         <p className="text-xs text-stone-500">
           บรอนซ์ฟาวน์เดชั่น/บิวเดอร์ จ่ายสูงสุด 12 ครั้ง · ยังไม่รวมเงินรางวัลเข็มเงิน/เข็มทองครั้งแรก
