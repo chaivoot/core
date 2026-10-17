@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ConfirmSubmitButton } from "@/components/confirm-button";
 import { SubmitButton } from "@/components/submit-button";
-import { listAllProducts } from "@/lib/data/products";
+import { listAllProducts, productImageUrl } from "@/lib/data/products";
 import type { Product } from "@/lib/db/schema";
 import { fmt } from "@/lib/plan";
 import { requireAdmin } from "@/lib/session";
@@ -11,6 +11,7 @@ import {
   setProductActiveAction,
   updateProductAction,
 } from "./actions";
+import { ImageInput } from "./image-input";
 
 export const metadata = { title: "ข้อมูลสินค้า · 3S1M" };
 
@@ -48,6 +49,11 @@ export default async function ProductsAdminPage({ searchParams }: PageProps<"/pl
           ข้อมูลไม่ครบ: ต้องมีชื่อ ราคา พีวี และจำนวนวันที่ใช้ได้ (อย่างน้อย 1 วัน)
         </p>
       )}
+      {e === "image" && (
+        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          บันทึกข้อมูลแล้ว แต่ใช้รูปนี้ไม่ได้ (รับเฉพาะ JPG, PNG, WebP) ลองเลือกรูปใหม่อีกครั้ง
+        </p>
+      )}
 
       <datalist id="categories">
         {categories.map((c) => (
@@ -71,7 +77,8 @@ export default async function ProductsAdminPage({ searchParams }: PageProps<"/pl
             <li key={p.id}>
               <details className={`card ${p.active ? "" : "opacity-60"}`}>
                 <summary className="flex cursor-pointer list-none items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <ProductThumb url={productImageUrl(p)} />
+                  <div className="min-w-0 flex-1">
                     <div className="text-xs text-stone-500">
                       {p.category ?? "ไม่มีหมวด"}
                       {!p.active && " · ซ่อนอยู่"}
@@ -114,9 +121,23 @@ export default async function ProductsAdminPage({ searchParams }: PageProps<"/pl
   );
 }
 
+function ProductThumb({ url }: { url: string | null }) {
+  return (
+    <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-stone-200">
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element -- รูปจาก route ของเราเอง แคชไว้แล้ว
+        <img src={url} alt="" className="size-full object-contain" loading="lazy" />
+      ) : (
+        <span className="text-[10px] text-stone-400">ไม่มีรูป</span>
+      )}
+    </div>
+  );
+}
+
 function ProductFields({ product }: { product?: Product }) {
   return (
     <>
+      <ImageInput current={product ? productImageUrl(product) : null} />
       <label className="block">
         <span className="label">ชื่อสินค้า</span>
         <input name="name" required maxLength={200} defaultValue={product?.name} className="input" />

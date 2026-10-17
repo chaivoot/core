@@ -28,6 +28,8 @@ export type PlanProduct = {
   pv: number;
   bv: number;
   days: number;
+  /** URL รูป (null = ไม่มีรูป) */
+  image: string | null;
 };
 
 const STEPS = ["เริ่ม", "สินค้า", "สมาชิก", "ตาราง", "แนะนำ", "ถ่ายทอด", "ชั้นที่ 3", "สรุป"];
@@ -122,7 +124,13 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
                 title="แนะนำเพื่อนให้ทำแบบเดียวกับเรา"
                 text="คนที่เราสปอนเซอร์ใช้สินค้าและมีสมาชิกเท่ากับบ้านเรา ยอดของทุกคนนับรวมเป็นกลุ่มของเรา"
               />
-              <Stepper label="เราแนะนำ" unit="คน" value={levels[0]} max={10} onChange={(v) => setLevel(0, v)} />
+              <Stepper
+                label="เราแนะนำ"
+                unit="คน"
+                value={levels[0]}
+                max={10}
+                onChange={(v) => setLevel(0, v)}
+              />
               <Diagram r={result} node={tree} levels={levels.slice(0, 1)} />
               <Result r={result} node={tree} />
               <CorePlusCard node={tree} />
@@ -151,7 +159,11 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
 
           {step === 6 && (
             <>
-              <Title kicker="ขั้นที่ 6" title="ขยายต่ออีกชั้น" text="แล้วคนในชั้นที่ 2 แนะนำต่ออีกคนละกี่คน" />
+              <Title
+                kicker="ขั้นที่ 6"
+                title="ขยายต่ออีกชั้น"
+                text="แล้วคนในชั้นที่ 2 แนะนำต่ออีกคนละกี่คน"
+              />
               <Stepper
                 label="ชั้นที่ 2 แนะนำต่อ"
                 unit="คน"
@@ -194,7 +206,9 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
             {step >= 2 && (
               <>
                 <div className="text-xs text-stone-500">{extra > 0 ? "รวมต่อเดือน" : "ประมาณต่อเดือน"}</div>
-                <div className="text-lg leading-tight font-bold text-teal-800">฿{fmt0(Math.round(income) + Math.round(extra))}</div>
+                <div className="text-lg leading-tight font-bold text-teal-800">
+                  ฿{fmt0(Math.round(income) + Math.round(extra))}
+                </div>
                 {extra > 0 && (
                   <div className="text-xs text-stone-600">
                     แผนหลัก ฿{fmt0(income)} <span className="text-violet-700">+ คอร์พลัส ฿{fmt0(extra)}</span>
@@ -257,8 +271,8 @@ function Title({ kicker, title, text }: { kicker: string; title: string; text?: 
 function Disclaimer() {
   return (
     <p className="rounded-xl bg-stone-100 p-3 text-xs leading-relaxed text-stone-600">
-      ตัวเลขทั้งหมดเป็นตัวเลขสมมติเพื่อใช้อธิบายแผนธุรกิจแอมเวย์ คำนวณตามสูตรในคู่มือดำเนินธุรกิจ
-      (อัตราส่วน พีวี : บีวี = 1 : {PV_TO_BV}) รายได้จริงขึ้นอยู่กับความพยายามในการดำเนินธุรกิจของแต่ละคน
+      ตัวเลขทั้งหมดเป็นตัวเลขสมมติเพื่อใช้อธิบายแผนธุรกิจแอมเวย์ คำนวณตามสูตรในคู่มือดำเนินธุรกิจ (อัตราส่วน
+      พีวี : บีวี = 1 : {PV_TO_BV}) รายได้จริงขึ้นอยู่กับความพยายามในการดำเนินธุรกิจของแต่ละคน
       ไม่ใช่การรับประกันรายได้ โปรแกรมคอร์พลัสเป็นไปตามเงื่อนไขของบริษัทในปีคุณสมบัติ 2569/70
     </p>
   );
@@ -349,23 +363,37 @@ function ProductStep({
             {list.map((p) => {
               const n = qty[p.id] ?? 0;
               return (
-                <li
-                  key={p.id}
-                  className={`card flex items-center gap-3 ${n > 0 ? "ring-2 ring-teal-600" : ""}`}
-                >
-                  <button type="button" className="min-w-0 flex-1 text-left" onClick={() => change(p.id, 1)}>
-                    <div className="font-medium text-stone-900">{p.name}</div>
-                    {p.description && <div className="text-sm text-stone-600">{p.description}</div>}
-                    <div className="text-sm text-stone-500">
-                      ฿{fmt(p.price)} ใช้ได้ {p.days} วัน
+                <li key={p.id} className={`card space-y-3 ${n > 0 ? "ring-2 ring-teal-600" : ""}`}>
+                  <button
+                    type="button"
+                    className="flex w-full gap-3 text-left"
+                    onClick={() => change(p.id, 1)}
+                  >
+                    <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-stone-100 md:size-28">
+                      {p.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- รูปจาก route ของเราเอง แคชไว้แล้ว
+                        <img src={p.image} alt={p.name} className="size-full object-contain" />
+                      ) : (
+                        <span className="text-xs text-stone-400">ไม่มีรูป</span>
+                      )}
                     </div>
-                    <div className="text-sm text-stone-500">
-                      {fmt(p.pv)} PV · {fmt(p.bv)} BV
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-stone-900">{p.name}</div>
+                      {p.description && <div className="text-sm text-stone-600">{p.description}</div>}
+                      <div className="text-sm text-stone-500">
+                        ฿{fmt(p.price)} ใช้ได้ {p.days} วัน
+                      </div>
+                      <div className="text-sm text-stone-500">
+                        {fmt(p.pv)} PV · {fmt(p.bv)} BV
+                      </div>
+                      <div className="text-sm font-semibold text-teal-800">
+                        วันละ ฿{fmt(p.price / p.days)}
+                      </div>
                     </div>
-                    <div className="text-sm font-semibold text-teal-800">วันละ ฿{fmt(p.price / p.days)}</div>
                   </button>
                   {n > 0 && (
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="mr-2 text-sm text-stone-500">จำนวน</span>
                       <button
                         type="button"
                         className="btn-secondary size-10 min-h-10 px-0"
@@ -402,19 +430,19 @@ function ProductStep({
 function BasketSummary({ basket }: { basket: ReturnType<typeof basketPerMonth> }) {
   return (
     <div className="card grid grid-cols-3 gap-2 text-center">
-          <div>
-            <div className="text-xs text-stone-500">วันละ</div>
-            <div className="text-xl font-bold text-teal-800">฿{fmt(basket.perDay)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-stone-500">เดือนละ (30 วัน)</div>
-            <div className="text-xl font-bold text-stone-900">฿{fmt0(basket.price)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-stone-500">ยอดต่อเดือน</div>
-            <Volume pv={basket.pv} bv={basket.bv} className="text-xl font-bold text-stone-900" />
-          </div>
-        </div>
+      <div>
+        <div className="text-xs text-stone-500">วันละ</div>
+        <div className="text-xl font-bold text-teal-800">฿{fmt(basket.perDay)}</div>
+      </div>
+      <div>
+        <div className="text-xs text-stone-500">เดือนละ (30 วัน)</div>
+        <div className="text-xl font-bold text-stone-900">฿{fmt0(basket.price)}</div>
+      </div>
+      <div>
+        <div className="text-xs text-stone-500">ยอดต่อเดือน</div>
+        <Volume pv={basket.pv} bv={basket.bv} className="text-xl font-bold text-stone-900" />
+      </div>
+    </div>
   );
 }
 
@@ -607,7 +635,12 @@ function Diagram({ r, node, levels }: { r: NodeResult; node: PlanNode; levels: n
 
   return (
     <figure className="card">
-      <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto w-full max-w-md" role="img" aria-label="ผังสายงาน">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="mx-auto w-full max-w-md"
+        role="img"
+        aria-label="ผังสายงาน"
+      >
         {Array.from({ length: n }, (_, i) => {
           const a = (2 * Math.PI * i) / n - Math.PI / 2;
           const x = c + ring * Math.cos(a);
@@ -678,7 +711,11 @@ function RateStrip({ r }: { r: NodeResult }) {
             <li
               key={row.rate}
               className={`rounded-md py-1 ${
-                me ? "bg-teal-700 text-white" : leg ? "bg-teal-50 ring-2 ring-teal-500" : "bg-white ring-1 ring-stone-200"
+                me
+                  ? "bg-teal-700 text-white"
+                  : leg
+                    ? "bg-teal-50 ring-2 ring-teal-500"
+                    : "bg-white ring-1 ring-stone-200"
               }`}
             >
               <div className="text-sm leading-tight font-bold">{row.rate}%</div>
@@ -729,7 +766,9 @@ function RateSide({ r }: { r: NodeResult }) {
                       {me && <span className="ml-1 text-xs">← เรา</span>}
                       {leg && <span className="ml-1 text-xs text-teal-700">← สายงาน</span>}
                     </div>
-                    <div className={`text-xs ${me ? "text-teal-100" : "text-stone-500"}`}>{fmt0(row.bv)} BV</div>
+                    <div className={`text-xs ${me ? "text-teal-100" : "text-stone-500"}`}>
+                      {fmt0(row.bv)} BV
+                    </div>
                   </td>
                   <td className="px-3 py-1.5 text-right font-bold">{row.rate}%</td>
                 </tr>
@@ -819,7 +858,9 @@ function CoreItem({ title, amount, children }: { title: string; amount: number; 
     <div className="space-y-1">
       <div className="flex items-baseline justify-between">
         <span className={`font-medium ${amount > 0 ? "text-stone-900" : "text-stone-500"}`}>{title}</span>
-        <span className={`font-semibold ${amount > 0 ? "text-violet-800" : "text-stone-400"}`}>฿{fmt(amount)}</span>
+        <span className={`font-semibold ${amount > 0 ? "text-violet-800" : "text-stone-400"}`}>
+          ฿{fmt(amount)}
+        </span>
       </div>
       <ul className="space-y-0.5">{children}</ul>
     </div>

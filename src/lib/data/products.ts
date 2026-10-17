@@ -45,7 +45,11 @@ export async function isAdmin(userId: string) {
 }
 
 export async function createProduct(input: ProductInput) {
-  await db.insert(schema.products).values(input);
+  const [row] = await db
+    .insert(schema.products)
+    .values(input)
+    .returning({ id: schema.products.id });
+  return row.id;
 }
 
 export async function updateProduct(id: string, input: ProductInput) {
@@ -67,4 +71,49 @@ export async function setProductActive(id: string, active: boolean) {
 export async function deleteProduct(id: string) {
   if (!UUID.test(id)) return;
   await db.delete(schema.products).where(eq(schema.products.id, id));
+}
+
+/** รูปที่รับได้ (ตรวจจาก byte แรกของไฟล์ ไม่เชื่อชนิดที่ browser ส่งมา) */
+export function detectImageType(bytes: Uint8Array): string | null {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  const tag = (i: number) => String.fromCharCode(...bytes.slice(i, i + 4));
+  if (tag(0) === "RIFF" && tag(8) === "WEBP") return "image/webp";
+  return null;
+}
+
+export async function setProductImage(id: string, contentType: string, bytes: Uint8Array) {
+  if (!UUID.test(id)) return;
+  const data = Buffer.from(bytes).toString("base64");
+  await db
+    .insert(schema.productImages)
+    .values({ productId: id, contentType, data })
+    .onConflictDoUpdate({
+      target: schema.productImages.productId,
+      set: { contentType, data, updatedAt: sql`now()` },
+    });
+  await db
+    .update(schema.products)
+    .set({ imageUpdatedAt: sql`now()` })
+    .where(eq(schema.products.id, id));
+}
+
+export async function removeProductImage(id: string) {
+  if (!UUID.test(id)) return;
+  await db.delete(schema.productImages).where(eq(schema.productImages.productId, id));
+  await db.update(schema.products).set({ imageUpdatedAt: null }).where(eq(schema.products.id, id));
+}
+
+export async function getProductImage(id: string) {
+  if (!UUID.test(id)) return null;
+  const [row] = await db
+    .select({ contentType: schema.productImages.contentType, data: schema.productImages.data })
+    .from(schema.productImages)
+    .where(eq(schema.productImages.productId, id));
+  return row ?? null;
+}
+
+/** URL รูปสินค้า (มี v= ต่อท้าย เปลี่ยนรูปแล้วไม่ติดแคชเก่า) */
+export function productImageUrl(p: { id: string; imageUpdatedAt: Date | null }) {
+  return p.imageUpdatedAt ? `/plan/products/${p.id}/image?v=${p.imageUpdatedAt.getTime()}` : null;
 }
