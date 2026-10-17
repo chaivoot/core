@@ -34,7 +34,7 @@ export type PlanProduct = {
 
 const STEPS = ["เริ่ม", "สินค้า", "สมาชิก", "ตาราง", "แนะนำ", "ถ่ายทอด", "ชั้นที่ 3", "สรุป"];
 const LAST = STEPS.length - 1;
-/** ตัวอย่างในคู่มือ: แต่ละบ้านมียอด 18,000 บีวี */
+/** ตัวอย่างในคู่มือ: แต่ละบ้านมียอดซื้อ 18,000 บาท (บีวี) */
 const MANUAL_BV = 18_000;
 
 export function PlanStory({ products }: { products: PlanProduct[] }) {
@@ -104,7 +104,7 @@ export function PlanStory({ products }: { products: PlanProduct[] }) {
                 title={manual ? "ยอดต่อบ้าน" : "สมาชิกที่ใช้แบบเดียวกับเรา"}
                 text={
                   manual
-                    ? "ตัวอย่างในคู่มือ: แต่ละบ้านมียอดเดือนละ 18,000 BV (ไม่คิดกำไรขายปลีก ตัวเลขจึงน้อยกว่าในคู่มือ 1,800 บาท)"
+                    ? "ตัวอย่างในคู่มือ: แต่ละบ้านมียอดซื้อเดือนละ 18,000 บาท (ไม่คิดกำไรขายปลีก ตัวเลขจึงน้อยกว่าในคู่มือ 1,800 บาท)"
                     : "บ้านที่สมัครสมาชิกกับเรา ซื้อสินค้าชุดเดียวกันในราคาเดียวกับเรา ยอดนับรวมเป็นของเรา"
                 }
               />
@@ -271,9 +271,10 @@ function Title({ kicker, title, text }: { kicker: string; title: string; text?: 
 function Disclaimer() {
   return (
     <p className="rounded-xl bg-stone-100 p-3 text-xs leading-relaxed text-stone-600">
-      ตัวเลขทั้งหมดเป็นตัวเลขสมมติเพื่อใช้อธิบายแผนธุรกิจแอมเวย์ คำนวณตามสูตรในคู่มือดำเนินธุรกิจ (อัตราส่วน
-      พีวี : บีวี = 1 : {PV_TO_BV}) รายได้จริงขึ้นอยู่กับความพยายามในการดำเนินธุรกิจของแต่ละคน
-      ไม่ใช่การรับประกันรายได้ โปรแกรมคอร์พลัสเป็นไปตามเงื่อนไขของบริษัทในปีคุณสมบัติ 2569/70
+      ตัวเลขทั้งหมดเป็นตัวเลขสมมติเพื่อใช้อธิบายแผนธุรกิจแอมเวย์ คำนวณตามสูตรในคู่มือดำเนินธุรกิจ
+      (ยอดซื้อในหน้านี้คือ BV ซึ่งเท่ากับราคานักธุรกิจ)
+      รายได้จริงขึ้นอยู่กับความพยายามในการดำเนินธุรกิจของแต่ละคน ไม่ใช่การรับประกันรายได้
+      โปรแกรมคอร์พลัสเป็นไปตามเงื่อนไขของบริษัทในปีคุณสมบัติ 2569/70
     </p>
   );
 }
@@ -287,7 +288,7 @@ function Intro() {
       </header>
       <ol className="space-y-3">
         {[
-          ["เลือกสินค้าที่บ้านเราใช้", "รู้ว่าวันละกี่บาท และได้ยอด PV เท่าไหร่"],
+          ["เลือกสินค้าที่บ้านเราใช้", "รู้ว่าวันละกี่บาท เดือนละกี่บาท"],
           ["สมาชิกที่ใช้แบบเดียวกัน", "ซื้อราคาเดียวกับเรา ยอดนับรวมเป็นของเรา"],
           ["แนะนำเพื่อน และถ่ายทอดแบบอย่าง", "ยอดของทุกคนรวมเป็นกลุ่มของเรา"],
           ["ดูรายได้ตามสูตรของบริษัท", "ส่วนลดรายเดือน ส่วนลดแตกต่าง ผู้นำ 6% และคอร์พลัส"],
@@ -336,10 +337,13 @@ function ProductStep({
   if (manual) {
     return (
       <>
-        <Title kicker="ขั้นที่ 1" title="ตัวอย่างในคู่มือบริษัท" text="แต่ละบ้านมียอดเดือนละ 18,000 BV" />
+        <Title
+          kicker="ขั้นที่ 1"
+          title="ตัวอย่างในคู่มือบริษัท"
+          text="แต่ละบ้านมียอดซื้อเดือนละ 18,000 บาท"
+        />
         <div className="card text-center">
           <div className="text-4xl font-bold text-stone-900">฿{fmt0(MANUAL_BV)}</div>
-          <Volume pv={MANUAL_BV / PV_TO_BV} bv={MANUAL_BV} className="mt-1 text-lg text-stone-600" />
         </div>
         <button type="button" className="btn-ghost w-full" onClick={() => setManual(false)}>
           กลับไปเลือกสินค้า
@@ -383,9 +387,6 @@ function ProductStep({
                       <div className="text-sm text-stone-500">
                         ฿{fmt(p.price)} ใช้ได้ {p.days} วัน
                       </div>
-                      <div className="text-sm text-stone-500">
-                        {fmt(p.pv)} PV · {fmt(p.bv)} BV
-                      </div>
                       <div className="text-sm font-semibold text-teal-800">
                         วันละ ฿{fmt(p.price / p.days)}
                       </div>
@@ -421,7 +422,7 @@ function ProductStep({
       ))}
 
       <button type="button" className="btn-ghost w-full text-sm" onClick={() => setManual(true)}>
-        ใช้ตัวอย่างในคู่มือบริษัทแทน (18,000 BV ต่อบ้าน)
+        ใช้ตัวอย่างในคู่มือบริษัทแทน (ยอดซื้อ 18,000 บาทต่อบ้าน)
       </button>
     </>
   );
@@ -429,7 +430,7 @@ function ProductStep({
 
 function BasketSummary({ basket }: { basket: ReturnType<typeof basketPerMonth> }) {
   return (
-    <div className="card grid grid-cols-3 gap-2 text-center">
+    <div className="card grid grid-cols-2 gap-2 text-center">
       <div>
         <div className="text-xs text-stone-500">วันละ</div>
         <div className="text-xl font-bold text-teal-800">฿{fmt(basket.perDay)}</div>
@@ -437,10 +438,6 @@ function BasketSummary({ basket }: { basket: ReturnType<typeof basketPerMonth> }
       <div>
         <div className="text-xs text-stone-500">เดือนละ (30 วัน)</div>
         <div className="text-xl font-bold text-stone-900">฿{fmt0(basket.price)}</div>
-      </div>
-      <div>
-        <div className="text-xs text-stone-500">ยอดต่อเดือน</div>
-        <Volume pv={basket.pv} bv={basket.bv} className="text-xl font-bold text-stone-900" />
       </div>
     </div>
   );
@@ -511,7 +508,7 @@ function Result({ r, node }: { r: NodeResult; node: PlanNode }) {
       <div className="flex items-baseline justify-between gap-3">
         <div>
           <div className="text-sm text-stone-500">ยอดกลุ่มของเรา</div>
-          <Volume pv={r.groupPv} bv={r.groupBv} className="text-xl font-bold text-stone-900" />
+          <Baht bv={r.groupBv} className="text-xl font-bold text-stone-900" />
         </div>
         <div className="text-right">
           <div className="text-sm text-stone-500">ส่วนลด</div>
@@ -534,8 +531,10 @@ function Result({ r, node }: { r: NodeResult; node: PlanNode }) {
             formula={
               r.leader > 0
                 ? `สาย 21% ${r.leaderLegs} สาย × ${LEADER_RATE * 100}%` +
-                  (r.leaderDeductPv > 0 ? ` (หักหลักประกันขั้นต่ำ ${fmt0(r.leaderDeductPv)} PV)` : "")
-                : "ยังไม่ได้ เพราะยอดกลุ่มส่วนตัวต่ำกว่า 55,000 PV"
+                  (r.leaderDeductPv > 0
+                    ? ` (หักหลักประกันขั้นต่ำ ฿${fmt0(r.leaderDeductPv * PV_TO_BV)})`
+                    : "")
+                : "ยังไม่ได้ เพราะยอดกลุ่มส่วนตัวต่ำกว่า ฿177,650"
             }
             amount={r.leader}
           />
@@ -545,19 +544,13 @@ function Result({ r, node }: { r: NodeResult; node: PlanNode }) {
         <span className="font-semibold text-stone-900">รวมต่อเดือน</span>
         <span className="text-2xl font-bold text-teal-800">฿{fmt(planIncome(r))}</span>
       </div>
-      <p className="text-xs text-stone-500">บีวี (บาท) คำนวณจาก พีวี × {PV_TO_BV}</p>
     </section>
   );
 }
 
-/** ยอดแสดงทั้ง PV และ BV คนละบรรทัด */
-function Volume({ pv, bv, className = "" }: { pv: number; bv: number; className?: string }) {
-  return (
-    <div className={className}>
-      <div>{fmt0(pv)} PV</div>
-      <div className="text-[0.8em] font-medium opacity-75">{fmt0(bv)} BV</div>
-    </div>
-  );
+/** ยอดซื้อเป็นบาท (= BV) - ไม่แสดง PV เพราะคนใหม่สับสน แต่ระบบยังคิด % จาก PV ตามกฎบริษัท */
+function Baht({ bv, className = "" }: { bv: number; className?: string }) {
+  return <div className={className}>฿{fmt0(bv)}</div>;
 }
 
 function NextHint({ pv }: { pv: number }) {
@@ -565,7 +558,7 @@ function NextHint({ pv }: { pv: number }) {
   if (!next) return null;
   return (
     <p className="rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-900">
-      อีก {fmt0(next.missingPv)} PV จะได้ {next.rate}%
+      อีกประมาณ ฿{fmt0(next.missingPv * PV_TO_BV)} จะได้ {next.rate}%
     </p>
   );
 }
@@ -582,8 +575,7 @@ function TableStep({ r }: { r: NodeResult }) {
         <table className="w-full text-center">
           <thead className="bg-stone-100 text-sm text-stone-600">
             <tr>
-              <th className="py-2 font-medium">พีวี</th>
-              <th className="py-2 font-medium">บีวี (บาท)</th>
+              <th className="py-2 font-medium">ยอดซื้อของกลุ่มต่อเดือน</th>
               <th className="py-2 font-medium">ส่วนลด</th>
             </tr>
           </thead>
@@ -592,8 +584,7 @@ function TableStep({ r }: { r: NodeResult }) {
               const here = row.rate === r.rate;
               return (
                 <tr key={row.rate} className={here ? "bg-teal-700 text-white" : "border-t border-stone-100"}>
-                  <td className="py-2">{fmt0(row.pv)}</td>
-                  <td className="py-2">{fmt0(row.bv)}</td>
+                  <td className="py-2">฿{fmt0(row.bv)}</td>
                   <td className="py-2 font-semibold">
                     {row.rate}%{here && " ← เรา"}
                   </td>
@@ -605,7 +596,7 @@ function TableStep({ r }: { r: NodeResult }) {
       </div>
       <div className="card text-center">
         <div className="text-sm text-stone-500">ตอนนี้ยอดของเรา</div>
-        <Volume pv={r.groupPv} bv={r.groupBv} className="text-2xl font-bold text-stone-900" />
+        <Baht bv={r.groupBv} className="text-2xl font-bold text-stone-900" />
         <div className="mt-2">
           <NextHint pv={r.groupPv} />
         </div>
@@ -630,7 +621,6 @@ function Diagram({ r, node, levels }: { r: NodeResult; node: PlanNode; levels: n
   }
   const leg = r.legs[0];
   const legRate = leg?.rate ?? 21;
-  const legPv = leg?.groupPv ?? (r.groupPv - node.pv) / n;
   const legBv = leg?.groupBv ?? (r.groupBv - node.bv) / n;
 
   return (
@@ -649,14 +639,11 @@ function Diagram({ r, node, levels }: { r: NodeResult; node: PlanNode; levels: n
             <g key={i}>
               <line x1={c} y1={c} x2={x} y2={y} className="stroke-stone-300" strokeWidth={2} />
               <circle cx={x} cy={y} r={36} className="fill-teal-50 stroke-teal-600" strokeWidth={2} />
-              <text x={x} y={y - 10} textAnchor="middle" className="fill-teal-900 text-[14px] font-bold">
+              <text x={x} y={y - 4} textAnchor="middle" className="fill-teal-900 text-[15px] font-bold">
                 {legRate}%
               </text>
-              <text x={x} y={y + 5} textAnchor="middle" className="fill-stone-700 text-[9.5px] font-medium">
-                {fmt0(legPv)} PV
-              </text>
-              <text x={x} y={y + 17} textAnchor="middle" className="fill-stone-500 text-[9.5px]">
-                {fmt0(legBv)} BV
+              <text x={x} y={y + 13} textAnchor="middle" className="fill-stone-700 text-[10px] font-medium">
+                ฿{fmt0(legBv)}
               </text>
               {below > 0 && (
                 <text x={x} y={y + 50} textAnchor="middle" className="fill-stone-500 text-[10px]">
@@ -667,31 +654,28 @@ function Diagram({ r, node, levels }: { r: NodeResult; node: PlanNode; levels: n
           );
         })}
         <circle cx={c} cy={c} r={50} className="fill-teal-700" />
-        <text x={c} y={c - 22} textAnchor="middle" className="fill-white text-[12px]">
+        <text x={c} y={c - 16} textAnchor="middle" className="fill-white text-[12px]">
           เรา
         </text>
-        <text x={c} y={c - 2} textAnchor="middle" className="fill-white text-[18px] font-bold">
+        <text x={c} y={c + 5} textAnchor="middle" className="fill-white text-[19px] font-bold">
           {r.rate}%
         </text>
-        <text x={c} y={c + 15} textAnchor="middle" className="fill-teal-50 text-[10px]">
-          {fmt0(r.groupPv)} PV
-        </text>
-        <text x={c} y={c + 28} textAnchor="middle" className="fill-teal-100 text-[10px]">
-          {fmt0(r.groupBv)} BV
+        <text x={c} y={c + 23} textAnchor="middle" className="fill-teal-50 text-[11px]">
+          ฿{fmt0(r.groupBv)}
         </text>
       </svg>
       <figcaption className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
         <div className="rounded-lg bg-stone-50 p-2">
           <div className="text-xs text-stone-500">แต่ละรหัส</div>
-          <Volume pv={node.pv} bv={node.bv} className="font-semibold text-stone-900" />
+          <Baht bv={node.bv} className="font-semibold text-stone-900" />
         </div>
         <div className="rounded-lg bg-stone-50 p-2">
           <div className="text-xs text-stone-500">แต่ละสาย ({1 + below} รหัส)</div>
-          <Volume pv={legPv} bv={legBv} className="font-semibold text-stone-900" />
+          <Baht bv={legBv} className="font-semibold text-stone-900" />
         </div>
         <div className="rounded-lg bg-teal-50 p-2">
           <div className="text-xs text-teal-800">ทั้งกลุ่มของเรา</div>
-          <Volume pv={r.groupPv} bv={r.groupBv} className="font-semibold text-teal-900" />
+          <Baht bv={r.groupBv} className="font-semibold text-teal-900" />
         </div>
       </figcaption>
     </figure>
@@ -719,10 +703,7 @@ function RateStrip({ r }: { r: NodeResult }) {
               }`}
             >
               <div className="text-sm leading-tight font-bold">{row.rate}%</div>
-              <div className={`text-[10px] leading-tight ${me ? "text-teal-50" : "text-stone-600"}`}>
-                {fmt0(row.pv)}
-              </div>
-              <div className={`text-[9px] leading-tight ${me ? "text-teal-100" : "text-stone-400"}`}>
+              <div className={`text-[10px] leading-tight ${me ? "text-teal-50" : "text-stone-500"}`}>
                 {fmt0(row.bv)}
               </div>
             </li>
@@ -730,7 +711,7 @@ function RateStrip({ r }: { r: NodeResult }) {
         })}
       </ol>
       <p className="mt-1 text-center text-[11px] text-stone-500">
-        ตารางส่วนลด (บน PV / ล่าง BV) · <span className="font-semibold text-teal-800">■ เรา</span>
+        ตารางส่วนลด (ยอดซื้อของกลุ่ม บาท/เดือน) · <span className="font-semibold text-teal-800">■ เรา</span>
         {legRate != null && <span className="text-teal-700"> · □ สายงาน</span>}
       </p>
     </div>
@@ -761,14 +742,9 @@ function RateSide({ r }: { r: NodeResult }) {
                   className={me ? "bg-teal-700 text-white" : leg ? "bg-teal-50" : "border-t border-stone-100"}
                 >
                   <td className="px-3 py-1.5">
-                    <div>
-                      {fmt0(row.pv)} PV
-                      {me && <span className="ml-1 text-xs">← เรา</span>}
-                      {leg && <span className="ml-1 text-xs text-teal-700">← สายงาน</span>}
-                    </div>
-                    <div className={`text-xs ${me ? "text-teal-100" : "text-stone-500"}`}>
-                      {fmt0(row.bv)} BV
-                    </div>
+                    ฿{fmt0(row.bv)}
+                    {me && <span className="ml-1 text-xs">← เรา</span>}
+                    {leg && <span className="ml-1 text-xs text-teal-700">← สายงาน</span>}
                   </td>
                   <td className="px-3 py-1.5 text-right font-bold">{row.rate}%</td>
                 </tr>
@@ -776,12 +752,12 @@ function RateSide({ r }: { r: NodeResult }) {
             })}
           </tbody>
         </table>
-        <p className="px-3 py-2 text-xs text-stone-500">BV (บาท) = PV × {PV_TO_BV}</p>
+        <p className="px-3 py-2 text-xs text-stone-500">ยอดซื้อของทั้งกลุ่มต่อเดือน</p>
       </div>
       {r.groupPv > 0 && (
         <div className="card space-y-2 text-center">
           <div className="text-xs text-stone-500">ยอดกลุ่มของเรา</div>
-          <Volume pv={r.groupPv} bv={r.groupBv} className="text-xl font-bold text-stone-900" />
+          <Baht bv={r.groupBv} className="text-xl font-bold text-stone-900" />
           <NextHint pv={r.groupPv} />
         </div>
       )}
@@ -814,9 +790,11 @@ function CorePlusCard({ node }: { node: PlanNode }) {
       </header>
 
       <CoreItem title="โก-บรอนซ์" amount={cp.goBronze}>
-        <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย 1,000 PV (ตอนนี้ {fmt0(node.pv)} PV)</Check>
+        <Check ok={ppv}>
+          ยอดซื้อส่วนตัวอย่างน้อย ฿{fmt0(1_000 * PV_TO_BV)} (ตอนนี้ ฿{fmt0(node.bv)})
+        </Check>
         <Check ok={cp.goBronzeLegs >= 2}>
-          รายใหม่ติดตัวที่มีกลุ่ม 1,500 PV ขึ้นไป: {cp.goBronzeLegs} รหัส
+          รายใหม่ติดตัวที่มียอดกลุ่ม ฿{fmt0(1_500 * PV_TO_BV)} ขึ้นไป: {cp.goBronzeLegs} รหัส
         </Check>
         <li className="pl-6 text-xs text-stone-500">2 รหัส ได้ ฿1,000 · 3 รหัสขึ้นไป ได้ ฿1,500</li>
       </CoreItem>
@@ -824,14 +802,14 @@ function CorePlusCard({ node }: { node: PlanNode }) {
       <CoreItem title="บรอนซ์ฟาวน์เดชั่น +20%" amount={cp.foundation}>
         <Check ok={r.rate >= 9}>เราได้ 9% ขึ้นไป (ตอนนี้ {r.rate}%)</Check>
         <Check ok={legs3 >= 3}>มี 3 สายที่ได้ 3% ขึ้นไป (ตอนนี้ {legs3} สาย)</Check>
-        <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย 1,000 PV</Check>
+        <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย ฿{fmt0(1_000 * PV_TO_BV)}</Check>
         <li className="pl-6 text-xs text-stone-500">20% ของส่วนลดประจำเดือน (฿{fmt(cp.base)})</li>
       </CoreItem>
 
       <CoreItem title="บรอนซ์บิวเดอร์ +30%" amount={cp.builder}>
         <Check ok={r.rate >= 15}>เราได้ 15% ขึ้นไป (ตอนนี้ {r.rate}%)</Check>
         <Check ok={legs6 >= 3}>มี 3 สายที่ได้ 6% ขึ้นไป (ตอนนี้ {legs6} สาย)</Check>
-        <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย 1,000 PV</Check>
+        <Check ok={ppv}>ยอดซื้อส่วนตัวอย่างน้อย ฿{fmt0(1_000 * PV_TO_BV)}</Check>
         <li className="pl-6 text-xs text-stone-500">
           30% ของส่วนลดประจำเดือน (฿{fmt(cp.base)}) · ได้พร้อมบรอนซ์ฟาวน์เดชั่น และเข็มบรอนซ์
         </li>
