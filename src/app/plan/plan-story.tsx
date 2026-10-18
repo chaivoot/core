@@ -556,9 +556,15 @@ function Diagram({
 }) {
   const n = levels[0] ?? 0;
   if (n === 0) return null;
-  const size = 360;
+  // ชั้นที่ 2: คนที่แต่ละสายแนะนำต่อ วาดเป็นวงเล็กรอบนอก
+  const m = levels[1] ?? 0;
+  const size = m > 0 ? 440 : 360;
   const c = size / 2;
-  const ring = 122;
+  const ring = m > 0 ? 118 : 122;
+  const outer = 192;
+  const slot = (2 * Math.PI) / n;
+  const step = m > 0 ? Math.min((slot / m) * 0.9, 0.36) : 0;
+  const small = m > 0 ? Math.max(6, Math.min(16, outer * step * 0.45)) : 0;
   // จำนวนคนใต้แต่ละสาย (ไม่นับหัวสาย)
   let below = 0;
   let width = 1;
@@ -569,6 +575,8 @@ function Diagram({
   const leg = r.legs[0];
   const legRate = leg?.rate ?? 21;
   const legBv = leg?.groupBv ?? (r.groupBv - node.bv) / n;
+  const grand = node.children[0]?.children[0];
+  const grandRate = grand ? evaluate(grand).rate : 0;
   // นักธุรกิจทั้งผัง (รวมเรา) และบ้านสมาชิกของทุกคน
   const codes = 1 + n * (1 + below);
   const memberHomes = codes * members;
@@ -582,12 +590,48 @@ function Diagram({
         aria-label="ผังสายงาน"
       >
         {Array.from({ length: n }, (_, i) => {
-          const a = (2 * Math.PI * i) / n - Math.PI / 2;
+          const a = slot * i - Math.PI / 2;
           const x = c + ring * Math.cos(a);
           const y = c + ring * Math.sin(a);
+          const kids = Array.from({ length: m }, (_, j) => {
+            const b = a + (j - (m - 1) / 2) * step;
+            return { x: c + outer * Math.cos(b), y: c + outer * Math.sin(b) };
+          });
           return (
             <g key={i}>
               <line x1={c} y1={c} x2={x} y2={y} className="stroke-stone-300" strokeWidth={2} />
+              {kids.map((k, j) => (
+                <line
+                  key={j}
+                  x1={x}
+                  y1={y}
+                  x2={k.x}
+                  y2={k.y}
+                  className="stroke-stone-200"
+                  strokeWidth={1.5}
+                />
+              ))}
+              {kids.map((k, j) => (
+                <g key={`c${j}`}>
+                  <circle
+                    cx={k.x}
+                    cy={k.y}
+                    r={small}
+                    className="fill-white stroke-teal-400"
+                    strokeWidth={1.5}
+                  />
+                  {small >= 11 && (
+                    <text
+                      x={k.x}
+                      y={k.y + 3.5}
+                      textAnchor="middle"
+                      className="fill-teal-800 text-[9.5px] font-semibold"
+                    >
+                      {grandRate}%
+                    </text>
+                  )}
+                </g>
+              ))}
               <circle cx={x} cy={y} r={36} className="fill-teal-50 stroke-teal-600" strokeWidth={2} />
               <text x={x} y={y - 4} textAnchor="middle" className="fill-teal-900 text-[15px] font-bold">
                 {legRate}%
@@ -595,11 +639,6 @@ function Diagram({
               <text x={x} y={y + 13} textAnchor="middle" className="fill-stone-700 text-[10px] font-medium">
                 ฿{fmt0(legBv)}
               </text>
-              {below > 0 && (
-                <text x={x} y={y + 50} textAnchor="middle" className="fill-stone-500 text-[10px]">
-                  {1 + below} รหัส
-                </text>
-              )}
             </g>
           );
         })}
