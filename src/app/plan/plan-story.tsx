@@ -365,8 +365,9 @@ function ProductStep({
                       <div className="text-sm text-stone-500">
                         ฿{fmt(p.price)} ใช้ได้ {p.days} วัน
                       </div>
-                      <div className="text-sm font-semibold text-teal-800">
-                        วันละ ฿{fmt(p.price / p.days)}
+                      <div className="mt-1.5 inline-flex items-baseline gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1 text-teal-900">
+                        <span className="text-sm">วันละ</span>
+                        <span className="text-2xl leading-tight font-bold">฿{fmt(p.price / p.days)}</span>
                       </div>
                     </div>
                   </button>
