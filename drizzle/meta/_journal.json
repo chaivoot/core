@@ -92,6 +92,13 @@
       "when": 1792286725056,
       "tag": "0012_acerola",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792286783788,
+      "tag": "0013_acerola_image",
+      "breakpoints": true
     }
   ]
 }
