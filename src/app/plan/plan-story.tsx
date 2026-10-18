@@ -558,13 +558,18 @@ function Diagram({
   if (n === 0) return null;
   // ชั้นที่ 2: คนที่แต่ละสายแนะนำต่อ วาดเป็นวงเล็กรอบนอก
   const m = levels[1] ?? 0;
-  const size = m > 0 ? 440 : 360;
-  const c = size / 2;
-  const ring = m > 0 ? 118 : 122;
-  const outer = 192;
+  // สายเยอะ = วงสายห่างจากศูนย์กลางมากขึ้น ไม่ให้ชนกัน
+  const ring = Math.max(m > 0 ? 118 : 122, n * 15);
   const slot = (2 * Math.PI) / n;
-  const step = m > 0 ? Math.min((slot / m) * 0.9, 0.36) : 0;
-  const small = m > 0 ? Math.max(6, Math.min(16, outer * step * 0.45)) : 0;
+  // วงเล็กเกาะรอบวงของสายนั้น เส้นเชื่อมสั้น ๆ (ห่างขอบวงสาย 8px) กระจายไปด้านนอก
+  // ถ้าคนเยอะ วงจะเล็กลงจนวางได้ในมุมที่กำหนด (สายเยอะ = มุมแคบลง กันชนสายข้าง ๆ)
+  const maxSpan = n <= 2 ? 3.4 : n === 3 ? 2.6 : 2;
+  let small = 16;
+  const reach = () => 36 + 8 + small;
+  while (m > 1 && small > 5 && ((m - 1) * (2 * small + 3)) / reach() > maxSpan) small -= 1;
+  const step = m > 1 ? (2 * small + 3) / reach() : 0;
+  const size = 2 * (ring + (m > 0 ? reach() + small : 36) + 8);
+  const c = size / 2;
   // จำนวนคนใต้แต่ละสาย (ไม่นับหัวสาย)
   let below = 0;
   let width = 1;
@@ -595,7 +600,7 @@ function Diagram({
           const y = c + ring * Math.sin(a);
           const kids = Array.from({ length: m }, (_, j) => {
             const b = a + (j - (m - 1) / 2) * step;
-            return { x: c + outer * Math.cos(b), y: c + outer * Math.sin(b) };
+            return { x: x + reach() * Math.cos(b), y: y + reach() * Math.sin(b) };
           });
           return (
             <g key={i}>
