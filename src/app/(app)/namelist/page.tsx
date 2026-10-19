@@ -32,7 +32,7 @@ function lastActivityText(date: string | null, now: string) {
   return `กิจกรรมล่าสุด ${days} วันก่อน`;
 }
 
-export default async function ContactsPage({ searchParams }: PageProps<"/contacts">) {
+export default async function ContactsPage({ searchParams }: PageProps<"/namelist">) {
   const user = await requireUser();
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.slice(0, 100) : "";
@@ -84,7 +84,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
         {filtered && (
           <>
             {" · "}
-            <Link href="/contacts" className="text-teal-700 underline">
+            <Link href="/namelist" className="text-teal-700 underline">
               ล้างตัวกรอง
             </Link>
           </>
@@ -99,7 +99,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
         <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200">
           {contacts.map((c) => (
             <li key={c.id}>
-              <Link href={`/contacts/${c.id}`} className="block px-4 py-3 hover:bg-stone-50">
+              <Link href={`/namelist/${c.id}`} className="block px-4 py-3 hover:bg-stone-50">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium text-stone-900">{c.name}</span>
                   <InterestBadge interest={c.interest} />

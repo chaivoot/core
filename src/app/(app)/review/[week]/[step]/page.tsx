@@ -28,7 +28,7 @@ export default async function ReviewStepPage({
   const sp = await searchParams;
 
   if (!isWeekStart(week)) notFound();
-  if (week > today()) redirect("/");
+  if (week > today()) redirect("/smallwin");
 
   const [review, stats] = await Promise.all([
     getReview(user.id, week),
@@ -45,7 +45,7 @@ export default async function ReviewStepPage({
   if (!category) notFound();
 
   const action = saveStepAction.bind(null, week, step);
-  const backHref = step === 1 ? "/" : `/review/${week}/${step - 1}`;
+  const backHref = step === 1 ? "/smallwin" : `/review/${week}/${step - 1}`;
   const nextHref = step < 4 ? `/review/${week}/${step + 1}` : `/review/${week}/summary`;
 
   return (
@@ -318,7 +318,7 @@ function ReviewSummary({
           ทำหมวด {missing[0].step} ต่อ
         </Link>
       )}
-      <Link href="/" className="btn-secondary w-full">
+      <Link href="/smallwin" className="btn-secondary w-full">
         กลับหน้าหลัก
       </Link>
     </div>

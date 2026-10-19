@@ -30,7 +30,7 @@ const MESSAGES: Record<string, string> = {
   activity: "บันทึกกิจกรรมแล้ว",
 };
 
-export default async function ContactPage({ params, searchParams }: PageProps<"/contacts/[id]">) {
+export default async function ContactPage({ params, searchParams }: PageProps<"/namelist/[id]">) {
   const user = await requireUser();
   const { id } = await params;
   const sp = await searchParams;
@@ -47,7 +47,7 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
 
   return (
     <div className="space-y-4">
-      <Link href="/contacts" className="text-sm text-stone-500">
+      <Link href="/namelist" className="text-sm text-stone-500">
         ← รายชื่อทั้งหมด
       </Link>
 

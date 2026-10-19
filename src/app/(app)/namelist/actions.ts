@@ -34,7 +34,7 @@ const activitySchema = z.object({
 
 function refresh(contactId?: string) {
   revalidatePath("/", "layout");
-  if (contactId) revalidatePath(`/contacts/${contactId}`);
+  if (contactId) revalidatePath(`/namelist/${contactId}`);
 }
 
 export async function addContactAction(formData: FormData) {
@@ -43,40 +43,40 @@ export async function addContactAction(formData: FormData) {
   if (!parsed.success) return;
   const created = await createContact(user.id, today(), parsed.data);
   refresh();
-  if (formData.get("open") === "1") redirect(`/contacts/${created.id}`);
+  if (formData.get("open") === "1") redirect(`/namelist/${created.id}`);
 }
 
 export async function updateContactAction(id: string, formData: FormData) {
   const user = await requireUser();
   const parsed = contactSchema.safeParse(formObject(formData));
-  if (!parsed.success) redirect(`/contacts/${id}?e=invalid`);
+  if (!parsed.success) redirect(`/namelist/${id}?e=invalid`);
   await updateContact(user.id, id, parsed.data);
   refresh(id);
-  redirect(`/contacts/${id}?ok=saved`);
+  redirect(`/namelist/${id}?ok=saved`);
 }
 
 export async function deleteContactAction(id: string) {
   const user = await requireUser();
   await deleteContact(user.id, id);
   refresh();
-  redirect("/contacts");
+  redirect("/namelist");
 }
 
 export async function addActivityAction(contactId: string, formData: FormData) {
   const user = await requireUser();
   const parsed = activitySchema.safeParse(formObject(formData));
-  if (!parsed.success) redirect(`/contacts/${contactId}?e=invalid`);
-  if (!canEditActivityDate(parsed.data.date)) redirect(`/contacts/${contactId}?e=too_old`);
+  if (!parsed.success) redirect(`/namelist/${contactId}?e=invalid`);
+  if (!canEditActivityDate(parsed.data.date)) redirect(`/namelist/${contactId}?e=too_old`);
   await createActivity(user.id, contactId, parsed.data);
   refresh(contactId);
-  redirect(`/contacts/${contactId}?ok=activity`);
+  redirect(`/namelist/${contactId}?ok=activity`);
 }
 
 export async function updateActivityAction(id: string, formData: FormData) {
   const user = await requireUser();
   const existing = await getActivity(user.id, id);
-  if (!existing) redirect("/contacts");
-  const back = `/contacts/${existing.contactId}`;
+  if (!existing) redirect("/namelist");
+  const back = `/namelist/${existing.contactId}`;
   const parsed = activitySchema.safeParse(formObject(formData));
   if (!parsed.success) redirect(`${back}?e=invalid`);
   if (!canEditActivityDate(existing.date) || !canEditActivityDate(parsed.data.date))
@@ -89,8 +89,8 @@ export async function updateActivityAction(id: string, formData: FormData) {
 export async function deleteActivityAction(id: string) {
   const user = await requireUser();
   const existing = await getActivity(user.id, id);
-  if (!existing) redirect("/contacts");
-  const back = `/contacts/${existing.contactId}`;
+  if (!existing) redirect("/namelist");
+  const back = `/namelist/${existing.contactId}`;
   if (!canEditActivityDate(existing.date)) redirect(`${back}?e=too_old`);
   await deleteActivity(user.id, id);
   refresh(existing.contactId);
