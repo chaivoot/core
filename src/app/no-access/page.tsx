@@ -8,7 +8,7 @@ export const metadata = { title: "ยังไม่ได้รับเชิ�
 export default async function NoAccessPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.granted) redirect("/");
+  if (user.granted) redirect("/smallwin");
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-5 px-6 py-10">

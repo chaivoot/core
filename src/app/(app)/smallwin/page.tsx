@@ -17,7 +17,7 @@ import {
 } from "@/lib/dates";
 import { requireUser } from "@/lib/session";
 
-export default async function HomePage({ searchParams }: PageProps<"/">) {
+export default async function HomePage({ searchParams }: PageProps<"/smallwin">) {
   const user = await requireUser();
   const { invite } = await searchParams;
   const now = today();

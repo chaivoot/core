@@ -11,7 +11,7 @@ export default async function AccessInvitePage({ params }: PageProps<"/invite/[t
   const { token } = await params;
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
-  if (user.granted) redirect("/");
+  if (user.granted) redirect("/smallwin");
 
   const invite = await getOpenAccessInvite(token);
 

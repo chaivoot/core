@@ -8,12 +8,12 @@ import { requireSignedIn, requireUser } from "@/lib/session";
 export async function createAccessInviteAction() {
   const user = await requireUser();
   const token = await createAccessInvite(user.id);
-  redirect(token ? `/?invite=${token}#invite` : "/#invite");
+  redirect(token ? `/smallwin?invite=${token}#invite` : "/smallwin#invite");
 }
 
 export async function redeemAccessInviteAction(token: string) {
   const user = await requireSignedIn();
   const result = await redeemAccessInvite(token, user.id);
   revalidatePath("/", "layout");
-  redirect(result === "ok" ? "/" : `/invite/${encodeURIComponent(token)}?e=invalid`);
+  redirect(result === "ok" ? "/smallwin" : `/invite/${encodeURIComponent(token)}?e=invalid`);
 }

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
-  { href: "/", label: "หน้าหลัก", match: (p: string) => p === "/" || p.startsWith("/review") },
-  { href: "/contacts", label: "รายชื่อ", match: (p: string) => p.startsWith("/contacts") },
+  { href: "/smallwin", label: "หน้าหลัก", match: (p: string) => p.startsWith("/smallwin") || p.startsWith("/review") },
+  { href: "/namelist", label: "รายชื่อ", match: (p: string) => p.startsWith("/namelist") },
   { href: "/team", label: "สายงาน", match: (p: string) => p.startsWith("/team") },
   { href: "/summary", label: "สรุปเดือน", match: (p: string) => p.startsWith("/summary") },
 ];

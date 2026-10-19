@@ -10,7 +10,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { error, next } = await searchParams;
   // กลับไปหน้าที่ตั้งใจจะเข้า (เช่น ลิงก์เชิญ) เฉพาะ path ภายในเว็บนี้
   const target =
-    typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/smallwin";
   if (await getCurrentUser()) redirect(target);
 
   return (

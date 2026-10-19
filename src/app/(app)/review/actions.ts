@@ -44,7 +44,7 @@ const stepSchemas = {
 
 export async function saveStepAction(week: string, step: number, formData: FormData) {
   const user = await requireUser();
-  if (!isWeekStart(week) || !(step in stepSchemas)) redirect("/");
+  if (!isWeekStart(week) || !(step in stepSchemas)) redirect("/smallwin");
   if (!canEditWeek(week)) redirect(`/review/${week}/summary`);
 
   const schema = stepSchemas[step as keyof typeof stepSchemas];

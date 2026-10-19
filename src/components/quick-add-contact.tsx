@@ -1,4 +1,4 @@
-import { addContactAction } from "@/app/(app)/contacts/actions";
+import { addContactAction } from "@/app/(app)/namelist/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { ToggleChip } from "@/components/toggle-chip";
 
