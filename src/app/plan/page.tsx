@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { isAdmin, listActiveProducts, productImageUrl } from "@/lib/data/products";
-import { getCurrentUser } from "@/lib/session";
+import { requireUser } from "@/lib/session";
 import { PlanStory, type PlanProduct } from "./plan-story";
 
 export const metadata = { title: "อธิบายแผนธุรกิจ · 3S1M" };
 
-// เปิดดูได้โดยไม่ต้องล็อกอิน (ใช้ตอนนั่งอธิบายแผน) - ไม่มีข้อมูลส่วนตัวของผู้ใช้
+// เฉพาะผู้ใช้ที่ล็อกอินและได้รับเชิญแล้ว (ใช้ตอนนั่งอธิบายแผนให้คนใหม่ดูจากเครื่องของเรา)
 export default async function PlanPage() {
-  const [rows, user] = await Promise.all([listActiveProducts(), getCurrentUser()]);
-  const admin = user ? await isAdmin(user.id) : false;
+  const user = await requireUser();
+  const [rows, admin] = await Promise.all([listActiveProducts(), isAdmin(user.id)]);
   const products: PlanProduct[] = rows.map((p) => ({
     id: p.id,
     name: p.name,
