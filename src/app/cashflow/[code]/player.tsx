@@ -30,6 +30,7 @@ import {
   type PublicState,
 } from "@/lib/cashflow/engine";
 import { CardView, Dice, PlayerTag, Rat, cardKey, useNow, useRoom } from "./game-ui";
+import { IntroSlide } from "./intro";
 
 type Send = ReturnType<typeof useRoom>["send"];
 
@@ -55,14 +56,21 @@ export function PlayerScreen({ code }: { code: string }) {
           <div className="card text-center text-stone-600">เกมในห้องนี้เริ่มไปแล้ว เข้าร่วมไม่ได้</div>
         )
       ) : state.phase === "lobby" ? (
-        <div className="card space-y-3 text-center">
-          <Rat color={me.color} className="mx-auto w-28" />
-          <p className="text-2xl font-bold" style={{ color: colorHex(me.color) }}>
-            {me.name}
-          </p>
-          <p className="text-stone-600">เข้าห้องแล้ว รอ host กดเริ่มเกม…</p>
-          <p className="text-sm text-stone-500">ตอนนี้มีผู้เล่น {state.players.length} คน</p>
-        </div>
+        <>
+          <div className="card space-y-3 text-center">
+            <Rat color={me.color} className="mx-auto w-28" />
+            <p className="text-2xl font-bold" style={{ color: colorHex(me.color) }}>
+              {me.name}
+            </p>
+            <p className="text-stone-600">เข้าห้องแล้ว รอ host กดเริ่มเกม…</p>
+            <p className="text-sm text-stone-500">ตอนนี้มีผู้เล่น {state.players.length} คน</p>
+          </div>
+          {state.intro != null && (
+            <div className="card">
+              <IntroSlide index={state.intro} />
+            </div>
+          )}
+        </>
       ) : (
         <>
           <Header me={me} />

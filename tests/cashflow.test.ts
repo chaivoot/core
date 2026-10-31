@@ -209,6 +209,15 @@ describe("โหมดซื้อดีลต่อ (host ตั้งค่า
     expect(() => run(s, { type: "respond", buy: true }, { playerId: b.id })).toThrow();
   });
 
+  it("คำอธิบายก่อนเริ่มเกม: host เปิด/เลื่อนหน้าได้ เริ่มเกมแล้วปิดเอง", () => {
+    let s = act(lobby(), HOST, { type: "intro", slide: 2 }, ctx());
+    expect(s.intro).toBe(2);
+    expect(() => act(s, { playerId: s.players[0].id }, { type: "intro", slide: 3 }, ctx())).toThrow("host");
+    s = act(s, HOST, { type: "start" }, ctx());
+    expect(s.intro).toBeNull();
+    expect(() => act(s, HOST, { type: "intro", slide: 0 }, ctx())).toThrow("ก่อนเริ่มเกม");
+  });
+
   it("ตั้งค่าได้เฉพาะ host และก่อนเริ่มเกม", () => {
     expect(() => act(lobby(), { playerId: "x" }, { type: "setOptions", resellDeals: true }, ctx())).toThrow("host");
     expect(() => act(started(), HOST, { type: "setOptions", resellDeals: true }, ctx())).toThrow("ก่อนเริ่มเกม");
