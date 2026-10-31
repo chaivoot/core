@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { act, GameError, publicState, tick, type Action, type Actor } from "@/lib/cashflow/engine";
+import { DECK_VERSION } from "@/lib/cashflow/data";
 import { getRoom, updateRoom, type Room } from "@/lib/data/cashflow";
 import { getCurrentUser } from "@/lib/session";
 
@@ -32,9 +33,12 @@ const actionSchema = z.discriminatedUnion("type", [
 
 const HOST_ACTIONS = new Set(["start", "skipTurn", "setOptions", "intro"]);
 
+/** ห้องที่เริ่มเล่นด้วยชุดการ์ดเก่า เล่นต่อไม่ได้ (ลำดับการ์ดในสถานะเก่าชี้ไปคนละใบ) */
+const isStale = (room: Room) => room.state.phase !== "lobby" && room.state.deckVersion !== DECK_VERSION;
+
 function view(room: Room, token: string | undefined) {
   const me = token ? (room.state.players.find((p) => p.token === token)?.id ?? null) : null;
-  return { version: room.version, me, state: publicState(room.state) };
+  return { version: room.version, me, deck: DECK_VERSION, stale: isStale(room), state: publicState(room.state) };
 }
 
 const json = (body: unknown, status = 200) =>
@@ -54,7 +58,7 @@ export async function GET(req: Request, ctx: RouteContext<"/cashflow/[code]/api"
   const token = (await cookies()).get(cookieName(room.code))?.value;
   const v = view(room, token);
   // ไม่มีอะไรเปลี่ยน ไม่ต้องส่งสถานะทั้งก้อน
-  if (since === room.version) return json({ version: room.version, me: v.me, same: true });
+  if (since === room.version) return json({ version: room.version, me: v.me, deck: DECK_VERSION, same: true });
   return json(v);
 }
 
@@ -66,6 +70,9 @@ export async function POST(req: Request, ctx: RouteContext<"/cashflow/[code]/api
 
   const room0 = await getRoom(code);
   if (!room0) return json({ error: "ไม่พบห้องนี้" }, 404);
+  if (isStale(room0)) {
+    return json({ error: "เกมมีการอัปเดตการ์ดระหว่างเล่น ห้องนี้เล่นต่อไม่ได้ กรุณาให้ host สร้างห้องใหม่" }, 409);
+  }
 
   const store = await cookies();
   const name = cookieName(room0.code);

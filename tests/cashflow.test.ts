@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BIG_DEALS, BOARD, DOODADS, DREAMS, FAST_BOARD, FAST_GOAL, FAST_MULTIPLIER, LOAN_PAYMENT, LOAN_UNIT, MARKETS, PROFESSIONS, SMALL_DEALS } from "@/lib/cashflow/data";
+import { BIG_DEALS, BOARD, DECK_VERSION, DOODADS, DREAMS, FAST_BOARD, FAST_GOAL, FAST_MULTIPLIER, LOAN_PAYMENT, LOAN_UNIT, MARKETS, PROFESSIONS, SMALL_DEALS } from "@/lib/cashflow/data";
 import {
   act,
   GameError,
@@ -81,6 +81,13 @@ describe("เข้าห้องและเริ่มเกม", () => {
     expect(() => act(one, {}, { type: "join", name: "บี", color: "red", token: "x" }, ctx())).toThrow("สีนี้มีคนเลือกแล้ว");
     expect(() => act(one, HOST, { type: "start" }, ctx())).toThrow(GameError);
     expect(() => act(lobby(), { playerId: "p1" }, { type: "start" }, ctx())).toThrow("host");
+  });
+
+  it("ห้องจำเวอร์ชันชุดการ์ดตอนเริ่มเกม", () => {
+    expect(newGame().deckVersion).toBe(DECK_VERSION);
+    const s = started();
+    expect(s.deckVersion).toBe(DECK_VERSION);
+    expect(DECK_VERSION).toMatch(/^[0-9a-z]+$/);
   });
 
   it("เริ่มเกม: ได้อาชีพ เงินออมตั้งต้น และไม่ส่ง token ออกไป", () => {

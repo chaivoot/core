@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BIG_DEALS,
+  DECK_VERSION,
   DOODADS,
   DREAMS,
   FAST_BUSINESSES,
@@ -18,8 +19,25 @@ import {
 } from "@/lib/cashflow/data";
 import type { Action, Card, PublicPlayer, PublicState } from "@/lib/cashflow/engine";
 
-export type RoomData = { version: number; me: string | null; state: PublicState };
+export type RoomData = { version: number; me: string | null; deck?: string; stale?: boolean; state: PublicState };
 type ClientAction = Exclude<Action, { type: "join" }> | { type: "join"; name: string; color: string };
+
+/**
+ * หน้านี้เปิดค้างไว้ตั้งแต่ก่อนอัปเดตการ์ด (โค้ดในเครื่องเป็นชุดเก่า) → รีเฟรชให้เอง ครั้งเดียวต่อเวอร์ชัน
+ * ไม่งั้นการ์ดบนจอกับบนเซิร์ฟเวอร์จะเป็นคนละใบ
+ */
+function reloadIfOutdated(serverDeck: string | undefined) {
+  if (!serverDeck || serverDeck === DECK_VERSION) return false;
+  try {
+    const key = `cf-reload-${serverDeck}`;
+    if (sessionStorage.getItem(key)) return false;
+    sessionStorage.setItem(key, "1");
+  } catch {
+    // ใช้ sessionStorage ไม่ได้ ก็รีเฟรชเลย
+  }
+  window.location.reload();
+  return true;
+}
 
 /** ดึงสถานะห้องทุก 1 วินาที (เกมผลัดกันเล่น ช้ากว่าเรียลไทม์นิดหน่อยไม่เป็นไร) */
 export function useRoom(code: string) {
@@ -30,6 +48,7 @@ export function useRoom(code: string) {
   const url = `/cashflow/${code}/api`;
 
   const accept = useCallback((j: RoomData) => {
+    if (reloadIfOutdated(j.deck)) return;
     if (j.version >= version.current) {
       version.current = j.version;
       setData(j);
@@ -45,7 +64,8 @@ export function useRoom(code: string) {
         const j = await r.json();
         if (!alive) return;
         if (!r.ok) setError(j.error ?? "เชื่อมต่อไม่ได้");
-        else if (!j.same) accept(j);
+        else if (j.same) reloadIfOutdated(j.deck);
+        else accept(j);
       } catch {
         // เน็ตหลุดชั่วคราว รอบหน้าค่อยลองใหม่
       }
