@@ -314,6 +314,9 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
         </p>
       )}
 
+      {myTurn && state.step === "end" && (me.payday ?? 0) > 0 && !me.fast && monthlyCashflow(me) >= 0 && (
+        <p className="text-center text-sm font-medium text-rose-600">ยังไม่ได้กดรับเงินเดือน ถ้าจบตาตอนนี้จะอดเงินเดือน</p>
+      )}
       {myTurn && state.step === "end" && (
         <button className="btn-primary w-full py-3 text-lg" disabled={busy} onClick={() => send({ type: "endTurn" })}>
           จบตา
