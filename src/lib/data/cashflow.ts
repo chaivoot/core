@@ -1,5 +1,5 @@
 import "server-only";
-import { randomInt } from "node:crypto";
+import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { and, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { cashflowRooms } from "@/lib/db/schema";
@@ -9,7 +9,11 @@ import { newGame, type GameState } from "@/lib/cashflow/engine";
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_TTL_HOURS = 24;
 
-export type Room = { code: string; hostId: string; state: GameState; version: number };
+/** cookie ที่บอกว่าเครื่องนี้เป็น host ของห้อง */
+export const hostCookie = (code: string) => `cf_host_${code}`;
+export const HOST_COOKIE_MAX_AGE = ROOM_TTL_HOURS * 60 * 60;
+
+export type Room = { code: string; hostTokenHash: string; state: GameState; version: number };
 
 function newCode() {
   return Array.from({ length: 5 }, () => CODE_CHARS[randomInt(CODE_CHARS.length)]).join("");
@@ -20,7 +24,19 @@ export function normalizeCode(code: string) {
   return /^[A-Z0-9]{5}$/.test(c) ? c : null;
 }
 
-export async function createRoom(hostId: string): Promise<string> {
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+
+/** เครื่องนี้เป็น host ของห้องหรือไม่ (เทียบ token ใน cookie กับ hash ที่เก็บไว้) */
+export function isHost(room: Room, token: string | undefined) {
+  if (!token || !room.hostTokenHash) return false;
+  const a = Buffer.from(sha256(token), "hex");
+  const b = Buffer.from(room.hostTokenHash, "hex");
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** สร้างห้องใหม่ คืนรหัสห้องและ token ของ host (เก็บใน cookie) */
+export async function createRoom(): Promise<{ code: string; hostToken: string }> {
+  const hostToken = randomBytes(24).toString("base64url");
   // ลบห้องที่ไม่มีใครเล่นเกิน 24 ชั่วโมง
   await db
     .delete(cashflowRooms)
@@ -30,10 +46,10 @@ export async function createRoom(hostId: string): Promise<string> {
     const code = newCode();
     const rows = await db
       .insert(cashflowRooms)
-      .values({ code, hostId, state: newGame() })
+      .values({ code, hostTokenHash: sha256(hostToken), state: newGame() })
       .onConflictDoNothing()
       .returning({ code: cashflowRooms.code });
-    if (rows.length > 0) return code;
+    if (rows.length > 0) return { code, hostToken };
   }
   throw new Error("สร้างห้องไม่สำเร็จ ลองใหม่อีกครั้ง");
 }
@@ -42,7 +58,7 @@ export async function getRoom(code: string): Promise<Room | null> {
   const c = normalizeCode(code);
   if (!c) return null;
   const [row] = await db.select().from(cashflowRooms).where(eq(cashflowRooms.code, c)).limit(1);
-  return row ? { code: row.code, hostId: row.hostId, state: row.state as GameState, version: row.version } : null;
+  return row ? { code: row.code, hostTokenHash: row.hostTokenHash, state: row.state as GameState, version: row.version } : null;
 }
 
 /**

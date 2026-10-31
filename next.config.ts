@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  headers() {
+    // เกมกระแสเงินสดเปิดสาธารณะ แต่ไม่ให้ search engine เก็บ (รวม API)
+    return Promise.resolve([
+      { source: "/cashflow", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/cashflow/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+    ]);
+  },
   redirects() {
     return [
       // หน้าแรกชั่วคราว: ไปที่ระบบประเมินตัวเอง (อนาคตอาจเป็นหน้าขาย จึงไม่ใช้ permanent)

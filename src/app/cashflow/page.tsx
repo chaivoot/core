@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { requireUser } from "@/lib/session";
 import { Rat } from "./[code]/game-ui";
 import { createRoomAction } from "./actions";
 
 export const metadata: Metadata = { title: "กระแสเงินสด" };
 
-export default async function CashflowPage() {
-  await requireUser();
+export default function CashflowPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-6 p-6">
       <div className="flex justify-center gap-1">

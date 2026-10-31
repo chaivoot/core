@@ -1,0 +1,1 @@
+ALTER TABLE "cashflow_rooms" ADD COLUMN "host_token_hash" text NOT NULL;
