@@ -27,13 +27,13 @@ import {
 import { CardView, DECK_TONE, Dice, FreedomBar, PlayerTag, Rat, cardKey, useNow, useRoom } from "../game-ui";
 
 const SQUARE_COLOR: Record<Square, { fill: string; text: string; icon: string }> = {
-  opportunity: { fill: "#bbf7d0", text: "#14532d", icon: "💡" },
-  payday: { fill: "#fcd34d", text: "#78350f", icon: "💰" },
-  market: { fill: "#bae6fd", text: "#0c4a6e", icon: "📈" },
-  doodad: { fill: "#fecdd3", text: "#881337", icon: "💸" },
-  charity: { fill: "#ddd6fe", text: "#4c1d95", icon: "🙏" },
-  baby: { fill: "#fbcfe8", text: "#831843", icon: "👶" },
-  downsize: { fill: "#d6d3d1", text: "#292524", icon: "📉" },
+  opportunity: { fill: "#16a34a", text: "#ffffff", icon: "💡" },
+  payday: { fill: "#facc15", text: "#422006", icon: "💰" },
+  market: { fill: "#0284c7", text: "#ffffff", icon: "📈" },
+  doodad: { fill: "#dc2626", text: "#ffffff", icon: "💸" },
+  charity: { fill: "#7c3aed", text: "#ffffff", icon: "🙏" },
+  baby: { fill: "#db2777", text: "#ffffff", icon: "👶" },
+  downsize: { fill: "#57534e", text: "#ffffff", icon: "📉" },
 };
 
 // พิกัดใน viewBox 1000×1000
@@ -70,10 +70,10 @@ function fastCell(i: number) {
 }
 
 const FAST_STYLE = {
-  payday: { fill: "#b45309", icon: "💵" },
-  biz: { fill: "#0f766e", icon: "🏭" },
-  dream: { fill: "#6d28d9", icon: "⭐" },
-  event: { fill: "#be123c", icon: "⚠️" },
+  payday: { fill: "#f59e0b", icon: "💵" },
+  biz: { fill: "#14b8a6", icon: "🏭" },
+  dream: { fill: "#a78bfa", icon: "⭐" },
+  event: { fill: "#fb7185", icon: "⚠️" },
 } as const;
 
 function fastText(sq: FastSquare) {
@@ -119,7 +119,7 @@ function Board({ players }: { players: PublicPlayer[] }) {
   return (
     <svg viewBox="0 0 1000 1000" className="absolute inset-0 size-full" aria-hidden="true">
       {/* ทางด่วน: กรอบสี่เหลี่ยมรอบนอก */}
-      <rect x={0} y={0} width={1000} height={1000} rx={18} fill="#1e1b4b" />
+      <rect x={0} y={0} width={1000} height={1000} rx={18} fill="#c7d2fe" />
       {FAST_BOARD.map((sq, i) => {
         const { col, row } = fastCell(i);
         const x = col * CELL;
@@ -136,7 +136,7 @@ function Board({ players }: { players: PublicPlayer[] }) {
             <text
               x={x + CELL / 2}
               y={y + (corner ? 80 : 62)}
-              fill="#fff"
+              fill="#1c1917"
               fontSize={corner ? 17 : 15}
               fontWeight={700}
               textAnchor="middle"
@@ -149,7 +149,7 @@ function Board({ players }: { players: PublicPlayer[] }) {
               <text
                 x={x + CELL / 2}
                 y={y + 88}
-                fill="#fef3c7"
+                fill="#292524"
                 fontSize={12.5}
                 textAnchor="middle"
                 dominantBaseline="middle"
@@ -355,7 +355,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
           return (
             <div
               key={p.id}
-              className={`absolute w-[4.4%] -translate-x-1/2 -translate-y-1/2 drop-shadow-md transition-all duration-200 ${p.fast ? "rounded-full bg-white/90 p-[0.3%]" : ""}`}
+              className={`absolute w-[4.4%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 p-[0.3%] drop-shadow-md transition-all duration-200`}
               style={{ left: `${x}%`, top: `${y}%` }}
               title={p.name}
             >
