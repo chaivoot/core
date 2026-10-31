@@ -211,14 +211,14 @@ export function CardView({ card, big = false }: { card: Card; big?: boolean }) {
   const c = describeCard(card);
   return (
     <div className="animate-card-flip overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-stone-200">
-      <div className={`flex items-center gap-2 text-white ${c.tone.band} ${big ? "px-[1.6cqw] py-[0.7cqw] text-[1.5cqw]" : "px-4 py-1.5 text-sm"}`}>
-        <span className={big ? "text-[2cqw]" : "text-lg"}>{c.tone.icon}</span>
+      <div className={`flex items-center gap-2 text-white ${c.tone.band} ${big ? "px-[1.6cqw] py-[0.7cqw] text-[1.75cqw]" : "px-4 py-1.5 text-sm"}`}>
+        <span className={big ? "text-[2.3cqw]" : "text-lg"}>{c.tone.icon}</span>
         <span className="font-semibold tracking-wide">{c.kind}</span>
       </div>
       <div className={big ? "px-[1.6cqw] py-[1.2cqw]" : "px-4 py-3"}>
-        <p className={`font-bold leading-snug text-stone-900 ${big ? "text-[2.5cqw]" : "text-lg"}`}>{c.title}</p>
+        <p className={`font-bold leading-snug text-stone-900 ${big ? "text-[2.9cqw]" : "text-lg"}`}>{c.title}</p>
         {c.lines.map((l) => (
-          <p key={l} className={`text-stone-700 ${big ? "mt-[0.3cqw] text-[1.65cqw] leading-snug" : "mt-0.5 text-sm"}`}>
+          <p key={l} className={`text-stone-700 ${big ? "mt-[0.3cqw] text-[1.95cqw] leading-snug" : "mt-0.5 text-sm"}`}>
             {l}
           </p>
         ))}

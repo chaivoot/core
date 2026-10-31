@@ -17,6 +17,7 @@ import {
   type Square,
 } from "@/lib/cashflow/data";
 import {
+  logText,
   monthlyCashflow,
   passiveIncome,
   profession,
@@ -406,7 +407,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
   const secondsLeft = state.deadline ? Math.max(0, Math.ceil((state.deadline - now) / 1000)) : null;
 
   return (
-    <main className="grid min-h-dvh gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <main className="grid min-h-dvh gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_26rem]">
       {/* กระดาน: ทางด่วนสี่เหลี่ยมล้อมสนามแข่งหนู */}
       <div className="@container relative mx-auto aspect-square w-full max-w-[min(100%,calc(100dvh-2rem))]">
         <Board players={state.players} />
@@ -455,7 +456,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
             </>
           ) : (
             <>
-              <p className="flex items-center gap-[0.8cqw] text-[1.9cqw] text-stone-500">
+              <p className="flex items-center gap-[0.8cqw] text-[2.2cqw] text-stone-500">
                 ตาของ
                 <Rat color={turnPlayer.color} className="w-[4.5cqw]" />
                 <b style={{ color: colorHex(turnPlayer.color) }}>{turnPlayer.name}</b>
@@ -473,10 +474,10 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
                 </p>
               )}
               {state.step === "respond" && state.resale && (
-                <p className="text-[1.6cqw] font-semibold text-amber-700">เปิดให้คนอื่นซื้อต่อ ใครกดก่อนได้ก่อน!</p>
+                <p className="text-[1.8cqw] font-semibold text-amber-700">เปิดให้คนอื่นซื้อต่อ ใครกดก่อนได้ก่อน!</p>
               )}
               {state.step === "respond" && (
-                <div className="flex flex-wrap justify-center gap-[0.6cqw] text-[1.4cqw]">
+                <div className="flex flex-wrap justify-center gap-[0.6cqw] text-[1.6cqw]">
                   {waiting.map(([id, done]) => {
                     const p = state.players.find((x) => x.id === id);
                     if (!p) return null;
@@ -577,7 +578,7 @@ function Log({ state }: { state: PublicState }) {
       <ul className="space-y-1 text-stone-700">
         {[...state.log].reverse().map((l, i) => (
           <li key={state.log.length - i} className={i === 0 ? "font-medium text-stone-900" : ""}>
-            {l}
+            {logText(l)}
           </li>
         ))}
       </ul>
