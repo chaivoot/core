@@ -57,7 +57,7 @@ describe("กระดานและข้อมูล", () => {
     const count = (sq: string) => BOARD.filter((b) => b === sq).length;
     expect(BOARD).toHaveLength(24);
     expect([count("opportunity"), count("payday"), count("market"), count("doodad")]).toEqual([10, 3, 4, 4]);
-    expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length]).toEqual([26, 16, 17]);
+    expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length]).toEqual([36, 18, 27]);
   });
 
   it("กระแสเงินสดตั้งต้นตรงกับตารางอาชีพ", () => {
@@ -232,6 +232,57 @@ describe("โหมดซื้อดีลต่อ (host ตั้งค่า
   it("ตั้งค่าได้เฉพาะ host และก่อนเริ่มเกม", () => {
     expect(() => act(lobby(), { playerId: "x" }, { type: "setOptions", resellDeals: true }, ctx())).toThrow("host");
     expect(() => act(started(), HOST, { type: "setOptions", resellDeals: true }, ctx())).toThrow("ก่อนเริ่มเกม");
+  });
+});
+
+describe("การ์ดแบบใหม่", () => {
+  function opp() {
+    let s = started();
+    s.players[0].pos = 1;
+    return run(s, { type: "roll" }, me(s), [die(1)]);
+  }
+
+  it("เหรียญทองคำ: ซื้อทีละเหรียญ ไม่เกินจำนวนที่มีขาย แล้วขายในการ์ดตลาดได้", () => {
+    let s = opp();
+    s.players[0].cash = 100_000;
+    s.decks.small = [SMALL_DEALS.findIndex((d) => d.type === "stock" && d.stock === "gold" && d.max === 10)];
+    s = run(s, { type: "deal", size: "small" });
+    expect(() => run(s, { type: "respond", buy: 11 })).toThrow("มีขายแค่ 10");
+    s = run(s, { type: "respond", buy: 7 });
+    expect(s.players[0].stocks.gold).toEqual({ qty: 7, cost: 28_000 });
+
+    s = run(s, { type: "endTurn" });
+    s.players[1].pos = 6;
+    s.decks.market = [MARKETS.findIndex((m) => m.type === "sellStock" && m.stock === "gold" && m.price === 8_000)];
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s = run(s, { type: "respond", sell: 7 }, { playerId: s.players[0].id });
+    expect(s.players[0].cash).toBe(100_000 - 28_000 + 56_000);
+  });
+
+  it("ญาติขอยืมเงิน: จ่ายทันที (เงินไม่พอกู้ให้)", () => {
+    let s = opp();
+    s.players[0].cash = 5_000;
+    s.decks.small = [SMALL_DEALS.findIndex((d) => d.type === "lend" && d.amount === 10_000)];
+    s = run(s, { type: "deal", size: "small" });
+    expect(s.step).toBe("end");
+    expect(s.players[0].cash).toBe(5_000);
+    expect(s.players[0].loans).toBe(1);
+  });
+
+  it("บ้าน 3/2 มีการ์ดตลาดขอซื้อ", () => {
+    let s = opp();
+    s.players[0].cash = 100_000;
+    s.decks.small = [SMALL_DEALS.findIndex((d) => d.type === "asset" && d.tag === "house32")];
+    s = run(s, { type: "deal", size: "small" });
+    s = run(s, { type: "respond", buy: true });
+    const house = s.players[0].assets[0];
+    expect(house.tag).toBe("house32");
+    s = run(s, { type: "endTurn" });
+    s.players[1].pos = 6;
+    s.decks.market = [MARKETS.findIndex((m) => m.type === "sellAsset" && m.tag === "house32" && m.price === 2_000_000)];
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s = run(s, { type: "respond", sellAssets: [house.uid] }, { playerId: s.players[0].id });
+    expect(s.players[0].cash).toBe(100_000 - house.down + 2_000_000 - house.mortgage);
   });
 });
 

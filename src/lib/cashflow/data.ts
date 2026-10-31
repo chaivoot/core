@@ -67,15 +67,18 @@ export const BOARD: Square[] = [
   "market", "opportunity", "payday", "doodad", "opportunity", "market",
 ];
 
-export type StockKind = "pharma" | "ent" | "elec" | "fund";
-export const STOCKS: StockKind[] = ["pharma", "ent", "elec", "fund"];
+export type StockKind = "pharma" | "ent" | "elec" | "fund" | "gold";
+export const STOCKS: StockKind[] = ["pharma", "ent", "elec", "fund", "gold"];
 export const STOCK_LABEL: Record<StockKind, string> = {
   pharma: "หุ้นบริษัทยา",
   ent: "หุ้นบริษัทเอนเตอร์เทนเมนต์",
   elec: "หุ้นบริษัทอิเล็กทรอนิกส์",
   fund: "กองทุนรวม",
+  gold: "เหรียญทองคำสะสม",
 };
-export const STOCK_LOT = 100;
+/** หุ้น/กองทุนซื้อทีละ 100 เหรียญทองซื้อทีละเหรียญ */
+export const lotOf = (k: StockKind) => (k === "gold" ? 1 : 100);
+export const unitOf = (k: StockKind) => (k === "gold" ? "เหรียญ" : k === "fund" ? "หน่วย" : "หุ้น");
 
 /** ทรัพย์สินที่ซื้อได้จากการ์ดดีล */
 export type AssetDeal = {
@@ -93,11 +96,14 @@ export type AssetDeal = {
 };
 
 export type DealCard =
-  | { type: "stock"; stock: StockKind; price: number }
+  | { type: "stock"; stock: StockKind; price: number; /** มีขายจำกัด (เช่น เหรียญทอง) */ max?: number; text?: string }
   | { type: "split"; stock: StockKind; factor: number; text: string }
+  /** ต้องจ่ายทันที เช่น ญาติขอยืมเงิน (ไม่ได้คืน) */
+  | { type: "lend"; text: string; amount: number }
   | ({ type: "asset" } & AssetDeal);
 
 const stock = (s: StockKind, price: number): DealCard => ({ type: "stock", stock: s, price });
+const gold = (price: number, max: number, text: string): DealCard => ({ type: "stock", stock: "gold", price, max, text });
 const asset = (a: AssetDeal): DealCard => ({ type: "asset", ...a });
 
 export const SMALL_DEALS: DealCard[] = [
@@ -117,6 +123,16 @@ export const SMALL_DEALS: DealCard[] = [
   { type: "split", stock: "ent", factor: 0.5, text: "หุ้นบริษัทเอนเตอร์เทนเมนต์ลดพาร์ ใครถืออยู่จำนวนหุ้น ÷2" },
   asset({ name: "ห้องเช่าหอพัก 4 ห้อง", price: 1_200_000, down: 50_000, mortgage: 1_150_000, cashflow: 3_000, tag: "dorm", rental: true }),
   stock("fund", 10), stock("fund", 20),
+  gold(4_000, 10, "คนรู้จักขายเหรียญทองคำสะสม 10 เหรียญ เหรียญละ ฿4,000"),
+  gold(6_000, 5, "งานประมูลของสะสม มีเหรียญทองคำ 5 เหรียญ เหรียญละ ฿6,000"),
+  gold(3_000, 20, "ทายาทขายเหรียญทองคำของคุณปู่ 20 เหรียญ เหรียญละ ฿3,000"),
+  asset({ name: "คอนโด 2 ห้องนอน 1 ห้องน้ำ ใกล้มหาวิทยาลัย", price: 1_000_000, down: 50_000, mortgage: 950_000, cashflow: 1_500, tag: "condo21", rental: true }),
+  asset({ name: "คอนโด 2/1 ขายด่วน เจ้าของย้ายงาน", price: 850_000, down: 40_000, mortgage: 810_000, cashflow: 2_200, tag: "condo21", rental: true }),
+  asset({ name: "บ้านเดี่ยว 3 ห้องนอน 2 ห้องน้ำ ชานเมือง", price: 1_500_000, down: 50_000, mortgage: 1_450_000, cashflow: 1_000, tag: "house32", rental: true }),
+  asset({ name: "บ้าน 3/2 ขายทอดตลาด สภาพต้องซ่อมนิดหน่อย", price: 1_200_000, down: 40_000, mortgage: 1_160_000, cashflow: 2_500, tag: "house32", rental: true }),
+  asset({ name: "บ้าน 3/2 ในหมู่บ้านใหม่ (ค่าเช่าน้อยกว่าค่าผ่อน)", price: 1_800_000, down: 50_000, mortgage: 1_750_000, cashflow: -800, tag: "house32", rental: true }),
+  { type: "lend", text: "ญาติขอยืมเงิน ฿10,000 ไม่รู้จะได้คืนเมื่อไหร่", amount: 10_000 },
+  { type: "lend", text: "เพื่อนสนิทขอยืมเงินไปเปิดร้าน ฿20,000", amount: 20_000 },
 ];
 
 export const BIG_DEALS: DealCard[] = [
@@ -136,6 +152,8 @@ export const BIG_DEALS: DealCard[] = [
   asset({ name: "ที่ดินติดถนนใหญ่ 5 ไร่", price: 2_500_000, down: 250_000, mortgage: 2_250_000, cashflow: -5_000, tag: "land5" }),
   asset({ name: "ปั๊มน้ำมันเล็ก", price: 6_000_000, down: 1_000_000, mortgage: 5_000_000, cashflow: 20_000, tag: "gas" }),
   asset({ name: "ร้านอาหาร (ต้องจ้างคนดูแล)", price: 3_000_000, down: 600_000, mortgage: 2_400_000, cashflow: 9_000, tag: "restaurant" }),
+  asset({ name: "บ้านแฝด 2 หลัง ปล่อยเช่า", price: 1_400_000, units: 2, down: 280_000, mortgage: 2_520_000, cashflow: 7_000, tag: "duplex", rental: true }),
+  asset({ name: "ตึก 4 ห้องเช่า", price: 600_000, units: 4, down: 240_000, mortgage: 2_160_000, cashflow: 9_000, tag: "apartment", rental: true }),
 ];
 
 export const DOODADS: { text: string; amount: number }[] = [
@@ -164,23 +182,33 @@ export type MarketCard =
   | { type: "expense"; text: string; tags: string[]; amount: number };
 
 export const MARKETS: MarketCard[] = [
-  { type: "sellAsset", text: "นักลงทุนต้องการซื้อคอนโด ให้ราคา ฿1,300,000", tag: "condo", price: 1_300_000 },
-  { type: "sellAsset", text: "มีคนขอซื้อคอนโด ราคา ฿1,000,000", tag: "condo", price: 1_000_000 },
-  { type: "sellAsset", text: "ห้างใหม่มาเปิดใกล้ที่ดิน ให้ราคาที่ดินเปล่า 1 ไร่ ฿300,000", tag: "land1", price: 300_000 },
-  { type: "sellAsset", text: "ผู้พัฒนาโครงการขอซื้อที่ดิน 5 ไร่ ราคา ฿6,000,000", tag: "land5", price: 6_000_000 },
-  { type: "sellAsset", text: "มีคนขอซื้อห้องแถว ราคา ฿1,100,000", tag: "shophouse", price: 1_100_000 },
-  { type: "sellAsset", text: "นักลงทุนต่างชาติซื้ออพาร์ตเมนต์ ราคาห้องละ ฿600,000", tag: "apartment", price: 600_000, perUnit: true },
-  { type: "sellAsset", text: "มีคนขอซื้อบ้านเช่า ราคาหลังละ ฿2,000,000", tag: "house", price: 2_000_000, perUnit: true },
-  { type: "sellAsset", text: "กองทุนขอซื้อโกดัง ราคา ฿10,000,000", tag: "warehouse", price: 10_000_000 },
-  { type: "sellAsset", text: "คู่แข่งขอซื้อมินิมาร์ท ราคา ฿3,000,000", tag: "minimart", price: 3_000_000 },
-  { type: "rentUp", text: "เศรษฐกิจดี ค่าเช่าขึ้น ทรัพย์สินให้เช่าทุกชิ้นได้เพิ่ม ฿500/เดือน", amount: 500 },
-  { type: "expense", text: "ผู้เช่าหนี ค่าซ่อม ฿20,000 (เจ้าของคอนโด/ห้องแถวจ่าย)", tags: ["condo", "shophouse"], amount: 20_000 },
-  { type: "expense", text: "กฎหมายใหม่ ร้านซ่อมมือถือต้องอัปเกรด จ่าย ฿50,000", tags: ["phoneshop"], amount: 50_000 },
-  { type: "sellStock", text: "หุ้นบริษัทอิเล็กทรอนิกส์พุ่ง ขายได้ที่ ฿70", stock: "elec", price: 70 },
-  { type: "sellStock", text: "หุ้นบริษัทยาพุ่ง ขายได้ที่ ฿45", stock: "pharma", price: 45 },
-  { type: "sellStock", text: "ข่าวร้ายบริษัทเอนเตอร์เทนเมนต์ ราคาเหลือ ฿2", stock: "ent", price: 2 },
-  { type: "sellAsset", text: "รีสอร์ตได้รับรางวัล มีคนขอซื้อ ฿12,000,000", tag: "resort", price: 12_000_000 },
-  { type: "sellStock", text: "ตลาดขาขึ้น กองทุนรวมขายได้ที่ ฿30 ต่อหน่วย", stock: "fund", price: 30 },
+  { type: "sellAsset", text: "คู่แต่งงานใหม่อยากได้คอนโดใกล้รถไฟฟ้า ให้ราคา ฿1,300,000", tag: "condo", price: 1_300_000 },
+  { type: "sellAsset", text: "นักลงทุนกวาดซื้อคอนโดไว้ปล่อยเช่า ให้ราคา ฿1,000,000", tag: "condo", price: 1_000_000 },
+  { type: "sellAsset", text: "ห้างใหม่จะมาเปิดใกล้ ๆ มีคนขอซื้อที่ดินเปล่า 1 ไร่ ฿300,000", tag: "land1", price: 300_000 },
+  { type: "sellAsset", text: "บริษัทอสังหาฯ จะทำหมู่บ้าน ขอซื้อที่ดิน 5 ไร่ ฿6,000,000", tag: "land5", price: 6_000_000 },
+  { type: "sellAsset", text: "ร้านสะดวกซื้ออยากได้ทำเลห้องแถว ให้ราคา ฿1,100,000", tag: "shophouse", price: 1_100_000 },
+  { type: "sellAsset", text: "นักลงทุนขอซื้ออพาร์ตเมนต์ทั้งตึก ให้ราคาห้องละ ฿600,000", tag: "apartment", price: 600_000, perUnit: true },
+  { type: "sellAsset", text: "บริษัทย้ายพนักงานมาประจำ ขอซื้อบ้านเช่าหลังละ ฿2,000,000", tag: "house", price: 2_000_000, perUnit: true },
+  { type: "sellAsset", text: "บริษัทขนส่งขยายสาขา ขอซื้อโกดัง ฿10,000,000", tag: "warehouse", price: 10_000_000 },
+  { type: "sellAsset", text: "เครือร้านสะดวกซื้อขอซื้อมินิมาร์ท ฿3,000,000", tag: "minimart", price: 3_000_000 },
+  { type: "rentUp", text: "นิคมอุตสาหกรรมเปิดใหม่ คนย้ายเข้าเยอะ ค่าเช่าขึ้น ทรัพย์สินให้เช่าทุกชิ้น +฿500/เดือน", amount: 500 },
+  { type: "expense", text: "ผู้เช่าหนีค่าเช่า ห้องพังต้องซ่อม เจ้าของคอนโด/ห้องแถวจ่าย ฿20,000", tags: ["condo", "condo21", "shophouse"], amount: 20_000 },
+  { type: "expense", text: "กฎหมายใหม่ ร้านซ่อมมือถือต้องอัปเกรดเครื่องมือ จ่าย ฿50,000", tags: ["phoneshop"], amount: 50_000 },
+  { type: "sellStock", text: "บริษัทอิเล็กทรอนิกส์ได้สัญญาส่งชิปให้ค่ายรถยนต์ หุ้นพุ่งไป ฿70", stock: "elec", price: 70 },
+  { type: "sellStock", text: "บริษัทยาผ่านการทดลองยาตัวใหม่ หุ้นขึ้นไป ฿45", stock: "pharma", price: 45 },
+  { type: "sellStock", text: "บริษัทเอนเตอร์เทนเมนต์โดนฟ้องหนัก หุ้นร่วงเหลือ ฿2", stock: "ent", price: 2 },
+  { type: "sellAsset", text: "รีสอร์ตได้รางวัลท่องเที่ยว เครือโรงแรมขอซื้อ ฿12,000,000", tag: "resort", price: 12_000_000 },
+  { type: "sellStock", text: "ตลาดหุ้นขาขึ้น กองทุนรวมขายได้หน่วยละ ฿30", stock: "fund", price: 30 },
+  { type: "sellAsset", text: "ครอบครัวลูกสองย้ายเข้าเมือง ต้องการบ้าน 3/2 ให้ราคา ฿2,000,000", tag: "house32", price: 2_000_000 },
+  { type: "sellAsset", text: "มีคนขอซื้อบ้าน 3/2 ราคา ฿1,700,000", tag: "house32", price: 1_700_000 },
+  { type: "sellAsset", text: "หมู่บ้านใหม่ขายหมด คนแย่งซื้อบ้าน 3/2 มือสอง ให้ราคา ฿2,300,000", tag: "house32", price: 2_300_000 },
+  { type: "sellAsset", text: "อาจารย์มหาวิทยาลัยต้องการคอนโด 2/1 ให้ราคา ฿1,300,000", tag: "condo21", price: 1_300_000 },
+  { type: "sellAsset", text: "มีคนขอซื้อคอนโด 2/1 ราคา ฿1,100,000", tag: "condo21", price: 1_100_000 },
+  { type: "sellStock", text: "ราคาทองขึ้น นักสะสมรับซื้อเหรียญทองคำ เหรียญละ ฿8,000", stock: "gold", price: 8_000 },
+  { type: "sellStock", text: "ร้านทองรับซื้อเหรียญทองคำ เหรียญละ ฿5,000", stock: "gold", price: 5_000 },
+  { type: "sellAsset", text: "ครอบครัวใหญ่อยากอยู่ใกล้กัน ขอซื้อบ้านแฝดหลังละ ฿1,900,000", tag: "duplex", price: 1_900_000, perUnit: true },
+  { type: "expense", text: "ฝนตกหนัก น้ำท่วมหมู่บ้าน เจ้าของบ้านให้เช่าจ่ายค่าซ่อม ฿15,000", tags: ["house32", "house", "duplex", "townhouse"], amount: 15_000 },
+  { type: "sellStock", text: "บริษัทอิเล็กทรอนิกส์ขาดทุนติดกันสามไตรมาส หุ้นร่วงเหลือ ฿5", stock: "elec", price: 5 },
 ];
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
