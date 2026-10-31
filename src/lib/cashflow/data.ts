@@ -59,13 +59,17 @@ export const SQUARE_LABEL: Record<Square, string> = {
   downsize: "ตกงาน",
 };
 
-/** กระดานสนามแข่งหนู 24 ช่อง (โอกาส 10 เงินเดือน 3 ตลาด 4 จ่าย 4 ทำบุญ 1 มีลูก 1 ตกงาน 1) */
-export const BOARD: Square[] = [
-  "opportunity", "doodad", "opportunity", "charity", "opportunity", "payday",
-  "opportunity", "market", "opportunity", "doodad", "baby", "market",
-  "opportunity", "payday", "opportunity", "doodad", "downsize", "opportunity",
-  "market", "opportunity", "payday", "doodad", "opportunity", "market",
-];
+/**
+ * กระดานสนามแข่งหนู 24 ช่อง: โอกาสอยู่ทุกช่องเว้นช่อง (12 ช่อง)
+ * ช่องระหว่างโอกาสเป็นชุดซ้ำ 3 รอบ: ตลาด → จ่ายซะ → ช่องพิเศษ → เงินเดือน
+ * เงินเดือนห่างกันทุก 8 ช่อง และทำบุญ/มีลูก/ตกงาน ก็ห่างกันทุก 8 ช่องเหมือนกัน
+ */
+export const BOARD: Square[] = (() => {
+  const special: Square[] = ["charity", "baby", "downsize"];
+  return special.flatMap((sp): Square[] => [
+    "opportunity", "market", "opportunity", "doodad", "opportunity", sp, "opportunity", "payday",
+  ]);
+})();
 
 export type StockKind = "pharma" | "ent" | "elec" | "fund" | "gold";
 export const STOCKS: StockKind[] = ["pharma", "ent", "elec", "fund", "gold"];
@@ -345,7 +349,7 @@ export function priceRange(kind: StockKind) {
  * จึงใช้ค่านี้ตรวจ: มือถือที่เปิดหน้าเวอร์ชันเก่าจะรีเฟรชเอง และห้องที่เริ่มด้วยชุดเก่าจะเล่นต่อไม่ได้
  */
 export const DECK_VERSION = (() => {
-  const src = JSON.stringify([PROFESSIONS, SMALL_DEALS, BIG_DEALS, DOODADS, MARKETS, FAST_BUSINESSES, DREAMS, FAST_EVENTS, LOAN_UNIT]);
+  const src = JSON.stringify([BOARD, PROFESSIONS, SMALL_DEALS, BIG_DEALS, DOODADS, MARKETS, FAST_BUSINESSES, DREAMS, FAST_EVENTS, LOAN_UNIT]);
   let h = 5381;
   for (let i = 0; i < src.length; i++) h = ((h << 5) + h + src.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
