@@ -21,6 +21,8 @@ import {
   debtAmount,
   expenseLines,
   loanRoom,
+  logText,
+  logWho,
   monthlyCashflow,
   passiveIncome,
   profession,
@@ -75,6 +77,7 @@ export function PlayerScreen({ code }: { code: string }) {
         <>
           <Header me={me} />
           <ActionPanel state={state} me={me} busy={busy} send={send} />
+          <MyLog state={state} me={me} />
           {me.fast ? <FastSheet me={me} /> : <Statement me={me} busy={busy} send={send} />}
         </>
       )}
@@ -320,6 +323,7 @@ function Respond({
   if (st) {
     const canBuy = opener && card.deck !== "market";
     const maxBuy = Math.floor(me.cash / st.price / STOCK_LOT) * STOCK_LOT;
+    const buyLots = Math.floor(buy / STOCK_LOT) * STOCK_LOT;
     return (
       <div className="space-y-3">
         {canBuy && (
@@ -328,7 +332,10 @@ function Respond({
               ซื้อ{STOCK_LABEL[st.stock]} (ทีละ {STOCK_LOT}) — ซื้อได้สูงสุด {maxBuy.toLocaleString("th-TH")}
             </label>
             <Stepper value={buy} step={STOCK_LOT} max={maxBuy} onChange={setBuy} />
-            <p className="mt-1 text-sm text-stone-600">จ่าย {baht(buy * st.price)}</p>
+            {buy % STOCK_LOT !== 0 && (
+              <p className="mt-1 text-sm text-amber-700">ซื้อได้ทีละ {STOCK_LOT} หุ้น จะซื้อ {buyLots.toLocaleString("th-TH")} หุ้น</p>
+            )}
+            <p className="mt-1 text-sm text-stone-600">จ่าย {baht(buyLots * st.price)}</p>
           </div>
         )}
         {held > 0 && (
@@ -344,8 +351,8 @@ function Respond({
         <div className="grid grid-cols-2 gap-2">
           <button
             className="btn-primary"
-            disabled={busy || (buy === 0 && sell === 0)}
-            onClick={() => send({ type: "respond", buy: canBuy ? buy : 0, sell: held > 0 ? sell : 0 })}
+            disabled={busy || (buyLots === 0 && sell === 0)}
+            onClick={() => send({ type: "respond", buy: canBuy ? buyLots : 0, sell: held > 0 ? sell : 0 })}
           >
             ยืนยัน
           </button>
@@ -436,13 +443,55 @@ function Respond({
   );
 }
 
+/** บันทึกของฉัน: เฉพาะเหตุการณ์ที่เกี่ยวกับผู้เล่นคนนี้ ล่าสุดอยู่บน */
+function MyLog({ state, me }: { state: PublicState; me: PublicPlayer }) {
+  const [open, setOpen] = useState(false);
+  const mine = state.log.filter((e) => logWho(e) === me.id).reverse();
+  if (mine.length === 0) return null;
+  const shown = open ? mine : mine.slice(0, 3);
+  return (
+    <div className="card space-y-2">
+      <div className="flex items-center justify-between">
+        <h2 className="font-bold">บันทึกของฉัน</h2>
+        <span className="text-sm text-stone-500">{mine.length} รายการ</span>
+      </div>
+      <ul className="space-y-1.5">
+        {shown.map((e, i) => (
+          <li key={mine.length - i} className={`border-l-4 pl-2 ${i === 0 ? "border-teal-600 font-medium" : "border-stone-200 text-stone-600"}`}>
+            {logText(e).replace(`${me.name} `, "")}
+          </li>
+        ))}
+      </ul>
+      {mine.length > 3 && (
+        <button className="btn-ghost w-full text-sm" onClick={() => setOpen((x) => !x)}>
+          {open ? "ย่อ" : `ดูทั้งหมด (${mine.length})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Stepper({ value, step, max, onChange }: { value: number; step: number; max: number; onChange: (n: number) => void }) {
   return (
     <div className="flex items-center gap-2">
       <button type="button" className="btn-secondary w-12 text-xl" onClick={() => onChange(Math.max(0, value - step))}>
         −
       </button>
-      <span className="flex-1 text-center text-xl font-semibold tabular-nums">{value.toLocaleString("th-TH")}</span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={max}
+        step={step}
+        aria-label="จำนวนหุ้น"
+        className="input min-w-0 flex-1 text-center text-xl font-semibold tabular-nums"
+        value={value === 0 ? "" : value}
+        placeholder="0"
+        onChange={(e) => {
+          const n = Math.floor(Number(e.target.value) || 0);
+          onChange(Math.min(max, Math.max(0, n)));
+        }}
+      />
       <button type="button" className="btn-secondary w-12 text-xl" onClick={() => onChange(Math.min(max, value + step))}>
         +
       </button>

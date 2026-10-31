@@ -61,3 +61,8 @@ body {
 @utility chip {
   @apply inline-flex min-h-10 cursor-pointer items-center rounded-full border border-stone-300 bg-white px-4 text-sm text-stone-700 select-none peer-checked:border-teal-700 peer-checked:bg-teal-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-teal-600/40 peer-disabled:cursor-default peer-disabled:opacity-60;
 }
+
+/* เกมกระแสเงินสด: ตัวอักษรทั้งหน้าใหญ่ขึ้น (ขนาด rem ทั้งหมดขยายตาม) */
+html:has([data-cashflow]) {
+  font-size: 118.75%;
+}

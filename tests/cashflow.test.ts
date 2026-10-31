@@ -4,6 +4,8 @@ import {
   act,
   GameError,
   loanRoom,
+  logText,
+  logWho,
   monthlyCashflow,
   newGame,
   publicState,
@@ -94,6 +96,15 @@ describe("หนึ่งตา", () => {
     expect(s.step).toBe("end");
     s = run(s, { type: "endTurn" }, { playerId: p.id });
     expect(s.turn).toBe(1);
+  });
+
+  it("บันทึกเหตุการณ์ระบุผู้เล่น (ใช้ทำบันทึกส่วนตัว)", () => {
+    let s = started();
+    const id = s.players[0].id;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    const last = s.log[s.log.length - 1];
+    expect(logWho(last)).toBe(id);
+    expect(logText(last)).toContain("จ่ายซะ");
   });
 
   it("เดินผ่านช่องเงินเดือน ได้กระแสเงินสด", () => {
