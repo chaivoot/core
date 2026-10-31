@@ -11,6 +11,8 @@ import {
   SMALL_DEALS,
   STOCK_LABEL,
   baht,
+  lotOf,
+  unitOf,
   colorHex,
 } from "@/lib/cashflow/data";
 import type { Action, Card, PublicPlayer, PublicState } from "@/lib/cashflow/engine";
@@ -150,14 +152,19 @@ export function describeCard(card: Card): CardInfo {
     const kind = DECK_TONE[card.deck].label;
     const tone = DECK_TONE[card.deck];
     if (d.type === "stock") {
+      const unit = unitOf(d.stock);
       return {
         kind,
-        tone,
-        title: `${STOCK_LABEL[d.stock]} ราคา ฿${d.price}`,
-        lines: ["คนเปิดการ์ดซื้อได้ (ทีละ 100 หุ้น)", "ใครถือหุ้นนี้อยู่ ขายได้ในราคานี้"],
+        tone: d.stock === "gold" ? { band: "bg-amber-500", icon: "🪙" } : tone,
+        title: d.text ?? `${STOCK_LABEL[d.stock]} ราคา ฿${d.price}`,
+        lines: [
+          d.max ? `คนเปิดการ์ดซื้อได้สูงสุด ${d.max} ${unit}` : `คนเปิดการ์ดซื้อได้ (ทีละ ${lotOf(d.stock)} ${unit})`,
+          `ใครมี${STOCK_LABEL[d.stock]}อยู่ ขายได้ในราคานี้`,
+        ],
       };
     }
     if (d.type === "split") return { kind, tone, title: d.text, lines: [] };
+    if (d.type === "lend") return { kind, tone: { band: "bg-rose-600", icon: "🤲" }, title: d.text, lines: [`จ่ายทันที ${baht(d.amount)}`] };
     const full = d.price * (d.units ?? 1);
     return {
       kind,

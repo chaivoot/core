@@ -12,7 +12,8 @@ import {
   MARKETS,
   SMALL_DEALS,
   STOCK_LABEL,
-  STOCK_LOT,
+  lotOf,
+  unitOf,
   baht,
   colorHex,
   type Debt,
@@ -322,18 +323,23 @@ function Respond({
   // หุ้น/กองทุน (การ์ดดีล หรือการ์ดตลาด)
   if (st) {
     const canBuy = opener && card.deck !== "market";
-    const maxBuy = Math.floor(me.cash / st.price / STOCK_LOT) * STOCK_LOT;
-    const buyLots = Math.floor(buy / STOCK_LOT) * STOCK_LOT;
+    const lot = lotOf(st.stock);
+    const unit = unitOf(st.stock);
+    const affordable = Math.floor(me.cash / st.price / lot) * lot;
+    const maxBuy = st.max ? Math.min(st.max, affordable) : affordable;
+    const buyLots = Math.floor(buy / lot) * lot;
     return (
       <div className="space-y-3">
         {canBuy && (
           <div>
             <label className="label">
-              ซื้อ{STOCK_LABEL[st.stock]} (ทีละ {STOCK_LOT}) — ซื้อได้สูงสุด {maxBuy.toLocaleString("th-TH")}
+              ซื้อ{STOCK_LABEL[st.stock]} {lot > 1 ? `(ทีละ ${lot})` : ""} — ซื้อได้สูงสุด {maxBuy.toLocaleString("th-TH")} {unit}
             </label>
-            <Stepper value={buy} step={STOCK_LOT} max={maxBuy} onChange={setBuy} />
-            {buy % STOCK_LOT !== 0 && (
-              <p className="mt-1 text-sm text-amber-700">ซื้อได้ทีละ {STOCK_LOT} หุ้น จะซื้อ {buyLots.toLocaleString("th-TH")} หุ้น</p>
+            <Stepper value={buy} step={lot} max={maxBuy} onChange={setBuy} />
+            {buy % lot !== 0 && (
+              <p className="mt-1 text-sm text-amber-700">
+                ซื้อได้ทีละ {lot} {unit} จะซื้อ {buyLots.toLocaleString("th-TH")} {unit}
+              </p>
             )}
             <p className="mt-1 text-sm text-stone-600">จ่าย {baht(buyLots * st.price)}</p>
           </div>
@@ -344,7 +350,7 @@ function Respond({
               ขายที่ ฿{st.price} — ถืออยู่ {held.toLocaleString("th-TH")} (ต้นทุนเฉลี่ย ฿
               {(me.stocks[st.stock]!.cost / held).toFixed(1)})
             </label>
-            <Stepper value={sell} step={STOCK_LOT} max={held} onChange={setSell} />
+            <Stepper value={sell} step={lot} max={held} onChange={setSell} />
             <p className="mt-1 text-sm text-stone-600">ได้ {baht(sell * st.price)}</p>
           </div>
         )}
@@ -483,7 +489,7 @@ function Stepper({ value, step, max, onChange }: { value: number; step: number; 
         min={0}
         max={max}
         step={step}
-        aria-label="จำนวนหุ้น"
+        aria-label="จำนวน"
         className="input min-w-0 flex-1 text-center text-xl font-semibold tabular-nums"
         value={value === 0 ? "" : value}
         placeholder="0"
@@ -638,7 +644,7 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
           <div key={k} className="flex justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
             <span className="text-stone-700">{STOCK_LABEL[k as keyof typeof STOCK_LABEL]}</span>
             <span className="font-hand shrink-0 text-base text-blue-900">
-              {h!.qty.toLocaleString("th-TH")} หุ้น · ทุน {baht(h!.cost)}
+              {h!.qty.toLocaleString("th-TH")} {unitOf(k as keyof typeof STOCK_LABEL)} · ทุน {baht(h!.cost)}
             </span>
           </div>
         ))}

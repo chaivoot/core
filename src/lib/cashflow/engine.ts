@@ -24,7 +24,8 @@ import {
   RESPONSE_SECONDS,
   SMALL_DEALS,
   STOCK_LABEL,
-  STOCK_LOT,
+  lotOf,
+  unitOf,
   baht,
   type ColorId,
   type DealCard,
@@ -216,14 +217,14 @@ export function cardFor(c: Card) {
 }
 
 /** ผู้เล่นตอบการ์ดหุ้นนี้ได้ไหม (คนเปิดซื้อได้ / คนถือขายได้) */
-export function stockOf(c: Card | null): { stock: StockKind; price: number } | null {
+export function stockOf(c: Card | null): { stock: StockKind; price: number; max?: number } | null {
   if (!c) return null;
   if (c.deck === "market") {
     const m = MARKETS[c.index];
     return m.type === "sellStock" ? { stock: m.stock, price: m.price } : null;
   }
   const d = cardFor(c);
-  return d?.type === "stock" ? { stock: d.stock, price: d.price } : null;
+  return d?.type === "stock" ? { stock: d.stock, price: d.price, max: d.max } : null;
 }
 
 // ---------- ตัวช่วย ----------
@@ -526,7 +527,7 @@ function sellStock(s: GameState, p: Player, stock: StockKind, qty: number, price
   h.qty -= qty;
   if (h.qty === 0) delete p.stocks[stock];
   p.cash += qty * price;
-  log(s, `${p.name} ขาย${STOCK_LABEL[stock]} ${qty.toLocaleString("th-TH")} หุ้น ที่ ฿${price} ได้ ${baht(qty * price)}`, p.id);
+  log(s, `${p.name} ขาย${STOCK_LABEL[stock]} ${qty.toLocaleString("th-TH")} ${unitOf(stock)} ที่ ฿${price} ได้ ${baht(qty * price)}`, p.id);
 }
 
 function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }>, ctx: Ctx) {
@@ -574,14 +575,16 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
       const qty = typeof a.buy === "number" ? a.buy : 0;
       if (qty > 0) {
         if (!opener) throw new GameError("คนเปิดการ์ดเท่านั้นที่ซื้อได้");
-        if (qty % STOCK_LOT !== 0) throw new GameError(`ซื้อทีละ ${STOCK_LOT} หุ้น`);
+        const lot = lotOf(d.stock);
+        if (qty % lot !== 0) throw new GameError(`ซื้อทีละ ${lot} ${unitOf(d.stock)}`);
+        if (d.max && qty > d.max) throw new GameError(`มีขายแค่ ${d.max} ${unitOf(d.stock)}`);
         const cost = qty * d.price;
         if (cost > p.cash) throw new GameError("เงินสดไม่พอ (กู้ธนาคารเพิ่มได้)");
         p.cash -= cost;
         const h = (p.stocks[d.stock] ??= { qty: 0, cost: 0 });
         h.qty += qty;
         h.cost += cost;
-        log(s, `${p.name} ซื้อ${STOCK_LABEL[d.stock]} ${qty.toLocaleString("th-TH")} หุ้น ที่ ฿${d.price} (${baht(cost)})`, p.id);
+        log(s, `${p.name} ซื้อ${STOCK_LABEL[d.stock]} ${qty.toLocaleString("th-TH")} ${unitOf(d.stock)} ที่ ฿${d.price} (${baht(cost)})`, p.id);
       }
     } else if (d.type === "asset" && a.buy) {
       if (d.down > p.cash) throw new GameError("เงินสดไม่พอจ่ายเงินดาวน์ (กู้ธนาคารเพิ่มได้)");
@@ -791,8 +794,13 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
         }
         log(s, d.text);
         s.step = "end";
+      } else if (d.type === "lend") {
+        // ต้องจ่ายทันที เหมือนการ์ดจ่ายซะ แต่มาจากกองดีลเล็ก
+        log(s, `${p.name} ${d.text}`, p.id);
+        charge(s, p, d.amount);
+        s.step = "end";
       } else if (d.type === "stock") {
-        log(s, `${p.name} เปิดการ์ด ${STOCK_LABEL[d.stock]} ราคา ฿${d.price}`, p.id);
+        log(s, `${p.name} เปิดการ์ด ${d.text ?? `${STOCK_LABEL[d.stock]} ราคา ฿${d.price}`}`, p.id);
         setResponders(s, [p.id, ...holders(s, d.stock).filter((id) => id !== p.id)], ctx);
       } else {
         log(s, `${p.name} เปิดการ์ด ${d.name}`, p.id);
