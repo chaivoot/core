@@ -223,6 +223,13 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
 
       {state.card && <CardView key={cardKey(state)} card={state.card} />}
 
+      {myTurn && (me.payday ?? 0) > 0 && !me.fast && (
+        <button className="btn w-full animate-pulse bg-amber-500 py-4 text-xl text-white" disabled={busy} onClick={() => send({ type: "collect" })}>
+          💰 รับเงินเดือน {money(monthlyCashflow(me) * (me.payday ?? 0))}
+          {(me.payday ?? 0) > 1 ? ` (${me.payday} ครั้ง)` : ""}
+        </button>
+      )}
+
       {myTurn && state.step === "roll" && (
         me.charity > 0 ? (
           <div className="grid grid-cols-2 gap-2">

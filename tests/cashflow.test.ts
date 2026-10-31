@@ -141,8 +141,26 @@ describe("หนึ่งตา", () => {
     const cf = monthlyCashflow(s.players[0]);
     s.players[0].pos = PAYDAY_POS - 3;
     s = run(s, { type: "roll" }, me(s), [die(6)]); // เดินผ่านช่องเงินเดือน ไปหยุดช่องโอกาส
-    expect(s.players[0].cash).toBe(before + cf);
     expect(s.step).toBe("deal");
+    expect(s.players[0].payday).toBe(1);
+    expect(s.players[0].cash).toBe(before); // ยังไม่กดรับ
+    expect(() => run(s, { type: "collect" }, { playerId: s.players[1].id })).toThrow("ไม่มีเงินเดือน");
+    s = run(s, { type: "collect" });
+    expect(s.players[0].cash).toBe(before + cf);
+    expect(s.players[0].payday).toBe(0);
+    expect(() => run(s, { type: "collect" })).toThrow("ไม่มีเงินเดือน");
+  });
+
+  it("ลืมกดรับเงินเดือน ระบบให้ตอนจบตา", () => {
+    let s = started();
+    const before = s.players[0].cash;
+    const cf = monthlyCashflow(s.players[0]);
+    s.players[0].pos = PAYDAY_POS - 1;
+    s = run(s, { type: "roll" }, me(s), [die(1)]); // ตกช่องเงินเดือนพอดี
+    expect(s.players[0].payday).toBe(1);
+    s = run(s, { type: "endTurn" });
+    expect(s.players[0].cash).toBe(before + cf);
+    expect(s.players[0].payday).toBe(0);
   });
 
   it("เปิดการ์ดหุ้น: คนเปิดซื้อได้ คนถือหุ้นอยู่ขายได้", () => {
