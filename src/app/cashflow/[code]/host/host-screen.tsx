@@ -12,22 +12,82 @@ import {
 } from "@/lib/cashflow/engine";
 import { CardView, Dice, FreedomBar, PlayerTag, Rat, useNow, useRoom } from "../game-ui";
 
-const SQUARE_STYLE: Record<Square, string> = {
-  opportunity: "bg-emerald-100 text-emerald-900",
-  payday: "bg-amber-200 text-amber-900",
-  market: "bg-sky-100 text-sky-900",
-  doodad: "bg-rose-100 text-rose-900",
-  charity: "bg-violet-100 text-violet-900",
-  baby: "bg-pink-100 text-pink-900",
-  downsize: "bg-stone-300 text-stone-800",
+const SQUARE_COLOR: Record<Square, { fill: string; text: string; icon: string }> = {
+  opportunity: { fill: "#bbf7d0", text: "#14532d", icon: "💡" },
+  payday: { fill: "#fcd34d", text: "#78350f", icon: "💰" },
+  market: { fill: "#bae6fd", text: "#0c4a6e", icon: "📈" },
+  doodad: { fill: "#fecdd3", text: "#881337", icon: "💸" },
+  charity: { fill: "#ddd6fe", text: "#4c1d95", icon: "🙏" },
+  baby: { fill: "#fbcfe8", text: "#831843", icon: "👶" },
+  downsize: { fill: "#d6d3d1", text: "#292524", icon: "📉" },
 };
 
-/** ตำแหน่งช่องบนตาราง 7×7 (วนตามเข็มนาฬิกาจากมุมซ้ายบน) */
-function cell(i: number) {
-  if (i <= 6) return { row: 1, col: i + 1 };
-  if (i <= 11) return { row: i - 5, col: 7 };
-  if (i <= 18) return { row: 7, col: 7 - (i - 12) };
-  return { row: 7 - (i - 18), col: 1 };
+// พิกัดใน viewBox 1000×1000 มุม 0 = บนสุด หมุนตามเข็มนาฬิกา
+const C = 500;
+const OUTER = 492;
+const INNER = 292;
+const STEP = 360 / BOARD.length;
+const point = (r: number, deg: number) => {
+  const rad = (deg * Math.PI) / 180;
+  return [C + r * Math.sin(rad), C - r * Math.cos(rad)] as const;
+};
+
+function segment(i: number) {
+  const a0 = i * STEP - STEP / 2 + 0.6;
+  const a1 = i * STEP + STEP / 2 - 0.6;
+  const [x0, y0] = point(OUTER, a0);
+  const [x1, y1] = point(OUTER, a1);
+  const [x2, y2] = point(INNER, a1);
+  const [x3, y3] = point(INNER, a0);
+  return `M${x0} ${y0} A${OUTER} ${OUTER} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${INNER} ${INNER} 0 0 0 ${x3} ${y3} Z`;
+}
+
+/** หมุนตัวหนังสือตามช่อง ครึ่งล่างกลับหัวให้อ่านได้ */
+function upright(deg: number) {
+  return deg > 90 && deg < 270 ? deg + 180 : deg;
+}
+
+function RingBoard() {
+  return (
+    <svg viewBox="0 0 1000 1000" className="absolute inset-0 size-full" aria-hidden="true">
+      {BOARD.map((sq, i) => {
+        const deg = i * STEP;
+        const c = SQUARE_COLOR[sq];
+        const [lx, ly] = point(458, deg);
+        const [ix, iy] = point(412, deg);
+        const label = SQUARE_LABEL[sq];
+        return (
+          <g key={i}>
+            <path d={segment(i)} fill={c.fill} stroke="#fff" strokeWidth={3} />
+            <text
+              x={lx}
+              y={ly}
+              fill={c.text}
+              fontSize={label.length > 8 ? 17 : 20}
+              fontWeight={700}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              transform={`rotate(${upright(deg)} ${lx} ${ly})`}
+            >
+              {label}
+            </text>
+            <text x={ix} y={iy} fontSize={30} textAnchor="middle" dominantBaseline="middle">
+              {c.icon}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** ตำแหน่งหนู (เป็น % ของกระดาน) ถ้าหลายตัวอยู่ช่องเดียวกัน วางเรียงกันในช่อง */
+function ratSpot(pos: number, k: number, count: number) {
+  const row = Math.floor(k / 2);
+  const side = count === 1 || (k === count - 1 && k % 2 === 0) ? 0 : k % 2 === 0 ? -1 : 1;
+  const r = 352 - row * 34;
+  const [x, y] = point(r, pos * STEP + side * STEP * 0.24);
+  return { x: x / 10, y: y / 10 };
 }
 
 /** หนูเดินทีละช่องไปหาตำแหน่งจริง */
@@ -122,74 +182,71 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
 
   return (
     <main className="grid min-h-dvh gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-      {/* กระดาน */}
-      <div className="mx-auto grid aspect-square w-full max-w-[min(100%,calc(100dvh-2rem))] grid-cols-7 grid-rows-7 gap-1.5">
-        {BOARD.map((sq, i) => {
-          const { row, col } = cell(i);
-          const here = state.players.filter((p) => (shown[p.id] ?? p.pos) === i);
+      {/* กระดานวงกลม */}
+      <div className="@container relative mx-auto aspect-square w-full max-w-[min(100%,calc(100dvh-2rem))]">
+        <RingBoard />
+        {/* หนูบนกระดาน (HTML ซ้อนบน SVG ขยับนุ่ม ๆ ด้วย transition) */}
+        {state.players.map((p) => {
+          const pos = shown[p.id] ?? p.pos;
+          const same = state.players.filter((x) => (shown[x.id] ?? x.pos) === pos);
+          const k = same.findIndex((x) => x.id === p.id);
+          const { x, y } = ratSpot(pos, k, same.length);
           return (
             <div
-              key={i}
-              className={`relative flex flex-col items-center justify-start overflow-hidden rounded-xl p-1 ${SQUARE_STYLE[sq]}`}
-              style={{ gridRow: row, gridColumn: col }}
+              key={p.id}
+              className="absolute w-[6%] -translate-x-1/2 -translate-y-1/2 drop-shadow-md transition-all duration-200"
+              style={{ left: `${x}%`, top: `${y}%` }}
+              title={p.name}
             >
-              <span className="text-center text-[clamp(0.55rem,1.1vw,0.95rem)] leading-tight font-semibold">
-                {SQUARE_LABEL[sq]}
-              </span>
-              <div className="flex flex-1 flex-wrap content-center items-center justify-center">
-                {here.map((p) => (
-                  <Rat key={p.id} color={p.color} className="w-[clamp(1.5rem,3.2vw,3rem)] drop-shadow" />
-                ))}
-              </div>
+              <Rat color={p.color} className="w-full" />
             </div>
           );
         })}
 
-        {/* กลางกระดาน */}
-        <div
-          className="flex flex-col items-center justify-center gap-4 rounded-2xl bg-white p-4 text-center ring-1 ring-stone-200"
-          style={{ gridRow: "2 / 7", gridColumn: "2 / 7" }}
-        >
+        {/* กลางวง */}
+        <div className="absolute inset-[21%] flex flex-col items-center justify-center gap-[1.2cqw] overflow-hidden rounded-full bg-white p-[3.5%] text-center shadow-inner ring-1 ring-stone-200">
           {state.phase === "over" && winner ? (
             <>
-              <Rat color={winner.color} className="w-32" />
-              <p className="text-4xl font-bold" style={{ color: colorHex(winner.color) }}>
+              <Rat color={winner.color} className="w-[14cqw]" />
+              <p className="text-[3.5cqw] font-bold" style={{ color: colorHex(winner.color) }}>
                 {winner.name}
               </p>
-              <p className="text-2xl font-semibold text-emerald-700">ออกจากวงหนูวิ่งแล้ว! 🎉</p>
-              <p className="text-lg text-stone-600">
+              <p className="text-[2.4cqw] font-semibold text-emerald-700">ออกจากวงหนูวิ่งแล้ว! 🎉</p>
+              <p className="text-[1.7cqw] text-stone-600">
                 รายได้จากทรัพย์สิน {baht(passiveIncome(winner))} มากกว่ารายจ่าย {baht(totalExpenses(winner))}
               </p>
             </>
           ) : (
             <>
-              <p className="text-xl text-stone-500">
-                ตาของ <PlayerTag p={turnPlayer} className="text-2xl" />
+              <p className="flex items-center gap-[0.8cqw] text-[1.9cqw] text-stone-500">
+                ตาของ
+                <Rat color={turnPlayer.color} className="w-[4.5cqw]" />
+                <b style={{ color: colorHex(turnPlayer.color) }}>{turnPlayer.name}</b>
               </p>
               {state.dice && <Dice dice={state.dice} big />}
               {state.card ? (
-                <div className="w-full max-w-xl">
+                <div className="w-full">
                   <CardView card={state.card} big />
                 </div>
               ) : (
-                <p className="text-lg text-stone-500">
+                <p className="text-[1.9cqw] text-stone-500">
                   {state.step === "roll" && "รอทอยลูกเต๋า…"}
                   {state.step === "deal" && "เลือกดีลเล็กหรือดีลใหญ่…"}
                 </p>
               )}
               {state.step === "respond" && (
-                <div className="flex flex-wrap justify-center gap-2">
+                <div className="flex flex-wrap justify-center gap-[0.6cqw] text-[1.4cqw]">
                   {waiting.map(([id, done]) => {
                     const p = state.players.find((x) => x.id === id);
                     if (!p) return null;
                     return (
-                      <span key={id} className="flex items-center gap-1 rounded-full bg-stone-100 px-3 py-1">
-                        <Rat color={p.color} className="w-6" />
+                      <span key={id} className="flex items-center gap-1 rounded-full bg-stone-100 px-[1cqw] py-[0.2cqw]">
+                        <Rat color={p.color} className="w-[2.6cqw]" />
                         {p.name} {done ? "✓" : "กำลังเลือก…"}
                       </span>
                     );
                   })}
-                  {secondsLeft !== null && <span className="px-2 py-1 text-stone-500">เหลือ {secondsLeft} วินาที</span>}
+                  {secondsLeft !== null && <span className="px-2 py-0.5 text-stone-500">เหลือ {secondsLeft} วินาที</span>}
                 </div>
               )}
             </>
