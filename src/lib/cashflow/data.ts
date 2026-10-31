@@ -97,7 +97,17 @@ export type AssetDeal = {
 };
 
 export type DealCard =
-  | { type: "stock"; stock: StockKind; price: number; /** มีขายจำกัด (เช่น เหรียญทอง) */ max?: number; text?: string }
+  | {
+      type: "stock";
+      stock: StockKind;
+      price: number;
+      /** มีขายจำกัด (เช่น เหรียญทอง) */
+      max?: number;
+      /** ข้อความเต็มของการ์ด (ใช้แทนชื่อ+ราคา) */
+      text?: string;
+      /** หัวข่าวสั้น ๆ ว่าทำไมราคาเป็นแบบนี้ */
+      news?: string;
+    }
   | { type: "split"; stock: StockKind; factor: number; text: string }
   /** ต้องจ่ายทันที เช่น ญาติขอยืมเงิน (ไม่ได้คืน) */
   | { type: "lend"; text: string; amount: number }
@@ -105,6 +115,7 @@ export type DealCard =
 
 const stock = (s: StockKind, price: number): DealCard => ({ type: "stock", stock: s, price });
 const gold = (price: number, max: number, text: string): DealCard => ({ type: "stock", stock: "gold", price, max, text });
+const news = (s: StockKind, price: number, n: string): DealCard => ({ type: "stock", stock: s, price, news: n });
 const asset = (a: AssetDeal): DealCard => ({ type: "asset", ...a });
 
 export const SMALL_DEALS: DealCard[] = [
@@ -134,6 +145,17 @@ export const SMALL_DEALS: DealCard[] = [
   asset({ name: "บ้าน 3/2 ในหมู่บ้านใหม่ (ค่าเช่าน้อยกว่าค่าผ่อน)", price: 1_800_000, down: 50_000, mortgage: 1_750_000, cashflow: -800, tag: "house32", rental: true }),
   { type: "lend", text: "ญาติขอยืมเงิน ฿10,000 ไม่รู้จะได้คืนเมื่อไหร่", amount: 10_000 },
   { type: "lend", text: "เพื่อนสนิทขอยืมเงินไปเปิดร้าน ฿20,000", amount: 20_000 },
+  // ราคาหุ้นขึ้นลงมาในการ์ดดีลเล็ก (ไม่มีในการ์ดตลาด): ราคาต่ำ = จังหวะซื้อ ราคาสูง = คนถืออยู่ขายทำกำไร
+  news("pharma", 400, "บริษัทยาได้ใบอนุญาตขายยาตัวใหม่"),
+  news("pharma", 450, "ผลทดลองยาใหม่ผ่าน นักลงทุนแห่ซื้อ"),
+  news("pharma", 20, "ยาหลักของบริษัทถูกเรียกคืน หุ้นร่วงหนัก"),
+  news("ent", 20, "บริษัทเอนเตอร์เทนเมนต์โดนฟ้องหนัก"),
+  news("ent", 500, "ซีรีส์ของบริษัทดังไปทั่วเอเชีย"),
+  news("elec", 700, "ได้สัญญาส่งชิปให้ค่ายรถยนต์"),
+  news("elec", 600, "ยอดขายสมาร์ตโฟนรุ่นใหม่ทะลุเป้า"),
+  news("elec", 50, "ขาดทุนติดกันสามไตรมาส"),
+  news("fund", 300, "ตลาดหุ้นขาขึ้นทั้งปี"),
+  news("fund", 50, "ตลาดหุ้นทั่วโลกตก กองทุนรวมร่วง"),
 ];
 
 export const BIG_DEALS: DealCard[] = [
@@ -180,7 +202,9 @@ export type MarketCard =
   | { type: "sellAsset"; text: string; tag: string; price: number; perUnit?: boolean }
   | { type: "sellStock"; text: string; stock: StockKind; price: number }
   | { type: "rentUp"; text: string; amount: number }
-  | { type: "expense"; text: string; tags: string[]; amount: number };
+  | { type: "expense"; text: string; tags: string[]; amount: number }
+  /** ทรัพย์สิน/ธุรกิจกลุ่มนี้ได้กระแสเงินสดเพิ่ม (ถาวร) */
+  | { type: "cashflowUp"; text: string; tags: string[]; amount: number };
 
 export const MARKETS: MarketCard[] = [
   { type: "sellAsset", text: "คู่แต่งงานใหม่อยากได้คอนโดใกล้รถไฟฟ้า ให้ราคา ฿1,300,000", tag: "condo", price: 1_300_000 },
@@ -195,11 +219,7 @@ export const MARKETS: MarketCard[] = [
   { type: "rentUp", text: "นิคมอุตสาหกรรมเปิดใหม่ คนย้ายเข้าเยอะ ค่าเช่าขึ้น ทรัพย์สินให้เช่าทุกชิ้น +฿500/เดือน", amount: 500 },
   { type: "expense", text: "ผู้เช่าหนีค่าเช่า ห้องพังต้องซ่อม เจ้าของคอนโด/ห้องแถวจ่าย ฿20,000", tags: ["condo", "condo21", "shophouse"], amount: 20_000 },
   { type: "expense", text: "กฎหมายใหม่ ร้านซ่อมมือถือต้องอัปเกรดเครื่องมือ จ่าย ฿50,000", tags: ["phoneshop"], amount: 50_000 },
-  { type: "sellStock", text: "บริษัทอิเล็กทรอนิกส์ได้สัญญาส่งชิปให้ค่ายรถยนต์ หุ้นพุ่งไป ฿700", stock: "elec", price: 700 },
-  { type: "sellStock", text: "บริษัทยาผ่านการทดลองยาตัวใหม่ หุ้นขึ้นไป ฿450", stock: "pharma", price: 450 },
-  { type: "sellStock", text: "บริษัทเอนเตอร์เทนเมนต์โดนฟ้องหนัก หุ้นร่วงเหลือ ฿20", stock: "ent", price: 20 },
   { type: "sellAsset", text: "รีสอร์ตได้รางวัลท่องเที่ยว เครือโรงแรมขอซื้อ ฿12,000,000", tag: "resort", price: 12_000_000 },
-  { type: "sellStock", text: "ตลาดหุ้นขาขึ้น กองทุนรวมขายได้หน่วยละ ฿300", stock: "fund", price: 300 },
   { type: "sellAsset", text: "ครอบครัวลูกสองย้ายเข้าเมือง ต้องการบ้าน 3/2 ให้ราคา ฿2,000,000", tag: "house32", price: 2_000_000 },
   { type: "sellAsset", text: "มีคนขอซื้อบ้าน 3/2 ราคา ฿1,700,000", tag: "house32", price: 1_700_000 },
   { type: "sellAsset", text: "หมู่บ้านใหม่ขายหมด คนแย่งซื้อบ้าน 3/2 มือสอง ให้ราคา ฿2,300,000", tag: "house32", price: 2_300_000 },
@@ -208,8 +228,11 @@ export const MARKETS: MarketCard[] = [
   { type: "sellStock", text: "ราคาทองขึ้น นักสะสมรับซื้อเหรียญทองคำ เหรียญละ ฿8,000", stock: "gold", price: 8_000 },
   { type: "sellStock", text: "ร้านทองรับซื้อเหรียญทองคำ เหรียญละ ฿5,000", stock: "gold", price: 5_000 },
   { type: "sellAsset", text: "ครอบครัวใหญ่อยากอยู่ใกล้กัน ขอซื้อบ้านแฝดหลังละ ฿1,900,000", tag: "duplex", price: 1_900_000, perUnit: true },
+  { type: "cashflowUp", text: "มหาวิทยาลัยเปิดคณะใหม่ ห้องเช่าแถวมหาวิทยาลัยเต็ม คอนโด 2/1 และหอพักค่าเช่า +฿500/เดือน", tags: ["condo21", "dorm"], amount: 500 },
+  { type: "cashflowUp", text: "หอพักรอบ ๆ ไม่มีร้านซักผ้า ตู้หยอดเหรียญซักผ้าขายดี +฿400/เดือน", tags: ["laundry"], amount: 400 },
+  { type: "cashflowUp", text: "ร้านกาแฟรถเข็นได้ทำเลหน้าโรงพยาบาล กำไร +฿700/เดือน", tags: ["coffee"], amount: 700 },
+  { type: "cashflowUp", text: "ห้างใหม่มาเปิดข้าง ๆ คาร์แคร์ลูกค้าเพิ่ม +฿3,000/เดือน", tags: ["carcare"], amount: 3_000 },
   { type: "expense", text: "ฝนตกหนัก น้ำท่วมหมู่บ้าน เจ้าของบ้านให้เช่าจ่ายค่าซ่อม ฿15,000", tags: ["house32", "house", "duplex", "townhouse"], amount: 15_000 },
-  { type: "sellStock", text: "บริษัทอิเล็กทรอนิกส์ขาดทุนติดกันสามไตรมาส หุ้นร่วงเหลือ ฿50", stock: "elec", price: 50 },
 ];
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
@@ -289,3 +312,10 @@ export const FAST_BOARD: FastSquare[] = (() => {
   }
   return out;
 })();
+
+/** ช่วงราคาของหุ้น/กองทุน/เหรียญ จากการ์ดทั้งหมด (โชว์บนการ์ดให้รู้ว่าตอนนี้ถูกหรือแพง) */
+export function priceRange(kind: StockKind) {
+  const prices = [...SMALL_DEALS, ...BIG_DEALS].flatMap((d) => (d.type === "stock" && d.stock === kind ? [d.price] : []));
+  for (const m of MARKETS) if (m.type === "sellStock" && m.stock === kind) prices.push(m.price);
+  return { lo: Math.min(...prices), hi: Math.max(...prices) };
+}
