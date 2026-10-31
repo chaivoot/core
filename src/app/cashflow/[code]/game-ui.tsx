@@ -132,11 +132,11 @@ export const DECK_TONE: Record<"small" | "big" | "doodad" | "market", Tone & { l
   small: { band: "bg-emerald-600", icon: "💡", label: "ดีลเล็ก" },
   big: { band: "bg-teal-800", icon: "🏢", label: "ดีลใหญ่" },
   market: { band: "bg-sky-600", icon: "📈", label: "ตลาด" },
-  doodad: { band: "bg-rose-600", icon: "💸", label: "จ่ายไม่คาดฝัน" },
+  doodad: { band: "bg-rose-600", icon: "💸", label: "จ่ายซะ" },
 };
 
 const SPECIAL: Record<string, [string, string, Tone]> = {
-  payday: ["เงินเดือนออก", "ได้รับกระแสเงินสดประจำเดือน", { band: "bg-amber-500", icon: "💰" }],
+  payday: ["เงินเดือน", "ได้รับกระแสเงินสดประจำเดือน", { band: "bg-amber-500", icon: "💰" }],
   charity: ["ทำบุญ", "บริจาค 10% ของรายได้ แล้วเลือกทอย 2 ลูกได้ 3 ตา", { band: "bg-violet-600", icon: "🙏" }],
   baby: ["มีลูก", "ค่าเลี้ยงลูกเพิ่ม 1 คน", { band: "bg-pink-500", icon: "👶" }],
   downsize: ["ตกงาน", "จ่ายค่าใช้จ่าย 1 เดือน และหยุด 2 ตา", { band: "bg-stone-600", icon: "📉" }],
