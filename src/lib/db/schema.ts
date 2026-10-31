@@ -4,6 +4,7 @@ import {
   boolean,
   check,
   integer,
+  jsonb,
   date,
   index,
   numeric,
@@ -232,6 +233,22 @@ export const productImages = pgTable("product_images", {
   data: text("data").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** ห้องเกมกระแสเงินสด: สถานะทั้งเกมเก็บเป็น JSON ก้อนเดียว ใช้ version กันเขียนทับกัน */
+export const cashflowRooms = pgTable(
+  "cashflow_rooms",
+  {
+    code: text("code").primaryKey(),
+    hostId: uuid("host_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    state: jsonb("state").notNull(),
+    version: integer("version").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("cashflow_rooms_updated_at_idx").on(t.updatedAt)],
+);
 
 export type Product = typeof products.$inferSelect;
 export type User = typeof users.$inferSelect;
