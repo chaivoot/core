@@ -107,6 +107,8 @@ export type GameState = {
   seq: number;
   /** ตัวเลือกที่ host ตั้งก่อนเริ่มเกม */
   options?: GameOptions;
+  /** หน้าคำอธิบายก่อนเริ่มเกมที่ host เปิดอยู่ (null = ไม่ได้เปิด) มือถือแสดงหน้าเดียวกัน */
+  intro?: number | null;
   /** ดีลใบนี้คนเปิดไม่ซื้อ และเปิดให้คนอื่นซื้อต่อ (ใครกดก่อนได้ก่อน) */
   resale?: boolean;
 };
@@ -127,6 +129,7 @@ export type Action =
   | { type: "endTurn" }
   | { type: "chooseDream"; dream: number }
   | { type: "setOptions"; resellDeals: boolean }
+  | { type: "intro"; slide: number | null }
   | { type: "loan"; count?: number }
   | { type: "repay" }
   | { type: "payoff"; debt: Debt };
@@ -649,9 +652,17 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       s.decks[d] = shuffle(Array.from({ length: DECK_SIZE[d] }, (_, i) => i), ctx.rng);
     }
     s.phase = "playing";
+    s.intro = null;
     s.turn = 0;
     s.log = ["เริ่มเกม! ลำดับ: " + s.players.map((p) => `${p.name} (${profession(p).name})`).join(" → ")];
     startTurn(s);
+    return s;
+  }
+
+  if (action.type === "intro") {
+    if (!actor.host) throw new GameError("host เท่านั้นที่เปิดคำอธิบายได้");
+    if (s.phase !== "lobby") throw new GameError("เปิดคำอธิบายได้ก่อนเริ่มเกมเท่านั้น");
+    s.intro = action.slide === null ? null : Math.max(0, Math.floor(action.slide));
     return s;
   }
 

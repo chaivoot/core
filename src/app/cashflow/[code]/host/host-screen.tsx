@@ -24,6 +24,7 @@ import {
   type PublicPlayer,
   type PublicState,
 } from "@/lib/cashflow/engine";
+import { IntroSlide, INTRO_SLIDES } from "../intro";
 import { CardView, DECK_TONE, Dice, FreedomBar, PlayerTag, Rat, cardKey, useNow, useRoom } from "../game-ui";
 
 const SQUARE_COLOR: Record<Square, { fill: string; text: string }> = {
@@ -279,6 +280,52 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
 
   const turnPlayer = state.players[state.turn];
 
+  if (state.phase === "lobby" && state.intro != null) {
+    const i = Math.min(state.intro, INTRO_SLIDES.length - 1);
+    const last = i === INTRO_SLIDES.length - 1;
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-6 p-8">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-stone-900">กระแสเงินสด</h1>
+          <div className="flex items-center gap-3 text-sm text-stone-500">
+            <span>
+              ยังเข้าห้องได้ รหัส <b className="font-mono text-lg tracking-widest text-stone-800">{code}</b> · ผู้เล่น{" "}
+              {state.players.length} คน
+            </span>
+            <div className="w-16 rounded-lg bg-white p-1 ring-1 ring-stone-200" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+          </div>
+        </div>
+        <div className="card flex-1 p-[4%]">
+          <IntroSlide index={i} big />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <button className="btn-ghost" disabled={busy} onClick={() => send({ type: "intro", slide: null })}>
+            ปิดคำอธิบาย
+          </button>
+          <div className="flex gap-3">
+            <button className="btn-secondary text-lg" disabled={busy || i === 0} onClick={() => send({ type: "intro", slide: i - 1 })}>
+              ← ก่อนหน้า
+            </button>
+            {last ? (
+              <button
+                className="btn-primary text-lg"
+                disabled={busy || state.players.length < MIN_PLAYERS}
+                onClick={() => send({ type: "start" })}
+              >
+                เริ่มเกม 🎲
+              </button>
+            ) : (
+              <button className="btn-primary text-lg" disabled={busy} onClick={() => send({ type: "intro", slide: i + 1 })}>
+                ถัดไป →
+              </button>
+            )}
+          </div>
+        </div>
+        {error && <p className="text-center text-rose-700">{error}</p>}
+      </main>
+    );
+  }
+
   if (state.phase === "lobby") {
     return (
       <main className="mx-auto grid min-h-dvh max-w-6xl items-center gap-10 p-8 lg:grid-cols-2">
@@ -312,6 +359,9 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
               ))}
             </ul>
           )}
+          <button className="btn-secondary w-full text-lg" disabled={busy} onClick={() => send({ type: "intro", slide: 0 })}>
+            📖 อธิบายเป้าหมายและ ESBI ก่อนเริ่ม
+          </button>
           <label className="flex items-start gap-3 rounded-2xl bg-stone-50 p-3">
             <input
               type="checkbox"
