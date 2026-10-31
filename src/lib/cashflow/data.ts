@@ -51,9 +51,9 @@ export type Square = "opportunity" | "payday" | "market" | "doodad" | "charity" 
 
 export const SQUARE_LABEL: Record<Square, string> = {
   opportunity: "โอกาส",
-  payday: "เงินเดือนออก",
+  payday: "เงินเดือน",
   market: "ตลาด",
-  doodad: "จ่ายไม่คาดฝัน",
+  doodad: "จ่ายซะ",
   charity: "ทำบุญ",
   baby: "มีลูก",
   downsize: "ตกงาน",

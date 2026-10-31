@@ -176,7 +176,7 @@ function Board({ players }: { players: PublicPlayer[] }) {
         return (
           <g key={i}>
             <path d={segment(deg, STEP, RR_OUT, RR_IN)} fill={c.fill} stroke="#fff" strokeWidth={3} />
-            <Label r={316} deg={deg} fill={c.text} size={label.length > 6 ? 24 : 30} fit={label.length > 6 ? 108 : undefined}>
+            <Label r={316} deg={deg} fill={c.text} size={30} fit={label.length > 8 ? 108 : undefined}>
               {label}
             </Label>
           </g>

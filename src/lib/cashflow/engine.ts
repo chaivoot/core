@@ -431,7 +431,7 @@ function land(s: GameState, p: Player, ctx: Ctx) {
       const index = draw(s, "doodad", ctx);
       const d = DOODADS[index];
       s.card = { deck: "doodad", index };
-      log(s, `${p.name} จ่ายไม่คาดฝัน: ${d.text} ${baht(d.amount)}`);
+      log(s, `${p.name} จ่ายซะ: ${d.text} ${baht(d.amount)}`);
       charge(s, p, d.amount);
       s.step = "end";
       return;
