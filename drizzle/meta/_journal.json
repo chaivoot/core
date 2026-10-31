@@ -120,6 +120,13 @@
       "when": 1793465260335,
       "tag": "0016_cashflow_host_token",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793465547034,
+      "tag": "0017_cashflow_room_limit",
+      "breakpoints": true
     }
   ]
 }

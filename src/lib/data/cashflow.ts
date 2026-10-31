@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, count, eq, gt, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { cashflowRooms } from "@/lib/db/schema";
 import { newGame, type GameState } from "@/lib/cashflow/engine";
@@ -34,8 +34,27 @@ export function isHost(room: Room, token: string | undefined) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/** กัน spam: จำกัดห้องที่สร้างได้ต่อชั่วโมง ต่อเครื่อง (IP) และรวมทั้งระบบ */
+export const ROOMS_PER_IP_PER_HOUR = 5;
+export const ROOMS_PER_HOUR = 200;
+
+export class RoomLimitError extends Error {}
+
 /** สร้างห้องใหม่ คืนรหัสห้องและ token ของ host (เก็บใน cookie) */
-export async function createRoom(): Promise<{ code: string; hostToken: string }> {
+export async function createRoom(ip: string | null): Promise<{ code: string; hostToken: string }> {
+  const ipHash = ip ? sha256(`cashflow:${ip}`) : null;
+  const recent = gt(cashflowRooms.createdAt, sql`now() - interval '1 hour'`);
+  const [all] = await db.select({ n: count() }).from(cashflowRooms).where(recent);
+  if (all.n >= ROOMS_PER_HOUR) throw new RoomLimitError("ตอนนี้มีคนสร้างห้องเยอะมาก ลองใหม่อีกสักพัก");
+  if (ipHash) {
+    const [mine] = await db
+      .select({ n: count() })
+      .from(cashflowRooms)
+      .where(and(recent, eq(cashflowRooms.creatorIpHash, ipHash)));
+    if (mine.n >= ROOMS_PER_IP_PER_HOUR) {
+      throw new RoomLimitError(`สร้างห้องได้ไม่เกิน ${ROOMS_PER_IP_PER_HOUR} ห้องต่อชั่วโมง ลองใหม่อีกสักพัก`);
+    }
+  }
   const hostToken = randomBytes(24).toString("base64url");
   // ลบห้องที่ไม่มีใครเล่นเกิน 24 ชั่วโมง
   await db
@@ -46,7 +65,7 @@ export async function createRoom(): Promise<{ code: string; hostToken: string }>
     const code = newCode();
     const rows = await db
       .insert(cashflowRooms)
-      .values({ code, hostTokenHash: sha256(hostToken), state: newGame() })
+      .values({ code, hostTokenHash: sha256(hostToken), creatorIpHash: ipHash, state: newGame() })
       .onConflictDoNothing()
       .returning({ code: cashflowRooms.code });
     if (rows.length > 0) return { code, hostToken };
