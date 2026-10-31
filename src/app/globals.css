@@ -2,6 +2,23 @@
 
 @theme inline {
   --font-sans: var(--font-thai), ui-sans-serif, system-ui, sans-serif;
+  /* ลายมือ สำหรับแผ่นงบการเงินในเกมกระแสเงินสด */
+  --font-hand: var(--font-itim), var(--font-thai), ui-sans-serif, sans-serif;
+}
+
+@theme {
+  /* เปิดการ์ดในเกมกระแสเงินสด */
+  --animate-card-flip: card-flip 0.6s ease-out;
+  @keyframes card-flip {
+    0% {
+      transform: perspective(900px) rotateY(-90deg) scale(0.9);
+      opacity: 0.4;
+    }
+    100% {
+      transform: perspective(900px) rotateY(0) scale(1);
+      opacity: 1;
+    }
+  }
 }
 
 :root {

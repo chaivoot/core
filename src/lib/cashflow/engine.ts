@@ -618,15 +618,18 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
 
 /** ส่งให้มือถือ/จอ host - ตัดความลับออก */
 export type PublicPlayer = Omit<Player, "token">;
-export type PublicState = Omit<GameState, "players" | "decks"> & { players: PublicPlayer[] };
+export type PublicState = Omit<GameState, "players" | "decks"> & {
+  players: PublicPlayer[];
+  /** เหลือการ์ดในกองกี่ใบ (ไม่ส่งลำดับการ์ดออกไป) */
+  deckLeft: Record<Deck, number>;
+};
 
 export function publicState(s: GameState): PublicState {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ตัด decks/token ออก
   const { decks, players, ...rest } = s;
   return {
     ...rest,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    deckLeft: { small: decks.small.length, big: decks.big.length, doodad: decks.doodad.length, market: decks.market.length },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ตัด token ออก
     players: players.map(({ token, ...p }) => p),
   };
 }
-

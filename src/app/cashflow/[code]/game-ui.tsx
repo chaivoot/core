@@ -121,21 +121,30 @@ export function PlayerTag({ p, className = "" }: { p: PublicPlayer; className?: 
   );
 }
 
-type CardInfo = { kind: string; tone: string; title: string; lines: string[] };
+type Tone = { band: string; icon: string };
+type CardInfo = { kind: string; tone: Tone; title: string; lines: string[] };
 
-const TONE = {
-  deal: "bg-emerald-50 text-emerald-900 ring-emerald-200",
-  big: "bg-teal-50 text-teal-900 ring-teal-200",
-  doodad: "bg-rose-50 text-rose-900 ring-rose-200",
-  market: "bg-sky-50 text-sky-900 ring-sky-200",
-  info: "bg-amber-50 text-amber-900 ring-amber-200",
+/** สีหัวการ์ดแต่ละกอง (ใช้กับกองการ์ดบนกระดานด้วย) */
+export const DECK_TONE: Record<"small" | "big" | "doodad" | "market", Tone & { label: string }> = {
+  small: { band: "bg-emerald-600", icon: "💡", label: "ดีลเล็ก" },
+  big: { band: "bg-teal-800", icon: "🏢", label: "ดีลใหญ่" },
+  market: { band: "bg-sky-600", icon: "📈", label: "ตลาด" },
+  doodad: { band: "bg-rose-600", icon: "💸", label: "จ่ายไม่คาดฝัน" },
+};
+
+const SPECIAL: Record<string, [string, string, Tone]> = {
+  payday: ["เงินเดือนออก", "ได้รับกระแสเงินสดประจำเดือน", { band: "bg-amber-500", icon: "💰" }],
+  charity: ["ทำบุญ", "บริจาค 10% ของรายได้ แล้วเลือกทอย 2 ลูกได้ 3 ตา", { band: "bg-violet-600", icon: "🙏" }],
+  baby: ["มีลูก", "ค่าเลี้ยงลูกเพิ่ม 1 คน", { band: "bg-pink-500", icon: "👶" }],
+  downsize: ["ตกงาน", "จ่ายค่าใช้จ่าย 1 เดือน และหยุด 2 ตา", { band: "bg-stone-600", icon: "📉" }],
+  bankrupt: ["ล้มละลาย", "เงินไม่พอจ่าย เริ่มต้นใหม่ด้วยอาชีพเดิม", { band: "bg-stone-900", icon: "⚠️" }],
 };
 
 export function describeCard(card: Card): CardInfo {
   if (card.deck === "small" || card.deck === "big") {
     const d = (card.deck === "small" ? SMALL_DEALS : BIG_DEALS)[card.index];
-    const kind = card.deck === "small" ? "ดีลเล็ก" : "ดีลใหญ่";
-    const tone = card.deck === "small" ? TONE.deal : TONE.big;
+    const kind = DECK_TONE[card.deck].label;
+    const tone = DECK_TONE[card.deck];
     if (d.type === "stock") {
       return {
         kind,
@@ -159,42 +168,49 @@ export function describeCard(card: Card): CardInfo {
   }
   if (card.deck === "doodad") {
     const d = DOODADS[card.index];
-    return { kind: "จ่ายไม่คาดฝัน", tone: TONE.doodad, title: d.text, lines: [`จ่าย ${baht(d.amount)}`] };
+    return { kind: DECK_TONE.doodad.label, tone: DECK_TONE.doodad, title: d.text, lines: [`จ่าย ${baht(d.amount)}`] };
   }
   if (card.deck === "market") {
-    return { kind: "ตลาด", tone: TONE.market, title: MARKETS[card.index].text, lines: [] };
+    return { kind: DECK_TONE.market.label, tone: DECK_TONE.market, title: MARKETS[card.index].text, lines: [] };
   }
-  const info: Record<string, [string, string]> = {
-    payday: ["เงินเดือนออก", "ได้รับกระแสเงินสดประจำเดือน"],
-    charity: ["ทำบุญ", "บริจาค 10% ของรายได้ แล้วเลือกทอย 2 ลูกได้ 3 ตา"],
-    baby: ["มีลูก", "ค่าเลี้ยงลูกเพิ่ม 1 คน"],
-    downsize: ["ตกงาน", "จ่ายค่าใช้จ่าย 1 เดือน และหยุด 2 ตา"],
-    bankrupt: ["ล้มละลาย", "เงินไม่พอจ่าย เริ่มต้นใหม่ด้วยอาชีพเดิม"],
-  };
-  const [title, line] = info[card.deck];
-  return { kind: "ช่องพิเศษ", tone: TONE.info, title, lines: [line] };
+  const [title, line, tone] = SPECIAL[card.deck];
+  return { kind: "ช่องพิเศษ", tone, title, lines: [line] };
 }
 
-/** big = กลางกระดานบนจอ host: ขนาดตัวอักษรตามขนาดกระดาน (หน่วย cqw ของกระดาน) */
+/**
+ * การ์ดแบบใบ: หัวสีตามกอง + ไอคอน พลิกเปิดทุกครั้งที่ใบเปลี่ยน (ให้คนเรียกใส่ key)
+ * big = กลางกระดานบนจอ host: ขนาดตัวอักษรตามขนาดกระดาน (หน่วย cqw)
+ */
 export function CardView({ card, big = false }: { card: Card; big?: boolean }) {
   const c = describeCard(card);
   return (
-    <div className={`rounded-2xl ring-1 ${c.tone} ${big ? "p-[2cqw]" : "p-4"}`}>
-      <p className={`font-medium opacity-70 ${big ? "text-[1.8cqw]" : "text-xs"}`}>{c.kind}</p>
-      <p className={`font-bold leading-snug ${big ? "mt-[0.3cqw] text-[3.2cqw]" : "mt-0.5 text-lg"}`}>{c.title}</p>
-      {c.lines.map((l) => (
-        <p key={l} className={big ? "mt-[0.3cqw] text-[2.1cqw] leading-snug" : "mt-0.5 text-sm"}>
-          {l}
-        </p>
-      ))}
+    <div className="animate-card-flip overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-stone-200">
+      <div className={`flex items-center gap-2 text-white ${c.tone.band} ${big ? "px-[1.6cqw] py-[0.7cqw] text-[1.5cqw]" : "px-4 py-1.5 text-sm"}`}>
+        <span className={big ? "text-[2cqw]" : "text-lg"}>{c.tone.icon}</span>
+        <span className="font-semibold tracking-wide">{c.kind}</span>
+      </div>
+      <div className={big ? "px-[1.6cqw] py-[1.2cqw]" : "px-4 py-3"}>
+        <p className={`font-bold leading-snug text-stone-900 ${big ? "text-[2.5cqw]" : "text-lg"}`}>{c.title}</p>
+        {c.lines.map((l) => (
+          <p key={l} className={`text-stone-700 ${big ? "mt-[0.3cqw] text-[1.65cqw] leading-snug" : "mt-0.5 text-sm"}`}>
+            {l}
+          </p>
+        ))}
+      </div>
     </div>
   );
+}
+
+/** key สำหรับ CardView: เปลี่ยนเมื่อเปิดการ์ดใบใหม่ (ให้พลิกใหม่) */
+export function cardKey(state: { turn: number; dice: number[] | null; card: Card | null }) {
+  const c = state.card;
+  return c ? `${state.turn}-${state.dice?.join(",") ?? ""}-${c.deck}-${c.index ?? ""}` : "none";
 }
 
 export function Dice({ dice, big = false }: { dice: number[]; big?: boolean }) {
   const faces = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
   return (
-    <span className={`inline-flex items-center gap-1 ${big ? "text-[5.5cqw] leading-none" : "text-3xl"}`} aria-label={`ทอยได้ ${dice.join(" + ")}`}>
+    <span className={`inline-flex items-center gap-1 ${big ? "text-[4.6cqw] leading-none" : "text-3xl"}`} aria-label={`ทอยได้ ${dice.join(" + ")}`}>
       {dice.map((d, i) => (
         <span key={i}>{faces[d - 1]}</span>
       ))}

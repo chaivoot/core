@@ -10,7 +10,7 @@ import {
   type PublicPlayer,
   type PublicState,
 } from "@/lib/cashflow/engine";
-import { CardView, Dice, FreedomBar, PlayerTag, Rat, useNow, useRoom } from "../game-ui";
+import { CardView, DECK_TONE, Dice, FreedomBar, PlayerTag, Rat, cardKey, useNow, useRoom } from "../game-ui";
 
 const SQUARE_COLOR: Record<Square, { fill: string; text: string; icon: string }> = {
   opportunity: { fill: "#bbf7d0", text: "#14532d", icon: "💡" },
@@ -22,24 +22,35 @@ const SQUARE_COLOR: Record<Square, { fill: string; text: string; icon: string }>
   downsize: { fill: "#d6d3d1", text: "#292524", icon: "📉" },
 };
 
+/** วงนอก = ทางด่วน (ตอนนี้เป็นภาพบนกระดาน ผู้ชนะย้ายขึ้นไปอยู่บนวงนี้ กติกาวงนอกทำทีหลัง) */
+const FAST_TRACK = [
+  { label: "⭐ ความฝัน", fill: "#7c3aed" },
+  { label: "🏭 ธุรกิจ", fill: "#0f766e" },
+  { label: "💵 วันรับเงิน", fill: "#b45309" },
+  { label: "🏭 ธุรกิจ", fill: "#0f766e" },
+];
+const FAST_COUNT = 16;
+
 // พิกัดใน viewBox 1000×1000 มุม 0 = บนสุด หมุนตามเข็มนาฬิกา
 const C = 500;
-const OUTER = 492;
-const INNER = 292;
+const FT_OUT = 494;
+const FT_IN = 408;
+const RR_OUT = 398;
+const RR_IN = 256;
 const STEP = 360 / BOARD.length;
 const point = (r: number, deg: number) => {
   const rad = (deg * Math.PI) / 180;
   return [C + r * Math.sin(rad), C - r * Math.cos(rad)] as const;
 };
 
-function segment(i: number) {
-  const a0 = i * STEP - STEP / 2 + 0.6;
-  const a1 = i * STEP + STEP / 2 - 0.6;
-  const [x0, y0] = point(OUTER, a0);
-  const [x1, y1] = point(OUTER, a1);
-  const [x2, y2] = point(INNER, a1);
-  const [x3, y3] = point(INNER, a0);
-  return `M${x0} ${y0} A${OUTER} ${OUTER} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${INNER} ${INNER} 0 0 0 ${x3} ${y3} Z`;
+function segment(center: number, width: number, outer: number, inner: number) {
+  const a0 = center - width / 2 + 0.6;
+  const a1 = center + width / 2 - 0.6;
+  const [x0, y0] = point(outer, a0);
+  const [x1, y1] = point(outer, a1);
+  const [x2, y2] = point(inner, a1);
+  const [x3, y3] = point(inner, a0);
+  return `M${x0} ${y0} A${outer} ${outer} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${inner} ${inner} 0 0 0 ${x3} ${y3} Z`;
 }
 
 /** หมุนตัวหนังสือตามช่อง ครึ่งล่างกลับหัวให้อ่านได้ */
@@ -47,31 +58,57 @@ function upright(deg: number) {
   return deg > 90 && deg < 270 ? deg + 180 : deg;
 }
 
+function Label({ r, deg, fill, size, fit, children }: { r: number; deg: number; fill: string; size: number; fit?: number; children: string }) {
+  const [x, y] = point(r, deg);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill={fill}
+      fontSize={size}
+      fontWeight={700}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      transform={`rotate(${upright(deg)} ${x} ${y})`}
+      {...(fit ? { textLength: fit, lengthAdjust: "spacingAndGlyphs" } : {})}
+    >
+      {children}
+    </text>
+  );
+}
+
 function RingBoard() {
+  const ftStep = 360 / FAST_COUNT;
   return (
     <svg viewBox="0 0 1000 1000" className="absolute inset-0 size-full" aria-hidden="true">
+      {/* วงนอก: ทางด่วน */}
+      <circle cx={C} cy={C} r={FT_OUT + 4} fill="#1e1b4b" />
+      {Array.from({ length: FAST_COUNT }, (_, i) => {
+        const sq = FAST_TRACK[i % FAST_TRACK.length];
+        const deg = i * ftStep + ftStep / 2;
+        return (
+          <g key={`ft${i}`}>
+            <path d={segment(deg, ftStep, FT_OUT, FT_IN)} fill={sq.fill} stroke="#1e1b4b" strokeWidth={4} />
+            <Label r={(FT_OUT + FT_IN) / 2} deg={deg} fill="#fff" size={22}>
+              {sq.label}
+            </Label>
+          </g>
+        );
+      })}
+      <circle cx={C} cy={C} r={RR_OUT + 5} fill="#fafaf9" />
+      {/* วงใน: วงหนูวิ่ง */}
       {BOARD.map((sq, i) => {
         const deg = i * STEP;
         const c = SQUARE_COLOR[sq];
-        const [lx, ly] = point(458, deg);
-        const [ix, iy] = point(412, deg);
         const label = SQUARE_LABEL[sq];
+        const [ix, iy] = point(326, deg);
         return (
           <g key={i}>
-            <path d={segment(i)} fill={c.fill} stroke="#fff" strokeWidth={3} />
-            <text
-              x={lx}
-              y={ly}
-              fill={c.text}
-              fontSize={label.length > 8 ? 17 : 20}
-              fontWeight={700}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              transform={`rotate(${upright(deg)} ${lx} ${ly})`}
-            >
+            <path d={segment(deg, STEP, RR_OUT, RR_IN)} fill={c.fill} stroke="#fff" strokeWidth={3} />
+            <Label r={372} deg={deg} fill={c.text} size={label.length > 8 ? 16 : 19} fit={label.length > 8 ? 86 : undefined}>
               {label}
-            </text>
-            <text x={ix} y={iy} fontSize={30} textAnchor="middle" dominantBaseline="middle">
+            </Label>
+            <text x={ix} y={iy} fontSize={28} textAnchor="middle" dominantBaseline="middle">
               {c.icon}
             </text>
           </g>
@@ -81,14 +118,50 @@ function RingBoard() {
   );
 }
 
-/** ตำแหน่งหนู (เป็น % ของกระดาน) ถ้าหลายตัวอยู่ช่องเดียวกัน วางเรียงกันในช่อง */
-function ratSpot(pos: number, k: number, count: number) {
+/** ตำแหน่งหนู (เป็น % ของกระดาน) ถ้าหลายตัวอยู่ช่องเดียวกัน วางเรียงกันในช่อง ผู้ชนะอยู่วงนอก */
+function ratSpot(pos: number, k: number, count: number, fastTrack: boolean) {
+  if (fastTrack) {
+    const [x, y] = point((FT_OUT + FT_IN) / 2, pos * STEP);
+    return { x: x / 10, y: y / 10 };
+  }
   const row = Math.floor(k / 2);
   const side = count === 1 || (k === count - 1 && k % 2 === 0) ? 0 : k % 2 === 0 ? -1 : 1;
-  const r = 352 - row * 34;
-  const [x, y] = point(r, pos * STEP + side * STEP * 0.24);
+  const r = 284 - row * 26;
+  const [x, y] = point(r, pos * STEP + side * STEP * 0.26);
   return { x: x / 10, y: y / 10 };
 }
+
+type PileDeck = keyof typeof DECK_TONE;
+
+/** กองการ์ดที่มุมกระดาน */
+function Pile({ deck, left, active }: { deck: PileDeck; left: number; active: boolean }) {
+  const t = DECK_TONE[deck];
+  return (
+    <div className={`relative w-full transition ${active ? "-translate-y-[0.6cqw] scale-105" : ""}`}>
+      {[2, 1].map((o) => (
+        <div
+          key={o}
+          className="absolute inset-0 rounded-[1cqw] bg-white ring-1 ring-stone-300"
+          style={{ transform: `translate(${o * 0.5}cqw, ${o * 0.5}cqw)` }}
+        />
+      ))}
+      <div className={`relative overflow-hidden rounded-[1cqw] bg-white shadow ring-1 ${active ? "ring-4 ring-amber-400" : "ring-stone-300"}`}>
+        <div className={`${t.band} py-[0.6cqw] text-center text-[2.6cqw] leading-none`}>{t.icon}</div>
+        <div className="px-[0.5cqw] py-[0.6cqw] text-center">
+          <p className="text-[1.7cqw] leading-tight font-bold text-stone-800">{t.label}</p>
+          <p className="text-[1.35cqw] text-stone-500">เหลือ {left} ใบ</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PILE_SPOTS: { deck: PileDeck; cls: string }[] = [
+  { deck: "small", cls: "left-[1%] top-[1%]" },
+  { deck: "big", cls: "right-[2%] top-[1%]" },
+  { deck: "market", cls: "left-[1%] bottom-[2%]" },
+  { deck: "doodad", cls: "right-[2%] bottom-[2%]" },
+];
 
 /** หนูเดินทีละช่องไปหาตำแหน่งจริง */
 function useShownPositions(players: PublicPlayer[]) {
@@ -185,16 +258,24 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
       {/* กระดานวงกลม */}
       <div className="@container relative mx-auto aspect-square w-full max-w-[min(100%,calc(100dvh-2rem))]">
         <RingBoard />
+        {/* กองการ์ด 4 กองที่มุม */}
+        {PILE_SPOTS.map(({ deck, cls }) => (
+          <div key={deck} className={`absolute w-[13%] ${cls}`}>
+            <Pile deck={deck} left={state.deckLeft[deck]} active={state.card?.deck === deck} />
+          </div>
+        ))}
+
         {/* หนูบนกระดาน (HTML ซ้อนบน SVG ขยับนุ่ม ๆ ด้วย transition) */}
         {state.players.map((p) => {
           const pos = shown[p.id] ?? p.pos;
-          const same = state.players.filter((x) => (shown[x.id] ?? x.pos) === pos);
+          const fast = state.phase === "over" && p.id === state.winner;
+          const same = state.players.filter((x) => (shown[x.id] ?? x.pos) === pos && !(state.phase === "over" && x.id === state.winner));
           const k = same.findIndex((x) => x.id === p.id);
-          const { x, y } = ratSpot(pos, k, same.length);
+          const { x, y } = ratSpot(pos, k, same.length, fast);
           return (
             <div
               key={p.id}
-              className="absolute w-[6%] -translate-x-1/2 -translate-y-1/2 drop-shadow-md transition-all duration-200"
+              className={`absolute -translate-x-1/2 -translate-y-1/2 drop-shadow-md transition-all duration-200 ${fast ? "w-[6.5%]" : "w-[4.8%]"}`}
               style={{ left: `${x}%`, top: `${y}%` }}
               title={p.name}
             >
@@ -204,14 +285,14 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
         })}
 
         {/* กลางวง */}
-        <div className="absolute inset-[21%] flex flex-col items-center justify-center gap-[1.2cqw] overflow-hidden rounded-full bg-white p-[3.5%] text-center shadow-inner ring-1 ring-stone-200">
+        <div className="absolute inset-[25%] flex flex-col items-center justify-center gap-[1cqw] overflow-hidden rounded-full bg-white p-[2.5%] text-center shadow-inner ring-1 ring-stone-200">
           {state.phase === "over" && winner ? (
             <>
               <Rat color={winner.color} className="w-[14cqw]" />
               <p className="text-[3.5cqw] font-bold" style={{ color: colorHex(winner.color) }}>
                 {winner.name}
               </p>
-              <p className="text-[2.4cqw] font-semibold text-emerald-700">ออกจากวงหนูวิ่งแล้ว! 🎉</p>
+              <p className="text-[2.4cqw] font-semibold text-emerald-700">ออกจากวงหนูวิ่ง ขึ้นทางด่วนแล้ว! 🎉</p>
               <p className="text-[1.7cqw] text-stone-600">
                 รายได้จากทรัพย์สิน {baht(passiveIncome(winner))} มากกว่ารายจ่าย {baht(totalExpenses(winner))}
               </p>
@@ -226,7 +307,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
               {state.dice && <Dice dice={state.dice} big />}
               {state.card ? (
                 <div className="w-full">
-                  <CardView card={state.card} big />
+                  <CardView key={cardKey(state)} card={state.card} big />
                 </div>
               ) : (
                 <p className="text-[1.9cqw] text-stone-500">
