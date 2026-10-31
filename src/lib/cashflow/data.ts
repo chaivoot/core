@@ -76,7 +76,8 @@ export const STOCK_LABEL: Record<StockKind, string> = {
   fund: "กองทุนรวม",
   gold: "เหรียญทองคำสะสม",
 };
-/** หุ้น/กองทุนซื้อทีละ 100 เหรียญทองซื้อทีละเหรียญ */
+/** หุ้น/กองทุนซื้อทีละ 100 เหรียญทองซื้อทีละเหรียญ
+ * ราคาหุ้นตั้งให้สัดส่วนเข้ากับเงินเดือนและการ์ดจ่ายซะ: 100 หุ้น ≈ ฿5,000–฿60,000 */
 export const lotOf = (k: StockKind) => (k === "gold" ? 1 : 100);
 export const unitOf = (k: StockKind) => (k === "gold" ? "เหรียญ" : k === "fund" ? "หน่วย" : "หุ้น");
 
@@ -107,9 +108,9 @@ const gold = (price: number, max: number, text: string): DealCard => ({ type: "s
 const asset = (a: AssetDeal): DealCard => ({ type: "asset", ...a });
 
 export const SMALL_DEALS: DealCard[] = [
-  stock("pharma", 5), stock("pharma", 10), stock("pharma", 20), stock("pharma", 30),
-  stock("ent", 10), stock("ent", 20), stock("ent", 30), stock("ent", 40),
-  stock("elec", 10), stock("elec", 20), stock("elec", 40), stock("elec", 50),
+  stock("pharma", 50), stock("pharma", 100), stock("pharma", 200), stock("pharma", 300),
+  stock("ent", 100), stock("ent", 200), stock("ent", 300), stock("ent", 400),
+  stock("elec", 100), stock("elec", 200), stock("elec", 400), stock("elec", 500),
   asset({ name: "คอนโด 1 ห้องนอน ใกล้รถไฟฟ้า", price: 900_000, down: 45_000, mortgage: 855_000, cashflow: 2_000, tag: "condo", rental: true }),
   asset({ name: "คอนโดเก่ารีโนเวต", price: 600_000, down: 30_000, mortgage: 570_000, cashflow: 1_500, tag: "condo", rental: true }),
   asset({ name: "ห้องแถวให้เช่า", price: 750_000, down: 40_000, mortgage: 710_000, cashflow: 1_000, tag: "shophouse", rental: true }),
@@ -122,7 +123,7 @@ export const SMALL_DEALS: DealCard[] = [
   { type: "split", stock: "pharma", factor: 2, text: "หุ้นบริษัทยาแตกพาร์ ใครถืออยู่ได้จำนวนหุ้น ×2" },
   { type: "split", stock: "ent", factor: 0.5, text: "หุ้นบริษัทเอนเตอร์เทนเมนต์ลดพาร์ ใครถืออยู่จำนวนหุ้น ÷2" },
   asset({ name: "ห้องเช่าหอพัก 4 ห้อง", price: 1_200_000, down: 50_000, mortgage: 1_150_000, cashflow: 3_000, tag: "dorm", rental: true }),
-  stock("fund", 10), stock("fund", 20),
+  stock("fund", 100), stock("fund", 200),
   gold(4_000, 10, "คนรู้จักขายเหรียญทองคำสะสม 10 เหรียญ เหรียญละ ฿4,000"),
   gold(6_000, 5, "งานประมูลของสะสม มีเหรียญทองคำ 5 เหรียญ เหรียญละ ฿6,000"),
   gold(3_000, 20, "ทายาทขายเหรียญทองคำของคุณปู่ 20 เหรียญ เหรียญละ ฿3,000"),
@@ -194,11 +195,11 @@ export const MARKETS: MarketCard[] = [
   { type: "rentUp", text: "นิคมอุตสาหกรรมเปิดใหม่ คนย้ายเข้าเยอะ ค่าเช่าขึ้น ทรัพย์สินให้เช่าทุกชิ้น +฿500/เดือน", amount: 500 },
   { type: "expense", text: "ผู้เช่าหนีค่าเช่า ห้องพังต้องซ่อม เจ้าของคอนโด/ห้องแถวจ่าย ฿20,000", tags: ["condo", "condo21", "shophouse"], amount: 20_000 },
   { type: "expense", text: "กฎหมายใหม่ ร้านซ่อมมือถือต้องอัปเกรดเครื่องมือ จ่าย ฿50,000", tags: ["phoneshop"], amount: 50_000 },
-  { type: "sellStock", text: "บริษัทอิเล็กทรอนิกส์ได้สัญญาส่งชิปให้ค่ายรถยนต์ หุ้นพุ่งไป ฿70", stock: "elec", price: 70 },
-  { type: "sellStock", text: "บริษัทยาผ่านการทดลองยาตัวใหม่ หุ้นขึ้นไป ฿45", stock: "pharma", price: 45 },
-  { type: "sellStock", text: "บริษัทเอนเตอร์เทนเมนต์โดนฟ้องหนัก หุ้นร่วงเหลือ ฿2", stock: "ent", price: 2 },
+  { type: "sellStock", text: "บริษัทอิเล็กทรอนิกส์ได้สัญญาส่งชิปให้ค่ายรถยนต์ หุ้นพุ่งไป ฿700", stock: "elec", price: 700 },
+  { type: "sellStock", text: "บริษัทยาผ่านการทดลองยาตัวใหม่ หุ้นขึ้นไป ฿450", stock: "pharma", price: 450 },
+  { type: "sellStock", text: "บริษัทเอนเตอร์เทนเมนต์โดนฟ้องหนัก หุ้นร่วงเหลือ ฿20", stock: "ent", price: 20 },
   { type: "sellAsset", text: "รีสอร์ตได้รางวัลท่องเที่ยว เครือโรงแรมขอซื้อ ฿12,000,000", tag: "resort", price: 12_000_000 },
-  { type: "sellStock", text: "ตลาดหุ้นขาขึ้น กองทุนรวมขายได้หน่วยละ ฿30", stock: "fund", price: 30 },
+  { type: "sellStock", text: "ตลาดหุ้นขาขึ้น กองทุนรวมขายได้หน่วยละ ฿300", stock: "fund", price: 300 },
   { type: "sellAsset", text: "ครอบครัวลูกสองย้ายเข้าเมือง ต้องการบ้าน 3/2 ให้ราคา ฿2,000,000", tag: "house32", price: 2_000_000 },
   { type: "sellAsset", text: "มีคนขอซื้อบ้าน 3/2 ราคา ฿1,700,000", tag: "house32", price: 1_700_000 },
   { type: "sellAsset", text: "หมู่บ้านใหม่ขายหมด คนแย่งซื้อบ้าน 3/2 มือสอง ให้ราคา ฿2,300,000", tag: "house32", price: 2_300_000 },
@@ -208,7 +209,7 @@ export const MARKETS: MarketCard[] = [
   { type: "sellStock", text: "ร้านทองรับซื้อเหรียญทองคำ เหรียญละ ฿5,000", stock: "gold", price: 5_000 },
   { type: "sellAsset", text: "ครอบครัวใหญ่อยากอยู่ใกล้กัน ขอซื้อบ้านแฝดหลังละ ฿1,900,000", tag: "duplex", price: 1_900_000, perUnit: true },
   { type: "expense", text: "ฝนตกหนัก น้ำท่วมหมู่บ้าน เจ้าของบ้านให้เช่าจ่ายค่าซ่อม ฿15,000", tags: ["house32", "house", "duplex", "townhouse"], amount: 15_000 },
-  { type: "sellStock", text: "บริษัทอิเล็กทรอนิกส์ขาดทุนติดกันสามไตรมาส หุ้นร่วงเหลือ ฿5", stock: "elec", price: 5 },
+  { type: "sellStock", text: "บริษัทอิเล็กทรอนิกส์ขาดทุนติดกันสามไตรมาส หุ้นร่วงเหลือ ฿50", stock: "elec", price: 50 },
 ];
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
