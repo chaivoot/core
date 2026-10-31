@@ -175,14 +175,15 @@ export function describeCard(card: Card): CardInfo {
   return { kind: "ช่องพิเศษ", tone: TONE.info, title, lines: [line] };
 }
 
+/** big = กลางกระดานบนจอ host: ขนาดตัวอักษรตามขนาดกระดาน (หน่วย cqw ของกระดาน) */
 export function CardView({ card, big = false }: { card: Card; big?: boolean }) {
   const c = describeCard(card);
   return (
-    <div className={`rounded-2xl p-4 ring-1 ${c.tone} ${big ? "p-6" : ""}`}>
-      <p className={`font-medium opacity-70 ${big ? "text-lg" : "text-xs"}`}>{c.kind}</p>
-      <p className={`font-bold leading-snug ${big ? "mt-1 text-3xl" : "mt-0.5 text-lg"}`}>{c.title}</p>
+    <div className={`rounded-2xl ring-1 ${c.tone} ${big ? "p-[2cqw]" : "p-4"}`}>
+      <p className={`font-medium opacity-70 ${big ? "text-[1.8cqw]" : "text-xs"}`}>{c.kind}</p>
+      <p className={`font-bold leading-snug ${big ? "mt-[0.3cqw] text-[3.2cqw]" : "mt-0.5 text-lg"}`}>{c.title}</p>
       {c.lines.map((l) => (
-        <p key={l} className={big ? "mt-1 text-xl" : "mt-0.5 text-sm"}>
+        <p key={l} className={big ? "mt-[0.3cqw] text-[2.1cqw] leading-snug" : "mt-0.5 text-sm"}>
           {l}
         </p>
       ))}
@@ -193,7 +194,7 @@ export function CardView({ card, big = false }: { card: Card; big?: boolean }) {
 export function Dice({ dice, big = false }: { dice: number[]; big?: boolean }) {
   const faces = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
   return (
-    <span className={`inline-flex items-center gap-1 ${big ? "text-6xl" : "text-3xl"}`} aria-label={`ทอยได้ ${dice.join(" + ")}`}>
+    <span className={`inline-flex items-center gap-1 ${big ? "text-[5.5cqw] leading-none" : "text-3xl"}`} aria-label={`ทอยได้ ${dice.join(" + ")}`}>
       {dice.map((d, i) => (
         <span key={i}>{faces[d - 1]}</span>
       ))}
