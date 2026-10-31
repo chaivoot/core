@@ -476,6 +476,13 @@ function land(s: GameState, p: Player, ctx: Ctx) {
       if (m.type === "rentUp") {
         for (const x of ratRace(s)) for (const a of x.assets) if (a.rental) a.cashflow += m.amount;
       }
+      if (m.type === "cashflowUp") {
+        for (const x of ratRace(s)) {
+          const mine = x.assets.filter((a) => m.tags.includes(a.tag));
+          for (const a of mine) a.cashflow += m.amount;
+          if (mine.length > 0) log(s, `${x.name} กระแสเงินสดเพิ่ม +${baht(m.amount * mine.length)}/เดือน`, x.id);
+        }
+      }
       if (m.type === "expense") {
         for (const x of ratRace(s)) {
           if (x.assets.some((a) => m.tags.includes(a.tag))) {

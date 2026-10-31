@@ -12,6 +12,7 @@ import {
   STOCK_LABEL,
   baht,
   lotOf,
+  priceRange,
   unitOf,
   colorHex,
 } from "@/lib/cashflow/data";
@@ -156,8 +157,12 @@ export function describeCard(card: Card): CardInfo {
       return {
         kind,
         tone: d.stock === "gold" ? { band: "bg-amber-500", icon: "🪙" } : tone,
-        title: d.text ?? `${STOCK_LABEL[d.stock]} ราคา ฿${d.price}`,
+        title: d.text ?? `${STOCK_LABEL[d.stock]} ราคา ฿${d.price.toLocaleString("th-TH")}`,
         lines: [
+          ...(d.news ? [`📰 ${d.news}`] : []),
+          ...(d.stock === "gold"
+            ? []
+            : [`ช่วงราคา ฿${priceRange(d.stock).lo.toLocaleString("th-TH")}–฿${priceRange(d.stock).hi.toLocaleString("th-TH")}`]),
           d.max ? `คนเปิดการ์ดซื้อได้สูงสุด ${d.max} ${unit}` : `คนเปิดการ์ดซื้อได้ (ทีละ ${lotOf(d.stock)} ${unit})`,
           `ใครมี${STOCK_LABEL[d.stock]}อยู่ ขายได้ในราคานี้`,
         ],

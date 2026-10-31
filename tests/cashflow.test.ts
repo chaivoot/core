@@ -57,7 +57,7 @@ describe("กระดานและข้อมูล", () => {
     const count = (sq: string) => BOARD.filter((b) => b === sq).length;
     expect(BOARD).toHaveLength(24);
     expect([count("opportunity"), count("payday"), count("market"), count("doodad")]).toEqual([10, 3, 4, 4]);
-    expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length]).toEqual([36, 18, 27]);
+    expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length]).toEqual([46, 18, 26]);
   });
 
   it("กระแสเงินสดตั้งต้นตรงกับตารางอาชีพ", () => {
@@ -268,6 +268,25 @@ describe("การ์ดแบบใหม่", () => {
     expect(s.step).toBe("end");
     expect(s.players[0].cash).toBe(5_000);
     expect(s.players[0].loans).toBe(1);
+  });
+
+  it("ราคาหุ้นมาในการ์ดดีลเล็กเท่านั้น การ์ดตลาดมีแค่นักสะสมรับซื้อเหรียญทอง", () => {
+    const stockMarkets = MARKETS.filter((m) => m.type === "sellStock");
+    expect(stockMarkets.every((m) => m.type === "sellStock" && m.stock === "gold")).toBe(true);
+    // ดีลเล็กมีทั้งราคาต่ำและสูงของทุกหุ้น
+    for (const k of ["pharma", "ent", "elec", "fund"] as const) {
+      const prices = SMALL_DEALS.flatMap((d) => (d.type === "stock" && d.stock === k ? [d.price] : []));
+      expect(Math.max(...prices) / Math.min(...prices)).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it("การ์ดตลาดรายได้เพิ่ม: ทรัพย์สินกลุ่มนั้นได้กระแสเงินสดเพิ่มถาวร", () => {
+    let s = started();
+    s.players[0].assets.push({ uid: "x", name: "ตู้ซักผ้า", tag: "laundry", price: 30_000, units: 1, down: 30_000, mortgage: 0, cashflow: 1_200, rental: false });
+    s.players[0].pos = 6;
+    s.decks.market = [MARKETS.findIndex((m) => m.type === "cashflowUp" && m.tags.includes("laundry"))];
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    expect(s.players[0].assets[0].cashflow).toBe(1_600);
   });
 
   it("บ้าน 3/2 มีการ์ดตลาดขอซื้อ", () => {
