@@ -223,19 +223,42 @@ describe("โหมดซื้อดีลต่อ (host ตั้งค่า
     expect(s.step).toBe("end");
   });
 
-  it("เปิดโหมด: คนเปิดไม่ซื้อ คนอื่นซื้อต่อได้ ใครกดก่อนได้ก่อน", () => {
+  it("ขายสิทธิ์: คนเปิดประกาศค่านายหน้า คนแรกที่รับจ่ายค่านายหน้า + ดาวน์ แล้วได้ทรัพย์สิน", () => {
     let s = openCondo(true);
-    const [, b, c] = s.players;
-    s = run(s, { type: "respond", buy: false });
-    expect(s.step).toBe("respond");
+    const [a, b, c] = s.players;
+    const d = SMALL_DEALS[firstCondo()] as Extract<(typeof SMALL_DEALS)[number], { type: "asset" }>;
+    expect(() => run(s, { type: "sellRight", pct: 20 })).toThrow("3% ถึง 15%");
+    s = run(s, { type: "sellRight", pct: 10 });
+    const fee = Math.round(d.down * 0.1);
     expect(s.resale).toBe(true);
+    expect(s.rightFee).toBe(fee);
     expect(s.responders).toEqual({ [b.id]: false, [c.id]: false });
 
-    s.players[2].cash = 100_000;
+    s.players[2].cash = 1_000_000;
     s = run(s, { type: "respond", buy: true }, { playerId: c.id });
     expect(s.players[2].assets).toHaveLength(1);
+    expect(s.players[2].cash).toBe(1_000_000 - d.down - fee);
+    expect(s.players[0].cash).toBe(a.cash + fee);
     expect(s.step).toBe("end");
     expect(() => run(s, { type: "respond", buy: true }, { playerId: b.id })).toThrow();
+  });
+
+  it("คนเปิดกดไม่ซื้อ = จบ ดีลทิ้งไป (ไม่ส่งต่ออัตโนมัติ)", () => {
+    let s = openCondo(true);
+    s = run(s, { type: "respond", buy: false });
+    expect(s.step).toBe("end");
+    expect(s.resale).toBeFalsy();
+  });
+
+  it("ขายสิทธิ์การ์ดหุ้นไม่ได้", () => {
+    let s = lobby(["เอ", "บี"]);
+    s = act(s, HOST, { type: "setOptions", resellDeals: true }, ctx());
+    s = act(s, HOST, { type: "start" }, ctx());
+    s.players[0].pos = 1;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s.decks.small = [pharma600()];
+    s = run(s, { type: "deal", size: "small" });
+    expect(() => run(s, { type: "sellRight", pct: 5 })).toThrow("ทรัพย์สินหรือธุรกิจ");
   });
 
   it("คำอธิบายก่อนเริ่มเกม: host เปิด/เลื่อนหน้าได้ เริ่มเกมแล้วปิดเอง", () => {

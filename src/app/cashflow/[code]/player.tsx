@@ -22,6 +22,7 @@ import {
 import {
   debtAmount,
   expenseLines,
+  canSellRight,
   loanRoom,
   logText,
   logWho,
@@ -446,16 +447,19 @@ function Respond({
     );
   }
 
-  // ทรัพย์สินจากการ์ดดีล
+  // ทรัพย์สินจากการ์ดดีล (หรือการรับสิทธิ์ต่อจากคนเปิดการ์ด)
   const d = (card.deck === "small" ? SMALL_DEALS : card.deck === "big" ? BIG_DEALS : [])[card.index ?? -1];
   if (!d || d.type !== "asset") return null;
-  const short = d.down - me.cash;
+  const fee = state.resale ? (state.rightFee ?? 0) : 0;
+  const total = d.down + fee;
+  const short = total - me.cash;
   const loansNeeded = Math.ceil(short / LOAN_UNIT);
+  const sellRightOk = opener && !state.resale && state.options?.resellDeals === true && canSellRight(d);
   return (
     <div className="space-y-2">
       {state.resale && (
         <p className="rounded-xl bg-amber-50 p-3 text-sm font-medium text-amber-900">
-          {state.players[state.turn].name} ไม่ซื้อ คุณซื้อต่อได้ ใครกดก่อนได้ก่อน!
+          {state.players[state.turn].name} ขายสิทธิ์ดีลนี้ ค่านายหน้า {state.rightPct}% = {money(fee)} ใครกดรับก่อนได้ก่อน!
         </p>
       )}
       {short > 0 && (
@@ -467,7 +471,7 @@ function Respond({
               disabled={busy}
               onClick={() => send({ type: "loan", count: loansNeeded })}
             >
-              กู้ธนาคาร {money(loansNeeded * LOAN_UNIT)} (ผ่อน {money(loansNeeded * 1_000)}/เดือน)
+              กู้ธนาคาร {money(loansNeeded * LOAN_UNIT)} (ผ่อน {money(loansNeeded * LOAN_PAYMENT)}/เดือน)
             </button>
           ) : (
             <p className="mt-1">กู้เพิ่มได้อีกแค่ {money(loanRoom(me) * LOAN_UNIT)} ไม่พอซื้อ</p>
@@ -476,12 +480,44 @@ function Respond({
       )}
       <div className="grid grid-cols-2 gap-2">
         <button className="btn-primary" disabled={busy || short > 0} onClick={() => send({ type: "respond", buy: true })}>
-          ซื้อ ({money(d.down)})
+          {state.resale ? `รับสิทธิ์ (${money(total)})` : `ซื้อ (${money(d.down)})`}
         </button>
         <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "respond", buy: false })}>
-          ไม่ซื้อ
+          {state.resale ? "ไม่รับ" : "ไม่ซื้อ (จบ)"}
         </button>
       </div>
+      {state.resale && fee > 0 && (
+        <p className="text-center text-xs text-stone-500">
+          จ่ายค่านายหน้า {money(fee)} ให้ {state.players[state.turn].name} + เงินดาวน์ {money(d.down)}
+        </p>
+      )}
+      {sellRightOk && <SellRight down={d.down} busy={busy} send={send} />}
+    </div>
+  );
+}
+
+/** คนเปิดการ์ดไม่ซื้อเอง แต่ประกาศขายสิทธิ์ เลือกค่านายหน้า 3–15% ของเงินดาวน์ */
+function SellRight({ down, busy, send }: { down: number; busy: boolean; send: Send }) {
+  const [pct, setPct] = useState(5);
+  return (
+    <div className="space-y-2 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200">
+      <p className="text-sm font-medium">หรือขายสิทธิ์ให้คนอื่น (ใครกดรับก่อนได้ก่อน)</p>
+      <label className="flex items-center gap-3 text-sm">
+        <span className="shrink-0">ค่านายหน้า {pct}%</span>
+        <input
+          type="range"
+          min={3}
+          max={15}
+          step={1}
+          value={pct}
+          onChange={(e) => setPct(Number(e.target.value))}
+          className="w-full accent-teal-700"
+          aria-label="ค่านายหน้า (%)"
+        />
+      </label>
+      <button className="btn-secondary w-full" disabled={busy} onClick={() => send({ type: "sellRight", pct })}>
+        ประกาศขายสิทธิ์ {money(Math.round((down * pct) / 100))}
+      </button>
     </div>
   );
 }

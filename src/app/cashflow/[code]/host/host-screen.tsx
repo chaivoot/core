@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { DREAMS, FAST_GOAL, MAX_PLAYERS, MIN_PLAYERS, money, colorHex } from "@/lib/cashflow/data";
 import {
@@ -125,8 +126,8 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
               onChange={(e) => send({ type: "setOptions", resellDeals: e.target.checked })}
             />
             <span>
-              <b>ซื้อดีลต่อได้</b>
-              <span className="block text-sm text-stone-500">ดีลที่คนเปิดไม่ซื้อ ส่งให้คนอื่นซื้อต่อ ใครกดก่อนได้ก่อน (ปิด = ทิ้งไป)</span>
+              <b>ขายสิทธิ์ดีลได้</b>
+              <span className="block text-sm text-stone-500">คนเปิดดีลทรัพย์สิน/ธุรกิจที่ไม่ซื้อ ประกาศขายสิทธิ์ได้ (ค่านายหน้า 3–15% ของเงินดาวน์) ใครกดรับก่อนได้ก่อน · ไม่รวมหุ้น</span>
             </span>
           </label>
           <button
@@ -154,9 +155,9 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
       {data?.stale && (
         <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-4 bg-amber-100 p-3 text-amber-900 shadow">
           <span className="font-semibold">เกมมีการอัปเดตการ์ดระหว่างเล่น ห้องนี้เล่นต่อไม่ได้</span>
-          <a href="/cashflow" className="btn-primary min-h-9 px-3 text-sm">
+          <Link href="/cashflow" className="btn-primary min-h-9 px-3 text-sm">
             สร้างห้องใหม่
-          </a>
+          </Link>
         </div>
       )}
       {/* กระดาน: ทางด่วนสี่เหลี่ยมล้อมสนามแข่งหนู */}
@@ -196,7 +197,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
                 </p>
               )}
               {state.step === "respond" && state.resale && (
-                <p className="text-[1.8cqw] font-semibold text-amber-700">เปิดให้คนอื่นซื้อต่อ ใครกดก่อนได้ก่อน!</p>
+                <p className="text-[1.8cqw] font-semibold text-amber-700">ขายสิทธิ์ ค่านายหน้า {state.rightPct}% = {money(state.rightFee ?? 0)} ใครกดรับก่อนได้ก่อน!</p>
               )}
               {state.step === "respond" && (
                 <div className="flex flex-wrap justify-center gap-[0.6cqw] text-[1.6cqw]">
