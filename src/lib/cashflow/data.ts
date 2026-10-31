@@ -59,7 +59,7 @@ export const SQUARE_LABEL: Record<Square, string> = {
   downsize: "ตกงาน",
 };
 
-/** กระดานวงหนูวิ่ง 24 ช่อง (โอกาส 10 เงินเดือน 3 ตลาด 4 จ่าย 4 ทำบุญ 1 มีลูก 1 ตกงาน 1) */
+/** กระดานสนามแข่งหนู 24 ช่อง (โอกาส 10 เงินเดือน 3 ตลาด 4 จ่าย 4 ทำบุญ 1 มีลูก 1 ตกงาน 1) */
 export const BOARD: Square[] = [
   "opportunity", "doodad", "opportunity", "charity", "opportunity", "payday",
   "opportunity", "market", "opportunity", "doodad", "baby", "market",

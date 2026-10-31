@@ -16,7 +16,7 @@ export default async function CashflowPage() {
       </div>
       <div className="text-center">
         <h1 className="text-3xl font-bold text-stone-900">กระแสเงินสด</h1>
-        <p className="mt-2 text-stone-600">เกมฝึกคิดเรื่องเงิน ออกจากวงหนูวิ่งให้ได้ด้วยรายได้จากทรัพย์สิน</p>
+        <p className="mt-2 text-stone-600">เกมฝึกคิดเรื่องเงิน ออกจากสนามแข่งหนูให้ได้ด้วยรายได้จากทรัพย์สิน</p>
       </div>
       <div className="card space-y-2 text-sm text-stone-700">
         <p>1. เปิดหน้านี้บนจอใหญ่ (ทีวี/โน้ตบุ๊ก) แล้วกดสร้างห้อง</p>

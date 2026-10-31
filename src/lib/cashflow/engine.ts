@@ -65,7 +65,7 @@ export type Player = {
   charity: number;
   /** จำนวนตาที่ต้องหยุด (ตกงาน) */
   skip: number;
-  /** อยู่ทางด่วนแล้ว (null/undefined = ยังอยู่วงหนูวิ่ง) */
+  /** อยู่ทางด่วนแล้ว (null/undefined = ยังอยู่สนามแข่งหนู) */
   fast?: FastState | null;
 };
 
@@ -315,7 +315,7 @@ function setResponders(s: GameState, ids: string[], ctx: Ctx) {
   s.step = ids.length > 0 ? "respond" : "end";
 }
 
-/** ผู้เล่นที่ยังอยู่วงหนูวิ่ง (การ์ดวงหนูวิ่งมีผลกับคนกลุ่มนี้เท่านั้น) */
+/** ผู้เล่นที่ยังอยู่สนามแข่งหนู (การ์ดสนามแข่งหนูมีผลกับคนกลุ่มนี้เท่านั้น) */
 function ratRace(s: GameState) {
   return s.players.filter((p) => !p.fast);
 }
@@ -359,7 +359,7 @@ function enterFast(s: GameState, p: Player) {
   p.charity = 0;
   log(
     s,
-    `🚀 ${p.name} ออกจากวงหนูวิ่ง ขึ้นทางด่วน! รายได้ต่อรอบ ${baht(income)} เป้าหมาย: เพิ่มอีก ${baht(FAST_GOAL)} หรือซื้อความฝันของตัวเอง`,
+    `🚀 ${p.name} ออกจากสนามแข่งหนู ขึ้นทางด่วน! รายได้ต่อรอบ ${baht(income)} เป้าหมาย: เพิ่มอีก ${baht(FAST_GOAL)} หรือซื้อความฝันของตัวเอง`,
   );
 }
 
