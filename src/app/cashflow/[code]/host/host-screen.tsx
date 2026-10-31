@@ -39,7 +39,7 @@ const SQUARE_COLOR: Record<Square, { fill: string; text: string }> = {
 
 // พิกัดใน viewBox 1000×1000
 const C = 500;
-/** วงใน (วงหนูวิ่ง) เป็นวงกลม อยู่ในกรอบสี่เหลี่ยมของทางด่วน */
+/** วงใน (สนามแข่งหนู) เป็นวงกลม อยู่ในกรอบสี่เหลี่ยมของทางด่วน */
 const RR_OUT = 376;
 const RR_IN = 236;
 const STEP = 360 / BOARD.length;
@@ -171,7 +171,7 @@ function Board({ players }: { players: PublicPlayer[] }) {
       })}
       <rect x={CELL} y={CELL} width={CELL * 7} height={CELL * 7} fill="#fafaf9" rx={8} />
 
-      {/* วงหนูวิ่ง */}
+      {/* สนามแข่งหนู */}
       {BOARD.map((sq, i) => {
         const deg = i * STEP;
         const c = SQUARE_COLOR[sq];
@@ -407,7 +407,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
 
   return (
     <main className="grid min-h-dvh gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-      {/* กระดาน: ทางด่วนสี่เหลี่ยมล้อมวงหนูวิ่ง */}
+      {/* กระดาน: ทางด่วนสี่เหลี่ยมล้อมสนามแข่งหนู */}
       <div className="@container relative mx-auto aspect-square w-full max-w-[min(100%,calc(100dvh-2rem))]">
         <Board players={state.players} />
         {/* กองการ์ด 4 กองที่มุม */}

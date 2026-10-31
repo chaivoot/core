@@ -33,7 +33,7 @@ export const INTRO_SLIDES: Slide[] = [
     body: (
       <div className="space-y-[0.8em]">
         <p className="text-[1.5em] leading-snug font-bold">
-          ออกจาก <span className="text-rose-600">วงหนูวิ่ง</span> ให้ได้
+          ออกจาก <span className="text-rose-600">สนามแข่งหนู</span> ให้ได้
         </p>
         <ul className="space-y-[0.4em]">
           <Point>
@@ -48,7 +48,7 @@ export const INTRO_SLIDES: Slide[] = [
     ),
   },
   {
-    title: "วงหนูวิ่งคืออะไร",
+    title: "สนามแข่งหนูคืออะไร",
     body: (
       <div className="space-y-[0.8em]">
         <div className="flex flex-wrap items-center justify-center gap-[0.4em] text-[1.1em] font-semibold">
@@ -61,7 +61,7 @@ export const INTRO_SLIDES: Slide[] = [
           <span className="rounded-full bg-rose-600 px-[0.7em] py-[0.2em] text-white">กลับไปทำงาน 🔁</span>
         </div>
         <ul className="space-y-[0.4em]">
-          <Point>วิ่งวนอยู่อย่างนี้ทุกเดือน เหมือนหนูวิ่งในวงล้อ</Point>
+          <Point>วิ่งวนอยู่อย่างนี้ทุกเดือน เหมือนหนูแข่งกันวิ่งในสนามที่ไม่มีเส้นชัย</Point>
           <Point>ได้เงินเดือนขึ้น ก็มักใช้จ่ายมากขึ้นตาม เลยยังวนอยู่ที่เดิม</Point>
           <Point>ทางออก ไม่ใช่วิ่งให้เร็วขึ้น แต่คือ<b>สร้างรายได้ที่ไม่ต้องใช้แรงเราทำ</b></Point>
         </ul>
@@ -97,7 +97,7 @@ export const INTRO_SLIDES: Slide[] = [
         </Point>
         <Point>ทุกชิ้นที่ซื้อ ทำให้รายได้จากทรัพย์สินเพิ่มขึ้นทุกเดือน</Point>
         <Point>
-          เมื่อรายได้จากทรัพย์สิน <b>มากกว่า</b>รายจ่าย = หลุดจากวงหนูวิ่ง 🚀
+          เมื่อรายได้จากทรัพย์สิน <b>มากกว่า</b>รายจ่าย = หลุดจากสนามแข่งหนู 🚀
         </Point>
       </ul>
     ),

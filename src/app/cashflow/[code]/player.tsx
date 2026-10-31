@@ -542,7 +542,7 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
       {/* หลอดอิสรภาพ */}
       <div>
         <div className="flex justify-between text-xs text-stone-600">
-          <span>ทางออกจากวงหนูวิ่ง</span>
+          <span>ทางออกจากสนามแข่งหนู</span>
           <span className="font-hand text-base text-blue-900">{Math.floor(pct)}%</span>
         </div>
         <div className="mt-1 h-3 overflow-hidden rounded-full bg-amber-100 ring-1 ring-amber-300">
