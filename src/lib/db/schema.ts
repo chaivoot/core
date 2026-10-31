@@ -241,12 +241,17 @@ export const cashflowRooms = pgTable(
     code: text("code").primaryKey(),
     /** SHA-256 ของ token ใน cookie ของเครื่อง host (ไม่ต้องล็อกอิน) */
     hostTokenHash: text("host_token_hash").notNull(),
+    /** SHA-256 ของ IP เครื่องที่สร้างห้อง ใช้จำกัดจำนวนห้องกัน spam (ไม่เก็บ IP ตรง ๆ) */
+    creatorIpHash: text("creator_ip_hash"),
     state: jsonb("state").notNull(),
     version: integer("version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("cashflow_rooms_updated_at_idx").on(t.updatedAt)],
+  (t) => [
+    index("cashflow_rooms_updated_at_idx").on(t.updatedAt),
+    index("cashflow_rooms_created_at_idx").on(t.createdAt),
+  ],
 );
 
 export type Product = typeof products.$inferSelect;
