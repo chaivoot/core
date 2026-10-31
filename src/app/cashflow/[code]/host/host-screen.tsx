@@ -26,14 +26,14 @@ import {
 } from "@/lib/cashflow/engine";
 import { CardView, DECK_TONE, Dice, FreedomBar, PlayerTag, Rat, cardKey, useNow, useRoom } from "../game-ui";
 
-const SQUARE_COLOR: Record<Square, { fill: string; text: string; icon: string }> = {
-  opportunity: { fill: "#16a34a", text: "#ffffff", icon: "💡" },
-  payday: { fill: "#facc15", text: "#422006", icon: "💰" },
-  market: { fill: "#0284c7", text: "#ffffff", icon: "📈" },
-  doodad: { fill: "#dc2626", text: "#ffffff", icon: "💸" },
-  charity: { fill: "#7c3aed", text: "#ffffff", icon: "🙏" },
-  baby: { fill: "#db2777", text: "#ffffff", icon: "👶" },
-  downsize: { fill: "#57534e", text: "#ffffff", icon: "📉" },
+const SQUARE_COLOR: Record<Square, { fill: string; text: string }> = {
+  opportunity: { fill: "#16a34a", text: "#ffffff" },
+  payday: { fill: "#facc15", text: "#422006" },
+  market: { fill: "#0284c7", text: "#ffffff" },
+  doodad: { fill: "#dc2626", text: "#ffffff" },
+  charity: { fill: "#7c3aed", text: "#ffffff" },
+  baby: { fill: "#db2777", text: "#ffffff" },
+  downsize: { fill: "#57534e", text: "#ffffff" },
 };
 
 // พิกัดใน viewBox 1000×1000
@@ -70,10 +70,10 @@ function fastCell(i: number) {
 }
 
 const FAST_STYLE = {
-  payday: { fill: "#f59e0b", icon: "💵" },
-  biz: { fill: "#14b8a6", icon: "🏭" },
-  dream: { fill: "#a78bfa", icon: "⭐" },
-  event: { fill: "#fb7185", icon: "⚠️" },
+  payday: { fill: "#f59e0b" },
+  biz: { fill: "#14b8a6" },
+  dream: { fill: "#a78bfa" },
+  event: { fill: "#fb7185" },
 } as const;
 
 function fastText(sq: FastSquare) {
@@ -97,7 +97,8 @@ function shortBaht(n: number) {
 
 function Label({ r, deg, fill, size, fit, children }: { r: number; deg: number; fill: string; size: number; fit?: number; children: string }) {
   const [x, y] = point(r, deg);
-  const rot = deg > 90 && deg < 270 ? deg + 180 : deg;
+  // ตัวหนังสือวางตามแนวรัศมี (หมุน −90° จากแนวช่อง) ฝั่งซ้ายกลับด้านให้อ่านจากซ้ายไปขวา
+  const rot = deg > 180 && deg < 360 ? deg + 90 : deg - 90;
   return (
     <text
       x={x}
@@ -172,16 +173,12 @@ function Board({ players }: { players: PublicPlayer[] }) {
         const deg = i * STEP;
         const c = SQUARE_COLOR[sq];
         const label = SQUARE_LABEL[sq];
-        const [ix, iy] = point(306, deg);
         return (
           <g key={i}>
             <path d={segment(deg, STEP, RR_OUT, RR_IN)} fill={c.fill} stroke="#fff" strokeWidth={3} />
-            <Label r={352} deg={deg} fill={c.text} size={label.length > 8 ? 15 : 17} fit={label.length > 8 ? 78 : undefined}>
+            <Label r={316} deg={deg} fill={c.text} size={label.length > 6 ? 24 : 30} fit={label.length > 6 ? 108 : undefined}>
               {label}
             </Label>
-            <text x={ix} y={iy} fontSize={24} textAnchor="middle" dominantBaseline="middle">
-              {c.icon}
-            </text>
           </g>
         );
       })}
@@ -200,10 +197,12 @@ function ratSpot(spot: Spot, k: number, count: number) {
     const dy = count <= 2 ? 1.2 : (k < 2 ? -1 : 1) * 2.2 + 1.2;
     return { x: (col + 0.5) * (100 / GRID) + dx, y: (row + 0.5) * (100 / GRID) + dy };
   }
-  const row = Math.floor(k / 2);
-  const side = count === 1 || (k === count - 1 && k % 2 === 0) ? 0 : k % 2 === 0 ? -1 : 1;
-  const r = 266 - row * 24;
-  const [x, y] = point(r, spot.pos * STEP + side * STEP * 0.26);
+  // หนูอยู่ขอบด้านในของวง (ไม่บังชื่อช่อง) เรียงได้แถวละ 3 ตัว
+  const row = Math.floor(k / 3);
+  const inRow = Math.min(3, count - row * 3);
+  const side = (k % 3) - (inRow - 1) / 2;
+  const r = 246 - row * 30;
+  const [x, y] = point(r, spot.pos * STEP + side * STEP * 0.42);
   return { x: x / 10, y: y / 10 };
 }
 
@@ -355,7 +354,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
           return (
             <div
               key={p.id}
-              className={`absolute w-[4.4%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 p-[0.3%] drop-shadow-md transition-all duration-200`}
+              className={`absolute w-[4.4%] -translate-x-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-[0.3%] drop-shadow-md transition-all duration-200`}
               style={{ left: `${x}%`, top: `${y}%` }}
               title={p.name}
             >
