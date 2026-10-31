@@ -77,7 +77,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
 
   if (state.phase === "lobby") {
     return (
-      <main className="mx-auto grid min-h-dvh max-w-6xl items-center gap-10 p-8 lg:grid-cols-2">
+      <main className="mx-auto grid min-h-dvh max-w-6xl items-center gap-10 p-8 landscape:grid-cols-2">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-stone-900">กระแสเงินสด</h1>
           {introDone ? (
@@ -151,7 +151,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
   const secondsLeft = state.deadline ? Math.max(0, Math.ceil((state.deadline - now) / 1000)) : null;
 
   return (
-    <main className="grid min-h-dvh gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_26rem]">
+    <main className="grid min-h-dvh gap-4 p-4 landscape:h-dvh landscape:grid-cols-[minmax(0,calc(100dvh-2rem))_minmax(15rem,1fr)] landscape:items-start">
       {data?.stale && (
         <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-4 bg-amber-100 p-3 text-amber-900 shadow">
           <span className="font-semibold">เกมมีการอัปเดตการ์ดระหว่างเล่น ห้องนี้เล่นต่อไม่ได้</span>
@@ -220,7 +220,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
       </GameBoard>
 
       {/* ผู้เล่นและบันทึก */}
-      <aside className="space-y-3">
+      <aside className="space-y-3 landscape:max-h-[calc(100dvh-2rem)] landscape:max-w-[32rem] landscape:overflow-y-auto">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">กระแสเงินสด</h1>
           <span className="font-mono text-stone-500">ห้อง {code}</span>
