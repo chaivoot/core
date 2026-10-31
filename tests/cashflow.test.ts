@@ -48,6 +48,11 @@ const marketIdx = (f: (m: (typeof MARKETS)[number]) => boolean) => MARKETS.findI
 const pharma600 = () => smallIdx((d) => d.type === "stock" && d.stock === "pharma" && d.price === 600);
 const firstCondo = () => smallIdx((d) => d.type === "asset" && d.tag === "condo21");
 
+/** ตำแหน่งช่องบนกระดาน (ไม่ผูกกับลำดับช่อง) */
+const MARKET_POS = BOARD.indexOf("market");
+const DOODAD_POS = BOARD.indexOf("doodad");
+const PAYDAY_POS = BOARD.indexOf("payday");
+
 const me = (s: GameState) => ({ playerId: s.players[s.turn].id });
 const run = (s: GameState, a: Action, actor: Actor = me(s), rolls?: number[]) => act(s, actor, a, ctx(rolls));
 
@@ -59,10 +64,18 @@ describe("กระดานและข้อมูล", () => {
     expect(FAST_BOARD.filter((q) => q.type === "dream")).toHaveLength(8);
   });
 
+  it("โอกาสอยู่ทุกช่องเว้นช่อง เงินเดือนและช่องพิเศษห่างกันทุก 8 ช่อง", () => {
+    BOARD.forEach((sq, i) => expect(sq === "opportunity").toBe(i % 2 === 0));
+    const at = (sq: string) => BOARD.flatMap((b, i) => (b === sq ? [i] : []));
+    expect(at("payday")).toEqual([7, 15, 23]);
+    const specials = BOARD.flatMap((b, i) => (["charity", "baby", "downsize"].includes(b) ? [i] : []));
+    expect(specials).toEqual([5, 13, 21]);
+  });
+
   it("กระดาน 24 ช่องตามร่าง", () => {
     const count = (sq: string) => BOARD.filter((b) => b === sq).length;
     expect(BOARD).toHaveLength(24);
-    expect([count("opportunity"), count("payday"), count("market"), count("doodad")]).toEqual([10, 3, 4, 4]);
+    expect([count("opportunity"), count("payday"), count("market"), count("doodad")]).toEqual([12, 3, 3, 3]);
     expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length]).toEqual([43, 13, 19]);
   });
 
@@ -99,11 +112,12 @@ describe("เข้าห้องและเริ่มเกม", () => {
 });
 
 describe("หนึ่งตา", () => {
-  it("ทอย 1 → ช่องจ่ายไม่คาดฝัน จ่ายเงิน แล้วจบตา", () => {
+  it("ทอย 1 → ช่องจ่ายซะ จ่ายเงิน แล้วจบตา", () => {
     let s = started();
     const p = s.players[0];
+    s.players[0].pos = DOODAD_POS - 1;
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    expect(s.players[0].pos).toBe(1);
+    expect(s.players[0].pos).toBe(DOODAD_POS);
     expect(s.card?.deck).toBe("doodad");
     expect(s.players[0].cash).toBeLessThan(p.cash);
     expect(s.step).toBe("end");
@@ -114,6 +128,7 @@ describe("หนึ่งตา", () => {
   it("บันทึกเหตุการณ์ระบุผู้เล่น (ใช้ทำบันทึกส่วนตัว)", () => {
     let s = started();
     const id = s.players[0].id;
+    s.players[0].pos = DOODAD_POS - 1;
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     const last = s.log[s.log.length - 1];
     expect(logWho(last)).toBe(id);
@@ -124,7 +139,8 @@ describe("หนึ่งตา", () => {
     let s = started();
     const before = s.players[0].cash;
     const cf = monthlyCashflow(s.players[0]);
-    s = run(s, { type: "roll" }, me(s), [die(6)]); // 0 → 6 ผ่านช่อง 5 (เงินเดือน)
+    s.players[0].pos = PAYDAY_POS - 3;
+    s = run(s, { type: "roll" }, me(s), [die(6)]); // เดินผ่านช่องเงินเดือน ไปหยุดช่องโอกาส
     expect(s.players[0].cash).toBe(before + cf);
     expect(s.step).toBe("deal");
   });
@@ -183,7 +199,7 @@ describe("หนึ่งตา", () => {
     const mi = marketIdx((m) => m.type === "sellAsset" && m.tag === "condo21");
     const offer = (MARKETS[mi] as { price: number }).price;
     s = run(s, { type: "endTurn" });
-    s.players[1].pos = 6;
+    s.players[1].pos = MARKET_POS - 1;
     s.decks.market = [mi];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     expect(Object.keys(s.responders)).toEqual([p.id]);
@@ -293,7 +309,7 @@ describe("การ์ดแบบใหม่", () => {
     expect(s.players[0].stocks.gold).toEqual({ qty: 7, cost: 63_000 });
 
     s = run(s, { type: "endTurn" });
-    s.players[1].pos = 6;
+    s.players[1].pos = MARKET_POS - 1;
     s.decks.market = [marketIdx((m) => m.type === "sellStock" && m.stock === "gold" && m.price === 30_000)];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     s = run(s, { type: "respond", sell: 7 }, { playerId: s.players[0].id });
@@ -304,7 +320,7 @@ describe("การ์ดแบบใหม่", () => {
     let s = started();
     s.players[0].stocks.ent = { qty: 50, cost: 5_000 };
     s.players[1].stocks.ent = { qty: 15, cost: 3_000 };
-    s.players[0].pos = 6;
+    s.players[0].pos = MARKET_POS - 1;
     s.decks.market = [marketIdx((m) => m.type === "split" && m.factor === 0.5)];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     expect(s.players[0].stocks.ent?.qty).toBe(25);
@@ -316,7 +332,7 @@ describe("การ์ดแบบใหม่", () => {
     let s = started();
     s.players[1].stocks.pharma = { qty: 100, cost: 15_000 };
     const before = s.players[1].cash;
-    s.players[0].pos = 6;
+    s.players[0].pos = MARKET_POS - 1;
     const mi = marketIdx((m) => m.type === "sellStock" && m.stock === "pharma");
     s.decks.market = [mi];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
@@ -329,7 +345,7 @@ describe("การ์ดแบบใหม่", () => {
     const d = BIG_DEALS.find((x) => x.type === "asset" && x.tag === "mall") as Extract<(typeof BIG_DEALS)[number], { type: "asset" }>;
     s.players[0].assets.push({ uid: "m", name: d.name, tag: "mall", price: d.price, units: 1, down: d.down, mortgage: d.mortgage, cashflow: d.cashflow, rental: true });
     const before = s.players[0].cash;
-    s.players[0].pos = 6;
+    s.players[0].pos = MARKET_POS - 1;
     s.decks.market = [marketIdx((m) => m.type === "sellAsset" && m.tag === "mall")];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     const mid = s.players[0].cash;
@@ -346,7 +362,7 @@ describe("การ์ดแบบใหม่", () => {
     const house = s.players[0].assets[0];
     expect(house.tag).toBe("house32");
     s = run(s, { type: "endTurn" });
-    s.players[1].pos = 6;
+    s.players[1].pos = MARKET_POS - 1;
     s.decks.market = [marketIdx((m) => m.type === "sellAsset" && m.tag === "house32" && m.price === 3_000_000)];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     s = run(s, { type: "respond", sellAssets: [house.uid] }, { playerId: s.players[0].id });
@@ -374,6 +390,7 @@ describe("เงินกู้และหนี้", () => {
     const di = DOODADS.reduce((best, d, k) => (d.amount > DOODADS[best].amount ? k : best), 0);
     const amount = DOODADS[di].amount;
     s.decks.doodad = [di];
+    s.players[0].pos = DOODAD_POS - 1;
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     const loans = Math.ceil(amount / LOAN_UNIT);
     expect(s.players[0].loans).toBe(loans);
