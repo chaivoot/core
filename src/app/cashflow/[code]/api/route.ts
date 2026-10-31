@@ -39,7 +39,7 @@ const isStale = (room: Room) => room.state.phase !== "lobby" && room.state.deckV
 
 function view(room: Room, token: string | undefined) {
   const me = token ? (room.state.players.find((p) => p.token === token)?.id ?? null) : null;
-  return { version: room.version, me, deck: DECK_VERSION, stale: isStale(room), state: publicState(room.state) };
+  return { version: room.version, me, deck: DECK_VERSION, build: process.env.APP_BUILD, stale: isStale(room), state: publicState(room.state) };
 }
 
 const json = (body: unknown, status = 200) =>
@@ -59,7 +59,7 @@ export async function GET(req: Request, ctx: RouteContext<"/cashflow/[code]/api"
   const token = (await cookies()).get(cookieName(room.code))?.value;
   const v = view(room, token);
   // ไม่มีอะไรเปลี่ยน ไม่ต้องส่งสถานะทั้งก้อน
-  if (since === room.version) return json({ version: room.version, me: v.me, deck: DECK_VERSION, same: true });
+  if (since === room.version) return json({ version: room.version, me: v.me, deck: DECK_VERSION, build: process.env.APP_BUILD, same: true });
   return json(v);
 }
 
