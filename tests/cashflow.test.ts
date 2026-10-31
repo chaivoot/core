@@ -151,16 +151,27 @@ describe("หนึ่งตา", () => {
     expect(() => run(s, { type: "collect" })).toThrow("ไม่มีเงินเดือน");
   });
 
-  it("ลืมกดรับเงินเดือน ระบบให้ตอนจบตา", () => {
+  it("ไม่กดรับเงินเดือนแล้วจบตา = อด", () => {
     let s = started();
     const before = s.players[0].cash;
-    const cf = monthlyCashflow(s.players[0]);
     s.players[0].pos = PAYDAY_POS - 1;
     s = run(s, { type: "roll" }, me(s), [die(1)]); // ตกช่องเงินเดือนพอดี
     expect(s.players[0].payday).toBe(1);
     s = run(s, { type: "endTurn" });
-    expect(s.players[0].cash).toBe(before + cf);
+    expect(s.players[0].cash).toBe(before);
     expect(s.players[0].payday).toBe(0);
+  });
+
+  it("กระแสเงินสดติดลบ ไม่กดรับก็ต้องจ่ายตอนจบตา", () => {
+    let s = started();
+    s.players[0].loans = 100; // ค่าผ่อนเงินกู้ทำให้ติดลบ
+    s.players[0].cash = 1_000_000;
+    const cf = monthlyCashflow(s.players[0]);
+    expect(cf).toBeLessThan(0);
+    s.players[0].pos = PAYDAY_POS - 1;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s = run(s, { type: "endTurn" });
+    expect(s.players[0].cash).toBe(1_000_000 + cf);
   });
 
   it("เปิดการ์ดหุ้น: คนเปิดซื้อได้ คนถือหุ้นอยู่ขายได้", () => {

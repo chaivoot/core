@@ -337,11 +337,23 @@ function payday(s: GameState, p: Player) {
   log(s, `${p.name} รับเงินเดือน ${cf >= 0 ? "+" : ""}${money(cf)}`, p.id);
 }
 
-/** รับเงินเดือนที่ค้างไว้ทั้งหมด (กดเอง หรือระบบให้ตอนจบตา/ขึ้นทางด่วน จะได้ไม่ตกหล่น) */
+/** รับเงินเดือนที่ค้างไว้ทั้งหมด */
 function collectPayday(s: GameState, p: Player) {
   let n = p.payday ?? 0;
   p.payday = 0;
   for (; n > 0; n--) payday(s, p);
+}
+
+/**
+ * จบตาโดยไม่กดรับเงินเดือน = อด
+ * ยกเว้นกระแสเงินสดติดลบ: ต้องจ่ายส่วนที่ขาดอยู่ดี (ไม่กดเพื่อหนีจ่ายไม่ได้)
+ */
+function forfeitPayday(s: GameState, p: Player) {
+  const n = p.payday ?? 0;
+  if (n <= 0) return;
+  if (monthlyCashflow(p) < 0) return collectPayday(s, p);
+  p.payday = 0;
+  log(s, `${p.name} ไม่ได้กดรับเงินเดือน อดเงินเดือน${n > 1 ? ` ${n} ครั้ง` : ""}`, p.id);
 }
 
 function setResponders(s: GameState, ids: string[], ctx: Ctx) {
@@ -742,7 +754,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
   if (action.type === "skipTurn") {
     if (!actor.host) throw new GameError("host เท่านั้นที่ข้ามตาได้");
     log(s, `host ข้ามตาของ ${current(s).name}`, current(s).id);
-    collectPayday(s, current(s));
+    forfeitPayday(s, current(s));
     s.turn = (s.turn + 1) % s.players.length;
     startTurn(s);
     return s;
@@ -888,7 +900,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       break;
     case "endTurn":
       if (!myTurn || s.step !== "end") throw new GameError("ยังจบตาไม่ได้");
-      collectPayday(s, p);
+      forfeitPayday(s, p);
       s.turn = (s.turn + 1) % s.players.length;
       startTurn(s);
       break;
