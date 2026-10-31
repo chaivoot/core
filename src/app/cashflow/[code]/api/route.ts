@@ -22,6 +22,7 @@ const actionSchema = z.discriminatedUnion("type", [
     sellAssets: z.array(z.string().max(20)).max(50).optional(),
   }),
   z.object({ type: z.literal("endTurn") }),
+  z.object({ type: z.literal("collect") }),
   z.object({ type: z.literal("chooseDream"), dream: z.number().int().min(0).max(20) }),
   z.object({ type: z.literal("setOptions"), resellDeals: z.boolean() }),
   z.object({ type: z.literal("intro"), slide: z.number().int().min(0).max(20).nullable() }),

@@ -69,6 +69,8 @@ export type Player = {
   skip: number;
   /** อยู่ทางด่วนแล้ว (null/undefined = ยังอยู่สนามแข่งหนู) */
   fast?: FastState | null;
+  /** เงินเดือนที่ยังไม่ได้กดรับ (จำนวนครั้งที่ผ่าน/ตกช่องเงินเดือนในตานี้) */
+  payday?: number;
 };
 
 export type FastState = {
@@ -137,6 +139,7 @@ export type Action =
   | { type: "deal"; size: "small" | "big" }
   | { type: "respond"; buy?: number | boolean; sell?: number; sellAssets?: string[] }
   | { type: "endTurn" }
+  | { type: "collect" }
   | { type: "chooseDream"; dream: number }
   | { type: "setOptions"; resellDeals: boolean }
   | { type: "intro"; slide: number | null }
@@ -293,6 +296,7 @@ function freshPlayer(p: Player, prof: number) {
   p.stocks = {};
   p.charity = 0;
   p.skip = 0;
+  p.payday = 0;
 }
 
 /**
@@ -330,7 +334,14 @@ function payday(s: GameState, p: Player) {
   const cf = monthlyCashflow(p);
   if (cf >= 0) p.cash += cf;
   else charge(s, p, -cf);
-  log(s, `${p.name} เงินเดือนออก ${cf >= 0 ? "+" : ""}${money(cf)}`, p.id);
+  log(s, `${p.name} รับเงินเดือน ${cf >= 0 ? "+" : ""}${money(cf)}`, p.id);
+}
+
+/** รับเงินเดือนที่ค้างไว้ทั้งหมด (กดเอง หรือระบบให้ตอนจบตา/ขึ้นทางด่วน จะได้ไม่ตกหล่น) */
+function collectPayday(s: GameState, p: Player) {
+  let n = p.payday ?? 0;
+  p.payday = 0;
+  for (; n > 0; n--) payday(s, p);
 }
 
 function setResponders(s: GameState, ids: string[], ctx: Ctx) {
@@ -378,6 +389,7 @@ function finishCard(s: GameState) {
 
 /** ขึ้นทางด่วน: เงินสดเดิม + รายได้ต่อรอบแรก */
 function enterFast(s: GameState, p: Player) {
+  collectPayday(s, p);
   const income = passiveIncome(p) * FAST_MULTIPLIER;
   p.fast = { pos: 0, income, goal: income + FAST_GOAL, dream: -1, businesses: [], dreamBought: false };
   p.cash += income;
@@ -730,6 +742,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
   if (action.type === "skipTurn") {
     if (!actor.host) throw new GameError("host เท่านั้นที่ข้ามตาได้");
     log(s, `host ข้ามตาของ ${current(s).name}`, current(s).id);
+    collectPayday(s, current(s));
     s.turn = (s.turn + 1) % s.players.length;
     startTurn(s);
     return s;
@@ -797,8 +810,10 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       s.moveFrom = p.pos;
       for (let i = 0; i < steps; i++) {
         p.pos = (p.pos + 1) % BOARD.length;
-        if (BOARD[p.pos] === "payday") payday(s, p);
+        // ผ่านหรือตกช่องเงินเดือน: ได้เงินเดือน แต่ต้องกดปุ่มรับเอง
+        if (BOARD[p.pos] === "payday") p.payday = (p.payday ?? 0) + 1;
       }
+      if (p.payday) log(s, `${p.name} ผ่านช่องเงินเดือน กดรับเงินเดือนได้`, p.id);
       land(s, p, ctx);
       break;
     }
@@ -867,8 +882,13 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       setResponders(s, others, ctx);
       break;
     }
+    case "collect":
+      if (!myTurn || !p.payday) throw new GameError("ไม่มีเงินเดือนให้รับ");
+      collectPayday(s, p);
+      break;
     case "endTurn":
       if (!myTurn || s.step !== "end") throw new GameError("ยังจบตาไม่ได้");
+      collectPayday(s, p);
       s.turn = (s.turn + 1) % s.players.length;
       startTurn(s);
       break;
