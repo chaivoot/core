@@ -128,12 +128,13 @@ describe("หนึ่งตา", () => {
 
     expect(() => run(s, { type: "respond", buy: 100 }, { playerId: b.id })).toThrow("คนเปิดการ์ด");
     s = run(s, { type: "respond", sell: 500 }, { playerId: b.id });
-    expect(s.players[1].cash).toBe(b.cash + 500 * 20);
+    expect(s.players[1].cash).toBe(b.cash + 500 * 200);
     expect(s.players[1].stocks.pharma).toBeUndefined();
     expect(s.step).toBe("respond");
 
+    s.players[0].cash = 100_000;
     s = run(s, { type: "respond", buy: 200 }, { playerId: a.id });
-    expect(s.players[0].stocks.pharma).toEqual({ qty: 200, cost: 4_000 });
+    expect(s.players[0].stocks.pharma).toEqual({ qty: 200, cost: 40_000 });
     expect(s.step).toBe("end");
   });
 
