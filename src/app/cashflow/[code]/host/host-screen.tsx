@@ -108,6 +108,8 @@ function Label({ r, deg, fill, size, fit, children }: { r: number; deg: number; 
       fontWeight={700}
       textAnchor="middle"
       dominantBaseline="middle"
+      // ตัวอักษรไทยมีสระ/วรรณยุกต์ด้านบน กึ่งกลางของฟอนต์จึงสูงกว่าตัวพยัญชนะ เลื่อนลงให้ตัวหนังสืออยู่กลางช่องจริง ๆ
+      dy={size * 0.12}
       transform={`rotate(${rot} ${x} ${y})`}
       {...(fit ? { textLength: fit, lengthAdjust: "spacingAndGlyphs" } : {})}
     >
@@ -176,7 +178,7 @@ function Board({ players }: { players: PublicPlayer[] }) {
         return (
           <g key={i}>
             <path d={segment(deg, STEP, RR_OUT, RR_IN)} fill={c.fill} stroke="#fff" strokeWidth={3} />
-            <Label r={316} deg={deg} fill={c.text} size={30} fit={label.length > 8 ? 108 : undefined}>
+            <Label r={(RR_OUT + RR_IN) / 2} deg={deg} fill={c.text} size={30} fit={label.length > 8 ? 108 : undefined}>
               {label}
             </Label>
           </g>
@@ -201,7 +203,7 @@ function ratSpot(spot: Spot, k: number, count: number) {
   const row = Math.floor(k / 3);
   const inRow = Math.min(3, count - row * 3);
   const side = (k % 3) - (inRow - 1) / 2;
-  const r = 246 - row * 30;
+  const r = 234 - row * 30;
   const [x, y] = point(r, spot.pos * STEP + side * STEP * 0.42);
   return { x: x / 10, y: y / 10 };
 }
