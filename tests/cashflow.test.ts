@@ -176,6 +176,45 @@ describe("หนึ่งตา", () => {
   });
 });
 
+describe("โหมดซื้อดีลต่อ (host ตั้งค่า)", () => {
+  function openCondo(resell: boolean) {
+    let s = lobby(["เอ", "บี", "ซี"]);
+    if (resell) s = act(s, HOST, { type: "setOptions", resellDeals: true }, ctx());
+    s = act(s, HOST, { type: "start" }, ctx());
+    s.players[0].pos = 1;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s.decks.small = [12]; // คอนโด ดาวน์ 45,000
+    s = run(s, { type: "deal", size: "small" });
+    return s;
+  }
+
+  it("ปิดโหมด (ค่าเริ่มต้น): คนเปิดไม่ซื้อ ดีลทิ้งไป", () => {
+    let s = openCondo(false);
+    s = run(s, { type: "respond", buy: false });
+    expect(s.step).toBe("end");
+  });
+
+  it("เปิดโหมด: คนเปิดไม่ซื้อ คนอื่นซื้อต่อได้ ใครกดก่อนได้ก่อน", () => {
+    let s = openCondo(true);
+    const [, b, c] = s.players;
+    s = run(s, { type: "respond", buy: false });
+    expect(s.step).toBe("respond");
+    expect(s.resale).toBe(true);
+    expect(s.responders).toEqual({ [b.id]: false, [c.id]: false });
+
+    s.players[2].cash = 100_000;
+    s = run(s, { type: "respond", buy: true }, { playerId: c.id });
+    expect(s.players[2].assets).toHaveLength(1);
+    expect(s.step).toBe("end");
+    expect(() => run(s, { type: "respond", buy: true }, { playerId: b.id })).toThrow();
+  });
+
+  it("ตั้งค่าได้เฉพาะ host และก่อนเริ่มเกม", () => {
+    expect(() => act(lobby(), { playerId: "x" }, { type: "setOptions", resellDeals: true }, ctx())).toThrow("host");
+    expect(() => act(started(), HOST, { type: "setOptions", resellDeals: true }, ctx())).toThrow("ก่อนเริ่มเกม");
+  });
+});
+
 describe("เงินกู้และหนี้", () => {
   it("กู้ได้จนกระแสเงินสดเหลือ 0 และคืนได้", () => {
     let s = started();

@@ -395,6 +395,11 @@ function Respond({
   const loansNeeded = Math.ceil(short / LOAN_UNIT);
   return (
     <div className="space-y-2">
+      {state.resale && (
+        <p className="rounded-xl bg-amber-50 p-3 text-sm font-medium text-amber-900">
+          {state.players[state.turn].name} ไม่ซื้อ คุณซื้อต่อได้ ใครกดก่อนได้ก่อน!
+        </p>
+      )}
       {short > 0 && (
         <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
           เงินสดขาด {baht(short)}
