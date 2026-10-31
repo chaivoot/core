@@ -76,11 +76,11 @@ describe("กระดานและข้อมูล", () => {
     const count = (sq: string) => BOARD.filter((b) => b === sq).length;
     expect(BOARD).toHaveLength(24);
     expect([count("opportunity"), count("payday"), count("market"), count("doodad")]).toEqual([12, 3, 3, 3]);
-    expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length]).toEqual([43, 13, 19]);
+    expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length, DOODADS.length, PROFESSIONS.length]).toEqual([56, 42, 42, 42, 12]);
   });
 
   it("กระแสเงินสดตั้งต้นตรงกับตารางอาชีพ", () => {
-    const expected = [640, 1_010, 920, 1_130, 1_100, 1_480, 1_950, 3_450].map((n) => n * 30);
+    const expected = [640, 1_010, 920, 1_130, 1_100, 1_480, 1_950, 3_450, 740, 1_160, 2_580, 3_350].map((n) => n * 30);
     PROFESSIONS.forEach((pr, i) => {
       const total = pr.tax + pr.house + pr.car + pr.card + pr.other;
       expect(pr.salary - total).toBe(expected[i]);
@@ -367,6 +367,48 @@ describe("การ์ดแบบใหม่", () => {
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     s = run(s, { type: "respond", sellAssets: [house.uid] }, { playerId: s.players[0].id });
     expect(s.players[0].cash).toBe(1_000_000 - house.down + 3_000_000 - house.mortgage);
+  });
+
+  it("การ์ดตลาดขอซื้อทุกใบมีทรัพย์สินในกองดีลให้ซื้อได้", () => {
+    const dealTags = new Set([...SMALL_DEALS, ...BIG_DEALS].flatMap((d) => (d.type === "asset" ? [d.tag] : [])));
+    for (const m of MARKETS) {
+      if (m.type === "sellAsset") expect(dealTags.has(m.tag), m.text).toBe(true);
+      if (m.type === "expense" || m.type === "cashflowUp") expect(m.tags.some((t) => dealTags.has(t)), m.text).toBe(true);
+    }
+  });
+
+  it("ญาติขอยืมเงิน: จ่ายทันทีแล้วจบตา", () => {
+    let s = opp();
+    const i = smallIdx((d) => d.type === "lend");
+    const amount = (SMALL_DEALS[i] as { amount: number }).amount;
+    s.players[0].cash = 100_000;
+    s.decks.small = [i];
+    s = run(s, { type: "deal", size: "small" });
+    expect(s.players[0].cash).toBe(100_000 - amount);
+    expect(s.step).toBe("end");
+  });
+
+  it("การ์ดตลาดค่าใช้จ่าย/กำไรเพิ่ม มีผลเฉพาะคนที่ถือทรัพย์สินกลุ่มนั้น", () => {
+    let s = started();
+    const asset = (tag: string, rental: boolean) => ({ uid: tag, name: tag, tag, price: 1, units: 1, down: 0, mortgage: 0, cashflow: 1_000, rental });
+    s.players[1].assets.push(asset("apartment", true), asset("franchise", false));
+    s.players[1].cash = 100_000;
+    const cash0 = s.players[0].cash;
+    const cash1 = s.players[1].cash;
+    const play = (f: (m: (typeof MARKETS)[number]) => boolean) => {
+      s.turn = 0;
+      s.step = "roll";
+      s.players[0].pos = MARKET_POS - 1;
+      s.decks.market = [marketIdx(f)];
+      s = run(s, { type: "roll" }, me(s), [die(1)]);
+    };
+    play((m) => m.type === "expense" && m.tags.includes("apartment"));
+    expect(s.players[0].cash).toBe(cash0);
+    expect(s.players[1].cash).toBe(cash1 - 60_000);
+    play((m) => m.type === "cashflowUp");
+    expect(s.players[1].assets.find((a) => a.tag === "franchise")?.cashflow).toBe(7_000);
+    play((m) => m.type === "rentUp");
+    expect(s.players[1].assets.map((a) => a.cashflow)).toEqual([2_500, 7_000]);
   });
 });
 
