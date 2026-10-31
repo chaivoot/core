@@ -115,6 +115,10 @@ export type GameState = {
   intro?: number | null;
   /** ดีลใบนี้คนเปิดไม่ซื้อ และเปิดให้คนอื่นซื้อต่อ (ใครกดก่อนได้ก่อน) */
   resale?: boolean;
+  /** ค่านายหน้าที่คนเปิดการ์ดประกาศขายสิทธิ์ (บาท) */
+  rightFee?: number;
+  /** ค่านายหน้าเป็นกี่ % ของเงินดาวน์ */
+  rightPct?: number;
 };
 
 export type GameOptions = {
@@ -136,6 +140,7 @@ export type Action =
   | { type: "chooseDream"; dream: number }
   | { type: "setOptions"; resellDeals: boolean }
   | { type: "intro"; slide: number | null }
+  | { type: "sellRight"; pct: number }
   | { type: "loan"; count?: number }
   | { type: "repay" }
   | { type: "payoff"; debt: Debt };
@@ -221,6 +226,11 @@ export function cardFor(c: Card) {
 }
 
 /** ผู้เล่นตอบการ์ดหุ้นนี้ได้ไหม (คนเปิดซื้อได้ / คนถือขายได้) */
+/** ขายสิทธิ์ได้เฉพาะดีลทรัพย์สิน/ธุรกิจ (ไม่รวมหุ้น กองทุน เหรียญ หุ้นกู้/เงินฝาก) */
+export function canSellRight(d: DealCard | null | undefined): d is Extract<DealCard, { type: "asset" }> {
+  return d?.type === "asset" && d.tag !== "cd";
+}
+
 export function stockOf(c: Card | null): { stock: StockKind; price: number; max?: number } | null {
   if (!c) return null;
   if (c.deck === "market") {
@@ -353,6 +363,8 @@ function startTurn(s: GameState) {
   s.responders = {};
   s.deadline = null;
   s.resale = false;
+  s.rightFee = undefined;
+  s.rightPct = undefined;
   const p = current(s);
   if (p.fast && p.fast.dream < 0) s.step = "dream";
 }
@@ -553,7 +565,7 @@ function sellStock(s: GameState, p: Player, stock: StockKind, qty: number, price
   log(s, `${p.name} ขาย${STOCK_LABEL[stock]} ${qty.toLocaleString("th-TH")} ${unitOf(stock)} ที่ ${money(price)} ได้ ${money(qty * price)}`, p.id);
 }
 
-function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }>, ctx: Ctx) {
+function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }>) {
   if (s.step !== "respond" || !(p.id in s.responders)) throw new GameError("ตอนนี้ยังไม่ต้องตอบการ์ด");
   if (s.responders[p.id]) throw new GameError("ตอบการ์ดใบนี้ไปแล้ว");
   const card = s.card!;
@@ -610,7 +622,17 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
         log(s, `${p.name} ซื้อ${STOCK_LABEL[d.stock]} ${qty.toLocaleString("th-TH")} ${unitOf(d.stock)} ที่ ${money(d.price)} (${money(cost)})`, p.id);
       }
     } else if (d.type === "asset" && a.buy) {
-      if (d.down > p.cash) throw new GameError("เงินสดไม่พอจ่ายเงินดาวน์ (กู้ธนาคารเพิ่มได้)");
+      const fee = s.resale ? (s.rightFee ?? 0) : 0;
+      if (d.down + fee > p.cash) {
+        throw new GameError(fee ? "เงินสดไม่พอจ่ายเงินดาวน์ + ค่านายหน้า (กู้ธนาคารเพิ่มได้)" : "เงินสดไม่พอจ่ายเงินดาวน์ (กู้ธนาคารเพิ่มได้)");
+      }
+      if (fee) {
+        const seller = current(s);
+        p.cash -= fee;
+        seller.cash += fee;
+        log(s, `${p.name} รับสิทธิ์${d.name} จ่ายค่านายหน้า ${money(fee)} ให้ ${seller.name}`, p.id);
+        log(s, `${seller.name} ได้ค่านายหน้าขายสิทธิ์ ${money(fee)} จาก ${p.name}`, seller.id);
+      }
       p.cash -= d.down;
       p.assets.push({
         uid: `a${++s.seq}`,
@@ -629,15 +651,7 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
         for (const id of Object.keys(s.responders)) s.responders[id] = true;
       }
     } else if (d.type === "asset") {
-      log(s, `${p.name} ไม่ซื้อ${d.name}`, p.id);
-      const others = ratRace(s).filter((x) => x.id !== p.id).map((x) => x.id);
-      if (opener && !s.resale && s.options?.resellDeals && others.length > 0) {
-        // host เปิดโหมดซื้อดีลต่อ: ส่งให้คนอื่นเลือก ใครกดซื้อก่อนได้ก่อน
-        s.resale = true;
-        log(s, `เปิดให้คนอื่นซื้อ${d.name}ต่อ (ใครกดก่อนได้ก่อน)`);
-        setResponders(s, others, ctx);
-        return;
-      }
+      log(s, `${p.name} ไม่${s.resale ? "รับสิทธิ์" : "ซื้อ"}${d.name}`, p.id);
     }
   }
   s.responders[p.id] = true;
@@ -833,8 +847,26 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       break;
     }
     case "respond":
-      respond(s, p, action, ctx);
+      respond(s, p, action);
       break;
+    case "sellRight": {
+      // คนเปิดการ์ดไม่ซื้อ แต่ประกาศขายสิทธิ์ (ค่านายหน้า 3–15% ของเงินดาวน์) ให้คนแรกที่กดรับ
+      const d = s.card ? cardFor(s.card) : null;
+      if (!myTurn || s.step !== "respond" || s.resale || s.responders[p.id] !== false || !canSellRight(d)) {
+        throw new GameError("ขายสิทธิ์ได้เฉพาะดีลทรัพย์สินหรือธุรกิจ");
+      }
+      if (!s.options?.resellDeals) throw new GameError("ห้องนี้ไม่ได้เปิดให้ขายสิทธิ์ดีล");
+      const pct = Math.round(action.pct);
+      if (pct < 3 || pct > 15) throw new GameError("ค่านายหน้าต้องอยู่ระหว่าง 3% ถึง 15%");
+      const others = ratRace(s).filter((x) => x.id !== p.id).map((x) => x.id);
+      if (others.length === 0) throw new GameError("ไม่มีผู้เล่นคนอื่นรับสิทธิ์ได้");
+      s.resale = true;
+      s.rightPct = pct;
+      s.rightFee = Math.round((d.down * pct) / 100);
+      log(s, `${p.name} ขายสิทธิ์${d.name} ค่านายหน้า ${pct}% = ${money(s.rightFee)} (ใครกดรับก่อนได้ก่อน)`, p.id);
+      setResponders(s, others, ctx);
+      break;
+    }
     case "endTurn":
       if (!myTurn || s.step !== "end") throw new GameError("ยังจบตาไม่ได้");
       s.turn = (s.turn + 1) % s.players.length;

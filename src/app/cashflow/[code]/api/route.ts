@@ -26,6 +26,7 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("chooseDream"), dream: z.number().int().min(0).max(20) }),
   z.object({ type: z.literal("setOptions"), resellDeals: z.boolean() }),
   z.object({ type: z.literal("intro"), slide: z.number().int().min(0).max(20).nullable() }),
+  z.object({ type: z.literal("sellRight"), pct: z.number().int().min(3).max(15) }),
   z.object({ type: z.literal("loan"), count: z.number().int().min(1).max(1_000).optional() }),
   z.object({ type: z.literal("repay") }),
   z.object({ type: z.literal("payoff"), debt: z.enum(["house", "car", "card"]) }),
