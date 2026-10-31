@@ -4,6 +4,9 @@ import { useState } from "react";
 import {
   BIG_DEALS,
   COLORS,
+  DREAMS,
+  FAST_BUSINESSES,
+  FAST_GOAL,
   DEBT_LABEL,
   LOAN_UNIT,
   MARKETS,
@@ -64,7 +67,7 @@ export function PlayerScreen({ code }: { code: string }) {
         <>
           <Header me={me} />
           <ActionPanel state={state} me={me} busy={busy} send={send} />
-          <Statement me={me} busy={busy} send={send} />
+          {me.fast ? <FastSheet me={me} /> : <Statement me={me} busy={busy} send={send} />}
         </>
       )}
     </main>
@@ -126,7 +129,7 @@ function Header({ me }: { me: PublicPlayer }) {
         <p className="truncate text-lg font-bold" style={{ color: colorHex(me.color) }}>
           {me.name}
         </p>
-        <p className="text-sm text-stone-500">{profession(me).name}</p>
+        <p className="text-sm text-stone-500">{me.fast ? "🚀 ทางด่วน" : profession(me).name}</p>
       </div>
       <div className="text-right">
         <p className="text-xs text-stone-500">เงินสด</p>
@@ -146,7 +149,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
     return (
       <div className="card space-y-2 text-center">
         {w && <Rat color={w.color} className="mx-auto w-24" />}
-        <p className="text-xl font-bold">{w?.id === me.id ? "คุณออกจากวงหนูวิ่งแล้ว! 🎉" : `${w?.name} ออกจากวงหนูวิ่งแล้ว`}</p>
+        <p className="text-xl font-bold">{w?.id === me.id ? "คุณชนะเกม! 🏆" : `${w?.name} ชนะเกม`}</p>
         <p className="text-sm text-stone-500">เกมจบ</p>
       </div>
     );
@@ -183,9 +186,32 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
           </div>
         ) : (
           <button className="btn-primary w-full py-4 text-xl" disabled={busy} onClick={() => send({ type: "roll" })}>
-            🎲 ทอยลูกเต๋า
+            🎲 ทอยลูกเต๋า{me.fast ? " (2 ลูก)" : ""}
           </button>
         )
+      )}
+
+      {myTurn && state.step === "dream" && (
+        <div className="space-y-2">
+          <p className="text-center font-medium">🚀 ขึ้นทางด่วนแล้ว! เลือกความฝันของคุณ</p>
+          <p className="text-center text-xs text-stone-500">
+            ชนะเมื่อเดินไปตกช่องความฝันนี้แล้วมีเงินซื้อ หรือเพิ่มรายได้ต่อรอบได้ {baht(FAST_GOAL)}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {DREAMS.map((d, i) => (
+              <button
+                key={d.name}
+                className="flex flex-col items-center rounded-xl bg-violet-50 p-3 text-violet-900 ring-1 ring-violet-200 disabled:opacity-50"
+                disabled={busy}
+                onClick={() => send({ type: "chooseDream", dream: i })}
+              >
+                <span className="text-2xl">{d.icon}</span>
+                <span className="text-sm font-semibold">{d.name}</span>
+                <span className="text-xs">{baht(d.cost)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {myTurn && state.step === "charity" && (
@@ -256,11 +282,31 @@ function Respond({
   send: Send;
 }) {
   const card = state.card!;
+
   const st = stockOf(card);
   const held = st ? (me.stocks[st.stock]?.qty ?? 0) : 0;
   const [buy, setBuy] = useState(0);
   const [sell, setSell] = useState(held);
   const [picked, setPicked] = useState<string[]>([]);
+
+  // ทางด่วน: ซื้อธุรกิจ / ซื้อความฝัน (จ่ายสด กู้ไม่ได้)
+  if (card.deck === "fastBiz" || card.deck === "dream") {
+    const cost = card.deck === "fastBiz" ? FAST_BUSINESSES[card.index].cost : DREAMS[card.index].cost;
+    const short = cost - me.cash;
+    return (
+      <div className="space-y-2">
+        {short > 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">เงินสดขาด {baht(short)} (ทางด่วนกู้เงินไม่ได้)</p>}
+        <div className="grid grid-cols-2 gap-2">
+          <button className="btn-primary" disabled={busy || short > 0} onClick={() => send({ type: "respond", buy: true })}>
+            {card.deck === "dream" ? "ซื้อความฝัน" : "ซื้อ"} ({baht(cost)})
+          </button>
+          <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "respond", buy: false })}>
+            ไม่ซื้อ
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // หุ้น/กองทุน (การ์ดดีล หรือการ์ดตลาด)
   if (st) {
@@ -412,6 +458,57 @@ function SheetHead({ children }: { children: React.ReactNode }) {
 }
 
 /** งบการเงินแบบแผ่นกระดาษ (เหมือนแบบฟอร์มที่ผู้เล่นกรอกเอง แต่ระบบกรอกให้) */
+/** แผ่นงบการเงินบนทางด่วน */
+function FastSheet({ me }: { me: PublicPlayer }) {
+  const f = me.fast!;
+  const gained = f.income - (f.goal - FAST_GOAL);
+  const pct = Math.min(100, Math.max(0, (gained / FAST_GOAL) * 100));
+  const dream = DREAMS[f.dream];
+  return (
+    <div className="space-y-4 rounded-sm bg-[#fffbeb] p-4 text-sm shadow-md ring-1 ring-amber-200">
+      <div className="flex items-baseline justify-between border-b-2 border-stone-800 pb-1">
+        <h2 className="text-base font-bold tracking-wide">งบการเงิน · ทางด่วน 🚀</h2>
+        <span className="font-hand text-lg text-blue-900">{me.name}</span>
+      </div>
+
+      <div>
+        <div className="flex justify-between text-xs text-stone-600">
+          <span>เป้าหมาย: เพิ่มรายได้ต่อรอบ {baht(FAST_GOAL)}</span>
+          <span className="font-hand text-base text-blue-900">{Math.floor(pct)}%</span>
+        </div>
+        <div className="mt-1 h-3 overflow-hidden rounded-full bg-amber-100 ring-1 ring-amber-300">
+          <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      <section>
+        <SheetHead>ความฝันของฉัน</SheetHead>
+        {dream ? (
+          <Row label={`${dream.icon} ${dream.name}`} value={dream.cost} />
+        ) : (
+          <p className="py-1 text-stone-500">ยังไม่ได้เลือก (เลือกตอนถึงตา)</p>
+        )}
+        <p className="mt-1 text-xs text-stone-500">ตกช่องความฝันนี้แล้วมีเงินสดพอ ซื้อได้ = ชนะ</p>
+      </section>
+
+      <section>
+        <SheetHead>รายได้</SheetHead>
+        <Row label="รายได้ต่อรอบ (ตอนขึ้นทางด่วน)" value={f.goal - FAST_GOAL} />
+        {f.businesses.map((b, i) => (
+          <Row key={i} label={`+ ${b.name}`} value={b.cashflow} />
+        ))}
+        <Row label="รายได้ต่อรอบตอนนี้" value={f.income} strong />
+        <p className="mt-1 text-xs text-stone-500">ได้ทุกครั้งที่ผ่านช่องวันรับเงิน (มุมกระดาน)</p>
+      </section>
+
+      <div className="flex items-center justify-between rounded-sm border-2 border-stone-800 bg-white px-3 py-2">
+        <span className="font-bold">เงินสด</span>
+        <span className="font-hand text-2xl leading-none text-emerald-700">{baht(me.cash)}</span>
+      </div>
+    </div>
+  );
+}
+
 function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: Send }) {
   const pr = profession(me);
   const passive = passiveIncome(me);

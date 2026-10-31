@@ -185,3 +185,78 @@ export const MARKETS: MarketCard[] = [
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 export const baht = (n: number) => `${n < 0 ? "−" : ""}฿${thb.format(Math.abs(Math.round(n)))}`;
+
+// ---------- ทางด่วน (วงนอก) ----------
+
+/** เข้าทางด่วนแล้วได้รายได้ต่อรอบ = รายได้จากทรัพย์สิน × ตัวคูณนี้ */
+export const FAST_MULTIPLIER = 20;
+/** ชนะเมื่อรายได้ต่อรอบเพิ่มขึ้นจากตอนเข้าทางด่วนเท่านี้ หรือซื้อความฝันของตัวเองได้ */
+export const FAST_GOAL = 500_000;
+
+export type FastBusiness = { name: string; short: string; cost: number; cashflow: number };
+
+export const FAST_BUSINESSES: FastBusiness[] = [
+  { name: "โรงแรมบูทีค", short: "โรงแรมบูทีค", cost: 6_000_000, cashflow: 150_000 },
+  { name: "ห้างสรรพสินค้าขนาดเล็ก", short: "ห้างเล็ก", cost: 10_000_000, cashflow: 260_000 },
+  { name: "โรงงานน้ำดื่ม", short: "โรงงานน้ำดื่ม", cost: 3_000_000, cashflow: 80_000 },
+  { name: "แฟรนไชส์กาแฟ 10 สาขา", short: "กาแฟ 10 สาขา", cost: 2_000_000, cashflow: 55_000 },
+  { name: "โรงเรียนกวดวิชา", short: "กวดวิชา", cost: 1_500_000, cashflow: 40_000 },
+  { name: "คลินิกทันตกรรม", short: "คลินิกฟัน", cost: 4_000_000, cashflow: 100_000 },
+  { name: "สวนทุเรียน 50 ไร่", short: "สวนทุเรียน", cost: 5_000_000, cashflow: 120_000 },
+  { name: "ปั๊มน้ำมัน 3 แห่ง", short: "ปั๊ม 3 แห่ง", cost: 8_000_000, cashflow: 200_000 },
+  { name: "คอนโดทั้งตึก", short: "คอนโดทั้งตึก", cost: 12_000_000, cashflow: 320_000 },
+  { name: "บริษัทขนส่ง", short: "ขนส่ง", cost: 7_000_000, cashflow: 170_000 },
+  { name: "โรงพิมพ์", short: "โรงพิมพ์", cost: 2_500_000, cashflow: 60_000 },
+  { name: "ศูนย์การค้าชุมชน", short: "คอมมูนิตี้มอลล์", cost: 9_000_000, cashflow: 230_000 },
+  { name: "รีสอร์ตริมทะเล", short: "รีสอร์ตทะเล", cost: 11_000_000, cashflow: 280_000 },
+  { name: "โรงงานอาหารแช่แข็ง", short: "อาหารแช่แข็ง", cost: 6_500_000, cashflow: 160_000 },
+  { name: "แอปจองคิวร้านค้า", short: "แอปจองคิว", cost: 1_000_000, cashflow: 30_000 },
+  { name: "เครือร้านอาหาร 5 สาขา", short: "ร้านอาหาร 5 สาขา", cost: 4_500_000, cashflow: 110_000 },
+];
+
+export type Dream = { name: string; short: string; icon: string; cost: number };
+
+export const DREAMS: Dream[] = [
+  { name: "เที่ยวรอบโลก 1 ปี", short: "รอบโลก", icon: "🌍", cost: 3_000_000 },
+  { name: "บ้านพักริมทะเล", short: "บ้านริมทะเล", icon: "🏖️", cost: 8_000_000 },
+  { name: "ตั้งมูลนิธิช่วยเด็ก", short: "มูลนิธิ", icon: "🤝", cost: 5_000_000 },
+  { name: "สร้างโรงเรียนในชนบท", short: "โรงเรียน", icon: "🏫", cost: 4_000_000 },
+  { name: "เรือยอชต์ส่วนตัว", short: "เรือยอชต์", icon: "🛥️", cost: 10_000_000 },
+  { name: "ฟาร์มออร์แกนิกของครอบครัว", short: "ฟาร์ม", icon: "🌱", cost: 6_000_000 },
+  { name: "ส่งลูกเรียนต่างประเทศ", short: "ลูกเรียนนอก", icon: "🎓", cost: 3_500_000 },
+  { name: "สตูดิโอศิลปะของตัวเอง", short: "สตูดิโอ", icon: "🎨", cost: 2_500_000 },
+];
+
+export type FastEvent =
+  | { text: string; short: string; kind: "cash"; pct: number }
+  | { text: string; short: string; kind: "loseBiz" }
+  | { text: string; short: string; kind: "skip"; turns: number };
+
+export const FAST_EVENTS: FastEvent[] = [
+  { text: "ภาษีย้อนหลัง จ่าย 30% ของเงินสด", short: "ภาษีย้อนหลัง", kind: "cash", pct: 0.3 },
+  { text: "หุ้นส่วนโกง เสียเงินสดครึ่งหนึ่ง", short: "หุ้นส่วนโกง", kind: "cash", pct: 0.5 },
+  { text: "โกดังไฟไหม้ เสียธุรกิจที่ทำรายได้น้อยที่สุด", short: "ไฟไหม้", kind: "loseBiz" },
+  { text: "ทำงานหนักจนป่วย ต้องพักรักษา หยุด 2 ตา", short: "ป่วยหนัก", kind: "skip", turns: 2 },
+];
+
+export type FastSquare =
+  | { type: "payday" }
+  | { type: "biz"; index: number }
+  | { type: "dream"; index: number }
+  | { type: "event"; index: number };
+
+/** ทางด่วน 32 ช่อง เดินรอบสี่เหลี่ยม: มุมทั้ง 4 = วันรับเงิน แต่ละด้าน ธุรกิจ 4 ความฝัน 2 เหตุการณ์ 1 */
+export const FAST_BOARD: FastSquare[] = (() => {
+  const out: FastSquare[] = [];
+  let biz = 0;
+  let dream = 0;
+  for (let side = 0; side < 4; side++) {
+    out.push({ type: "payday" });
+    for (const t of ["biz", "dream", "biz", "event", "biz", "dream", "biz"] as const) {
+      if (t === "biz") out.push({ type: "biz", index: biz++ });
+      else if (t === "dream") out.push({ type: "dream", index: dream++ });
+      else out.push({ type: "event", index: side });
+    }
+  }
+  return out;
+})();
