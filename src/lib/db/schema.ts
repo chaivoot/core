@@ -239,9 +239,8 @@ export const cashflowRooms = pgTable(
   "cashflow_rooms",
   {
     code: text("code").primaryKey(),
-    hostId: uuid("host_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    /** SHA-256 ของ token ใน cookie ของเครื่อง host (ไม่ต้องล็อกอิน) */
+    hostTokenHash: text("host_token_hash").notNull(),
     state: jsonb("state").notNull(),
     version: integer("version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

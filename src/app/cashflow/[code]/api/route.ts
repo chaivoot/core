@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { act, GameError, publicState, tick, type Action, type Actor } from "@/lib/cashflow/engine";
 import { DECK_VERSION } from "@/lib/cashflow/data";
-import { getRoom, updateRoom, type Room } from "@/lib/data/cashflow";
-import { getCurrentUser } from "@/lib/session";
+import { getRoom, hostCookie, isHost, updateRoom, type Room } from "@/lib/data/cashflow";
 
 // มือถือผู้เล่นไม่ต้องล็อกอิน: จำตัวตนด้วย cookie ต่อห้อง
 const cookieName = (code: string) => `cf_${code}`;
@@ -81,8 +80,7 @@ export async function POST(req: Request, ctx: RouteContext<"/cashflow/[code]/api
 
   const actor: Actor = {};
   if (HOST_ACTIONS.has(input.type)) {
-    const user = await getCurrentUser();
-    if (!user || user.id !== room0.hostId) return json({ error: "host เท่านั้นที่ทำได้" }, 403);
+    if (!isHost(room0, store.get(hostCookie(room0.code))?.value)) return json({ error: "host เท่านั้นที่ทำได้" }, 403);
     actor.host = true;
   }
 
