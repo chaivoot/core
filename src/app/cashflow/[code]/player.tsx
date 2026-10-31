@@ -49,6 +49,11 @@ export function PlayerScreen({ code }: { code: string }) {
 
   return (
     <main className="mx-auto max-w-md space-y-4 p-4 pb-16">
+      {data.stale && (
+        <p className="rounded-xl bg-amber-100 p-3 text-sm font-medium text-amber-900">
+          เกมมีการอัปเดตการ์ดระหว่างเล่น ห้องนี้เล่นต่อไม่ได้ รอ host สร้างห้องใหม่แล้วสแกน QR อีกครั้ง
+        </p>
+      )}
       {error && (
         <button onClick={clearError} className="w-full rounded-xl bg-rose-50 p-3 text-left text-sm text-rose-800 ring-1 ring-rose-200">
           {error} <span className="float-right">✕</span>

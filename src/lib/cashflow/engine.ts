@@ -4,6 +4,7 @@
 import {
   BIG_DEALS,
   BOARD,
+  DECK_VERSION,
   DREAMS,
   FAST_BOARD,
   FAST_BUSINESSES,
@@ -108,6 +109,8 @@ export type GameState = {
   seq: number;
   /** ตัวเลือกที่ host ตั้งก่อนเริ่มเกม */
   options?: GameOptions;
+  /** ชุดการ์ดที่ใช้ตอนเริ่มเกม (ดู DECK_VERSION) */
+  deckVersion?: string;
   /** หน้าคำอธิบายก่อนเริ่มเกมที่ host เปิดอยู่ (null = ไม่ได้เปิด) มือถือแสดงหน้าเดียวกัน */
   intro?: number | null;
   /** ดีลใบนี้คนเปิดไม่ซื้อ และเปิดให้คนอื่นซื้อต่อ (ใครกดก่อนได้ก่อน) */
@@ -165,6 +168,7 @@ export function newGame(): GameState {
     winner: null,
     seq: 0,
     options: { resellDeals: false },
+    deckVersion: DECK_VERSION,
   };
 }
 
@@ -685,6 +689,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       s.decks[d] = shuffle(Array.from({ length: DECK_SIZE[d] }, (_, i) => i), ctx.rng);
     }
     s.phase = "playing";
+    s.deckVersion = DECK_VERSION;
     s.intro = null;
     s.turn = 0;
     s.log = ["เริ่มเกม! ลำดับ: " + s.players.map((p) => `${p.name} (${profession(p).name})`).join(" → ")];

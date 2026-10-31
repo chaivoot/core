@@ -338,3 +338,15 @@ export function priceRange(kind: StockKind) {
   for (const m of MARKETS) if (m.type === "sellStock" && m.stock === kind) prices.push(m.price);
   return { lo: Math.min(...prices), hi: Math.max(...prices) };
 }
+
+/**
+ * เวอร์ชันชุดการ์ด/ตัวเลข (เปลี่ยนเองเมื่อแก้ข้อมูลข้างบน)
+ * สถานะเกมเก็บการ์ดเป็นลำดับในกอง ถ้าชุดการ์ดเปลี่ยนระหว่างเล่น ลำดับเดิมจะชี้ไปคนละใบ
+ * จึงใช้ค่านี้ตรวจ: มือถือที่เปิดหน้าเวอร์ชันเก่าจะรีเฟรชเอง และห้องที่เริ่มด้วยชุดเก่าจะเล่นต่อไม่ได้
+ */
+export const DECK_VERSION = (() => {
+  const src = JSON.stringify([PROFESSIONS, SMALL_DEALS, BIG_DEALS, DOODADS, MARKETS, FAST_BUSINESSES, DREAMS, FAST_EVENTS, LOAN_UNIT]);
+  let h = 5381;
+  for (let i = 0; i < src.length; i++) h = ((h << 5) + h + src.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+})();

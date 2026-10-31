@@ -151,6 +151,14 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
 
   return (
     <main className="grid min-h-dvh gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_26rem]">
+      {data?.stale && (
+        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-4 bg-amber-100 p-3 text-amber-900 shadow">
+          <span className="font-semibold">เกมมีการอัปเดตการ์ดระหว่างเล่น ห้องนี้เล่นต่อไม่ได้</span>
+          <a href="/cashflow" className="btn-primary min-h-9 px-3 text-sm">
+            สร้างห้องใหม่
+          </a>
+        </div>
+      )}
       {/* กระดาน: ทางด่วนสี่เหลี่ยมล้อมสนามแข่งหนู */}
       <GameBoard state={state} className="mx-auto w-full max-w-[min(100%,calc(100dvh-2rem))]">
         {/* กลางวง */}
