@@ -225,9 +225,12 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
           <h1 className="text-xl font-bold">กระแสเงินสด</h1>
           <span className="font-mono text-stone-500">ห้อง {code}</span>
         </div>
-        {state.players.map((p, i) => (
-          <PlayerCard key={p.id} p={p} active={i === state.turn && state.phase === "playing"} />
-        ))}
+        {/* เรียงจากคนที่ใกล้เป้าหมายที่สุด (คนบนทางด่วนอยู่บนสุด) */}
+        {[...state.players]
+          .sort((a, b) => progress(b) - progress(a))
+          .map((p) => (
+            <PlayerCard key={p.id} p={p} active={p.id === turnPlayer.id && state.phase === "playing"} />
+          ))}
         {state.phase === "playing" && (
           <button className="btn-ghost w-full text-sm" disabled={busy} onClick={() => send({ type: "skipTurn" })}>
             ข้ามตาของ {turnPlayer.name} (กรณีค้าง)
@@ -238,6 +241,16 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
       </aside>
     </main>
   );
+}
+
+/** ความคืบหน้าสู่เป้าหมาย: สนามแข่งหนู 0–100 (รายได้จากทรัพย์สิน ÷ รายจ่าย) ทางด่วน 100–200 */
+function progress(p: PublicPlayer) {
+  if (p.fast) {
+    const gained = p.fast.income - (p.fast.goal - FAST_GOAL);
+    return 100 + Math.min(100, Math.max(0, (gained / FAST_GOAL) * 100));
+  }
+  const expenses = totalExpenses(p);
+  return expenses > 0 ? Math.min(100, (passiveIncome(p) / expenses) * 100) : 100;
 }
 
 function PlayerCard({ p, active }: { p: PublicPlayer; active: boolean }) {
