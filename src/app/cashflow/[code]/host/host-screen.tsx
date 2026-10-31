@@ -275,6 +275,8 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
   const now = useNow();
   const state = data?.state;
   const shown = useShownPositions(state?.players ?? []);
+  /** เพิ่งเล่าคำอธิบายจบ: กลับมาหน้า QR ให้คนมาทีหลังสแกนเข้าก่อนเริ่มเกม */
+  const [introDone, setIntroDone] = useState(false);
 
   if (!state) return <p className="p-8 text-center text-stone-500">กำลังโหลด…</p>;
 
@@ -309,10 +311,12 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
             {last ? (
               <button
                 className="btn-primary text-lg"
-                disabled={busy || state.players.length < MIN_PLAYERS}
-                onClick={() => send({ type: "start" })}
+                disabled={busy}
+                onClick={async () => {
+                  if (await send({ type: "intro", slide: null })) setIntroDone(true);
+                }}
               >
-                เริ่มเกม 🎲
+                จบคำอธิบาย → เปิด QR ให้คนมาทีหลัง
               </button>
             ) : (
               <button className="btn-primary text-lg" disabled={busy} onClick={() => send({ type: "intro", slide: i + 1 })}>
@@ -331,7 +335,13 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
       <main className="mx-auto grid min-h-dvh max-w-6xl items-center gap-10 p-8 lg:grid-cols-2">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-stone-900">กระแสเงินสด</h1>
-          <p className="mt-2 text-xl text-stone-600">สแกน QR ด้วยมือถือเพื่อเข้าเล่น</p>
+          {introDone ? (
+            <p className="mt-3 rounded-2xl bg-amber-100 px-4 py-2 text-xl font-semibold text-amber-900">
+              เล่าจบแล้ว! ใครยังไม่ได้เข้า สแกน QR ตอนนี้เลย
+            </p>
+          ) : (
+            <p className="mt-2 text-xl text-stone-600">สแกน QR ด้วยมือถือเพื่อเข้าเล่น</p>
+          )}
           <div
             className="mx-auto mt-6 w-full max-w-sm rounded-3xl bg-white p-4 shadow ring-1 ring-stone-200"
             dangerouslySetInnerHTML={{ __html: qrSvg }}
