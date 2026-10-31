@@ -99,6 +99,13 @@
       "when": 1792286783788,
       "tag": "0013_acerola_image",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793436543193,
+      "tag": "0014_cashflow_rooms",
+      "breakpoints": true
     }
   ]
 }
