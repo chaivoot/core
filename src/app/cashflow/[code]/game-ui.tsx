@@ -19,17 +19,19 @@ import {
 } from "@/lib/cashflow/data";
 import type { Action, Card, PublicPlayer, PublicState } from "@/lib/cashflow/engine";
 
-export type RoomData = { version: number; me: string | null; deck?: string; stale?: boolean; state: PublicState };
+export type RoomData = { version: number; me: string | null; deck?: string; build?: string; stale?: boolean; state: PublicState };
 type ClientAction = Exclude<Action, { type: "join" }> | { type: "join"; name: string; color: string };
 
 /**
  * หน้านี้เปิดค้างไว้ตั้งแต่ก่อนอัปเดตการ์ด (โค้ดในเครื่องเป็นชุดเก่า) → รีเฟรชให้เอง ครั้งเดียวต่อเวอร์ชัน
  * ไม่งั้นการ์ดบนจอกับบนเซิร์ฟเวอร์จะเป็นคนละใบ
  */
-function reloadIfOutdated(serverDeck: string | undefined) {
-  if (!serverDeck || serverDeck === DECK_VERSION) return false;
+function reloadIfOutdated(serverDeck: string | undefined, serverBuild?: string) {
+  // โค้ดในเครื่องเก่ากว่าเซิร์ฟเวอร์ (มี deploy ใหม่ระหว่างเปิดหน้าค้างไว้) ก็รีเฟรชเหมือนกัน ไม่งั้นปุ่มใหม่ ๆ ไม่ขึ้น
+  const newBuild = !!serverBuild && serverBuild !== process.env.APP_BUILD;
+  if ((!serverDeck || serverDeck === DECK_VERSION) && !newBuild) return false;
   try {
-    const key = `cf-reload-${serverDeck}`;
+    const key = `cf-reload-${serverDeck}-${serverBuild}`;
     if (sessionStorage.getItem(key)) return false;
     sessionStorage.setItem(key, "1");
   } catch {
@@ -48,7 +50,7 @@ export function useRoom(code: string) {
   const url = `/cashflow/${code}/api`;
 
   const accept = useCallback((j: RoomData) => {
-    if (reloadIfOutdated(j.deck)) return;
+    if (reloadIfOutdated(j.deck, j.build)) return;
     if (j.version >= version.current) {
       version.current = j.version;
       setData(j);
@@ -64,7 +66,7 @@ export function useRoom(code: string) {
         const j = await r.json();
         if (!alive) return;
         if (!r.ok) setError(j.error ?? "เชื่อมต่อไม่ได้");
-        else if (j.same) reloadIfOutdated(j.deck);
+        else if (j.same) reloadIfOutdated(j.deck, j.build);
         else accept(j);
       } catch {
         // เน็ตหลุดชั่วคราว รอบหน้าค่อยลองใหม่
