@@ -8,13 +8,14 @@ import {
   FAST_BUSINESSES,
   FAST_GOAL,
   DEBT_LABEL,
+  LOAN_PAYMENT,
   LOAN_UNIT,
   MARKETS,
   SMALL_DEALS,
   STOCK_LABEL,
   lotOf,
   unitOf,
-  baht,
+  money,
   colorHex,
   type Debt,
 } from "@/lib/cashflow/data";
@@ -33,6 +34,7 @@ import {
   type PublicState,
 } from "@/lib/cashflow/engine";
 import { CardView, Dice, PlayerTag, Rat, cardKey, useNow, useRoom } from "./game-ui";
+import { GameBoard } from "./board";
 import { IntroSlide } from "./intro";
 
 type Send = ReturnType<typeof useRoom>["send"];
@@ -77,12 +79,42 @@ export function PlayerScreen({ code }: { code: string }) {
       ) : (
         <>
           <Header me={me} />
+          <BoardToggle state={state} />
           <ActionPanel state={state} me={me} busy={busy} send={send} />
           <MyLog state={state} me={me} />
           {me.fast ? <FastSheet me={me} /> : <Statement me={me} busy={busy} send={send} />}
         </>
       )}
     </main>
+  );
+}
+
+/** ดูกระดานบนมือถือ (ปิดไว้ก่อน กดเปิด/ปิดเอง) */
+function BoardToggle({ state }: { state: PublicState }) {
+  const [open, setOpen] = useState(false);
+  const turn = state.players[state.turn];
+  return (
+    <div className="space-y-2">
+      <button className="btn-secondary w-full" onClick={() => setOpen((x) => !x)} aria-expanded={open}>
+        {open ? "ซ่อนกระดาน" : "🗺️ ดูกระดาน"}
+      </button>
+      {open && (
+        <GameBoard state={state} className="w-full">
+          <div className="absolute inset-[26.6%] flex flex-col items-center justify-center gap-[1cqw] rounded-full bg-white text-center ring-1 ring-stone-200">
+            {turn && (
+              <>
+                <Rat color={turn.color} className="w-[12cqw]" />
+                <p className="text-[4cqw] leading-tight font-bold" style={{ color: colorHex(turn.color) }}>
+                  {turn.name}
+                </p>
+                <p className="text-[3cqw] text-stone-500">กำลังเล่น</p>
+              </>
+            )}
+            {state.dice && <Dice dice={state.dice} />}
+          </div>
+        </GameBoard>
+      )}
+    </div>
   );
 }
 
@@ -145,7 +177,7 @@ function Header({ me }: { me: PublicPlayer }) {
       </div>
       <div className="text-right">
         <p className="text-xs text-stone-500">เงินสด</p>
-        <p className="text-xl font-bold">{baht(me.cash)}</p>
+        <p className="text-xl font-bold">{money(me.cash)}</p>
       </div>
     </div>
   );
@@ -207,7 +239,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
         <div className="space-y-2">
           <p className="text-center font-medium">🚀 ขึ้นทางด่วนแล้ว! เลือกความฝันของคุณ</p>
           <p className="text-center text-xs text-stone-500">
-            ชนะเมื่อเดินไปตกช่องความฝันนี้แล้วมีเงินซื้อ หรือเพิ่มรายได้ต่อรอบได้ {baht(FAST_GOAL)}
+            ชนะเมื่อเดินไปตกช่องความฝันนี้แล้วมีเงินซื้อ หรือเพิ่มรายได้ต่อรอบได้ {money(FAST_GOAL)}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {DREAMS.map((d, i) => (
@@ -219,7 +251,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
               >
                 <span className="text-2xl">{d.icon}</span>
                 <span className="text-sm font-semibold">{d.name}</span>
-                <span className="text-xs">{baht(d.cost)}</span>
+                <span className="text-xs">{money(d.cost)}</span>
               </button>
             ))}
           </div>
@@ -229,7 +261,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
       {myTurn && state.step === "charity" && (
         <div className="grid grid-cols-2 gap-2">
           <button className="btn-primary" disabled={busy} onClick={() => send({ type: "charity", give: true })}>
-            ทำบุญ {baht(Math.round((profession(me).salary + passiveIncome(me)) * 0.1))}
+            ทำบุญ {money(Math.round((profession(me).salary + passiveIncome(me)) * 0.1))}
           </button>
           <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "charity", give: false })}>
             ไม่ทำบุญ
@@ -243,11 +275,11 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
           <div className="grid grid-cols-2 gap-2">
             <button className="btn-primary flex-col py-3" disabled={busy} onClick={() => send({ type: "deal", size: "small" })}>
               ดีลเล็ก
-              <span className="text-xs font-normal opacity-80">ลงทุนไม่เกิน ฿50,000</span>
+              <span className="text-xs font-normal opacity-80">ลงทุนไม่เกิน ฿150,000</span>
             </button>
             <button className="btn flex-col bg-teal-900 py-3 text-white" disabled={busy} onClick={() => send({ type: "deal", size: "big" })}>
               ดีลใหญ่
-              <span className="text-xs font-normal opacity-80">ลงทุนมากกว่า ฿50,000</span>
+              <span className="text-xs font-normal opacity-80">ลงทุนมากกว่า ฿150,000</span>
             </button>
           </div>
         </div>
@@ -307,10 +339,10 @@ function Respond({
     const short = cost - me.cash;
     return (
       <div className="space-y-2">
-        {short > 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">เงินสดขาด {baht(short)} (ทางด่วนกู้เงินไม่ได้)</p>}
+        {short > 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">เงินสดขาด {money(short)} (ทางด่วนกู้เงินไม่ได้)</p>}
         <div className="grid grid-cols-2 gap-2">
           <button className="btn-primary" disabled={busy || short > 0} onClick={() => send({ type: "respond", buy: true })}>
-            {card.deck === "dream" ? "ซื้อความฝัน" : "ซื้อ"} ({baht(cost)})
+            {card.deck === "dream" ? "ซื้อความฝัน" : "ซื้อ"} ({money(cost)})
           </button>
           <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "respond", buy: false })}>
             ไม่ซื้อ
@@ -341,17 +373,17 @@ function Respond({
                 ซื้อได้ทีละ {lot} {unit} จะซื้อ {buyLots.toLocaleString("th-TH")} {unit}
               </p>
             )}
-            <p className="mt-1 text-sm text-stone-600">จ่าย {baht(buyLots * st.price)}</p>
+            <p className="mt-1 text-sm text-stone-600">จ่าย {money(buyLots * st.price)}</p>
           </div>
         )}
         {held > 0 && (
           <div>
             <label className="label">
-              ขายที่ ฿{st.price} — ถืออยู่ {held.toLocaleString("th-TH")} (ต้นทุนเฉลี่ย ฿
+              ขายที่ {money(st.price)} — ถืออยู่ {held.toLocaleString("th-TH")} (ต้นทุนเฉลี่ย ฿
               {(me.stocks[st.stock]!.cost / held).toFixed(1)})
             </label>
             <Stepper value={sell} step={lot} max={held} onChange={setSell} />
-            <p className="mt-1 text-sm text-stone-600">ได้ {baht(sell * st.price)}</p>
+            <p className="mt-1 text-sm text-stone-600">ได้ {money(sell * st.price)}</p>
           </div>
         )}
         <div className="grid grid-cols-2 gap-2">
@@ -378,7 +410,7 @@ function Respond({
       <div className="space-y-2">
         <p className="text-sm font-medium">เลือกทรัพย์สินที่จะขาย</p>
         {mine.map((a) => {
-          const gross = m.perUnit ? m.price * a.units : m.price;
+          const gross = m.multiple ? a.price * a.units * m.multiple : m.perUnit ? m.price * a.units : m.price;
           return (
             <label key={a.uid} className="flex items-start gap-3 rounded-xl bg-stone-50 p-3">
               <input
@@ -390,9 +422,9 @@ function Respond({
               <span className="text-sm">
                 <b>{a.name}</b>
                 <br />
-                ขาย {baht(gross)} − จำนอง {baht(a.mortgage)} = ได้เงินสด <b>{baht(gross - a.mortgage)}</b>
+                ขาย {money(gross)} − จำนอง {money(a.mortgage)} = ได้เงินสด <b>{money(gross - a.mortgage)}</b>
                 <br />
-                <span className="text-stone-500">กระแสเงินสดที่จะหายไป {baht(a.cashflow)}/เดือน</span>
+                <span className="text-stone-500">กระแสเงินสดที่จะหายไป {money(a.cashflow)}/เดือน</span>
               </span>
             </label>
           );
@@ -423,23 +455,23 @@ function Respond({
       )}
       {short > 0 && (
         <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-          เงินสดขาด {baht(short)}
+          เงินสดขาด {money(short)}
           {loansNeeded <= loanRoom(me) ? (
             <button
               className="btn-secondary mt-2 w-full"
               disabled={busy}
               onClick={() => send({ type: "loan", count: loansNeeded })}
             >
-              กู้ธนาคาร {baht(loansNeeded * LOAN_UNIT)} (ผ่อน {baht(loansNeeded * 1_000)}/เดือน)
+              กู้ธนาคาร {money(loansNeeded * LOAN_UNIT)} (ผ่อน {money(loansNeeded * 1_000)}/เดือน)
             </button>
           ) : (
-            <p className="mt-1">กู้เพิ่มได้อีกแค่ {baht(loanRoom(me) * LOAN_UNIT)} ไม่พอซื้อ</p>
+            <p className="mt-1">กู้เพิ่มได้อีกแค่ {money(loanRoom(me) * LOAN_UNIT)} ไม่พอซื้อ</p>
           )}
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">
         <button className="btn-primary" disabled={busy || short > 0} onClick={() => send({ type: "respond", buy: true })}>
-          ซื้อ ({baht(d.down)})
+          ซื้อ ({money(d.down)})
         </button>
         <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "respond", buy: false })}>
           ไม่ซื้อ
@@ -515,7 +547,7 @@ function Row({ label, value, strong = false, sign = false }: { label: string; va
       <span className="text-stone-700">{label}</span>
       <span className={`font-hand text-lg leading-none tabular-nums ${value < 0 ? "text-rose-700" : "text-blue-900"}`}>
         {sign && value > 0 ? "+" : ""}
-        {baht(value)}
+        {money(value)}
       </span>
     </div>
   );
@@ -541,7 +573,7 @@ function FastSheet({ me }: { me: PublicPlayer }) {
 
       <div>
         <div className="flex justify-between text-xs text-stone-600">
-          <span>เป้าหมาย: เพิ่มรายได้ต่อรอบ {baht(FAST_GOAL)}</span>
+          <span>เป้าหมาย: เพิ่มรายได้ต่อรอบ {money(FAST_GOAL)}</span>
           <span className="font-hand text-base text-blue-900">{Math.floor(pct)}%</span>
         </div>
         <div className="mt-1 h-3 overflow-hidden rounded-full bg-amber-100 ring-1 ring-amber-300">
@@ -571,7 +603,7 @@ function FastSheet({ me }: { me: PublicPlayer }) {
 
       <div className="flex items-center justify-between rounded-sm border-2 border-stone-800 bg-white px-3 py-2">
         <span className="font-bold">เงินสด</span>
-        <span className="font-hand text-2xl leading-none text-emerald-700">{baht(me.cash)}</span>
+        <span className="font-hand text-2xl leading-none text-emerald-700">{money(me.cash)}</span>
       </div>
     </div>
   );
@@ -613,7 +645,7 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
         {me.assets.map((a) => (
           <div key={a.uid} className="flex justify-between gap-2 border-b border-dashed border-amber-200 py-0.5 pl-3 text-xs text-stone-500">
             <span className="truncate">· {a.name}</span>
-            <span className="font-hand shrink-0 text-sm text-blue-900">{baht(a.cashflow)}</span>
+            <span className="font-hand shrink-0 text-sm text-blue-900">{money(a.cashflow)}</span>
           </div>
         ))}
       </section>
@@ -628,7 +660,7 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
 
       <div className="flex items-center justify-between rounded-sm border-2 border-stone-800 bg-white px-3 py-2">
         <span className="font-bold">กระแสเงินสดต่อเดือน</span>
-        <span className={`font-hand text-2xl leading-none ${cashflow < 0 ? "text-rose-700" : "text-emerald-700"}`}>{baht(cashflow)}</span>
+        <span className={`font-hand text-2xl leading-none ${cashflow < 0 ? "text-rose-700" : "text-emerald-700"}`}>{money(cashflow)}</span>
       </div>
 
       <section>
@@ -637,14 +669,14 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
         {me.assets.map((a) => (
           <div key={a.uid} className="flex justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
             <span className="text-stone-700">{a.name}</span>
-            <span className="font-hand shrink-0 text-base text-blue-900">ดาวน์ {baht(a.down)}</span>
+            <span className="font-hand shrink-0 text-base text-blue-900">ดาวน์ {money(a.down)}</span>
           </div>
         ))}
         {stocks.map(([k, h]) => (
           <div key={k} className="flex justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
             <span className="text-stone-700">{STOCK_LABEL[k as keyof typeof STOCK_LABEL]}</span>
             <span className="font-hand shrink-0 text-base text-blue-900">
-              {h!.qty.toLocaleString("th-TH")} {unitOf(k as keyof typeof STOCK_LABEL)} · ทุน {baht(h!.cost)}
+              {h!.qty.toLocaleString("th-TH")} {unitOf(k as keyof typeof STOCK_LABEL)} · ทุน {money(h!.cost)}
             </span>
           </div>
         ))}
@@ -659,7 +691,7 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
             <div key={d} className="flex items-center justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
               <span className="text-stone-700">{DEBT_LABEL[d]}</span>
               <span className="flex items-center gap-2">
-                <span className="font-hand text-lg leading-none text-blue-900">{baht(amount)}</span>
+                <span className="font-hand text-lg leading-none text-blue-900">{money(amount)}</span>
                 <button
                   className="rounded-md bg-white px-2 py-1 text-xs ring-1 ring-stone-300 disabled:opacity-40"
                   disabled={busy || me.cash < amount}
@@ -676,19 +708,19 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
           .map((a) => (
             <div key={a.uid} className="flex justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
               <span className="text-stone-700">จำนอง{a.name}</span>
-              <span className="font-hand shrink-0 text-lg leading-none text-blue-900">{baht(a.mortgage)}</span>
+              <span className="font-hand shrink-0 text-lg leading-none text-blue-900">{money(a.mortgage)}</span>
             </div>
           ))}
         <div className="flex items-center justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
           <span className="text-stone-700">เงินกู้ธนาคาร</span>
           <span className="flex items-center gap-1">
-            <span className="font-hand mr-1 text-lg leading-none text-blue-900">{baht(me.loans * LOAN_UNIT)}</span>
+            <span className="font-hand mr-1 text-lg leading-none text-blue-900">{money(me.loans * LOAN_UNIT)}</span>
             <button
               className="rounded-md bg-white px-2 py-1 text-xs ring-1 ring-stone-300 disabled:opacity-40"
               disabled={busy || loanRoom(me) < 1}
               onClick={() => send({ type: "loan" })}
             >
-              กู้ +฿10,000
+              กู้ +{money(LOAN_UNIT)}
             </button>
             <button
               className="rounded-md bg-white px-2 py-1 text-xs ring-1 ring-stone-300 disabled:opacity-40"
@@ -699,7 +731,7 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
             </button>
           </span>
         </div>
-        <p className="mt-1 text-xs text-stone-500">กู้ได้อีก {baht(loanRoom(me) * LOAN_UNIT)} (ผ่อนก้อนละ ฿1,000/เดือน)</p>
+        <p className="mt-1 text-xs text-stone-500">กู้ได้อีก {money(loanRoom(me) * LOAN_UNIT)} (ผ่อนก้อนละ {money(LOAN_PAYMENT)}/เดือน)</p>
       </section>
     </div>
   );

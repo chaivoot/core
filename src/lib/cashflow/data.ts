@@ -27,14 +27,14 @@ export type Profession = {
 };
 
 export const PROFESSIONS: Profession[] = [
-  { name: "พนักงานขาย", salary: 25_000, tax: 500, house: 5_000, car: 3_000, card: 1_500, other: 8_000, child: 1_500, savings: 10_000 },
-  { name: "ครู", salary: 28_000, tax: 1_000, house: 6_000, car: 3_500, card: 1_000, other: 9_000, child: 2_000, savings: 12_000 },
-  { name: "พนักงานออฟฟิศ", salary: 30_000, tax: 1_500, house: 7_000, car: 4_000, card: 1_500, other: 9_000, child: 2_000, savings: 15_000 },
-  { name: "พยาบาล", salary: 35_000, tax: 2_000, house: 8_000, car: 4_500, card: 1_500, other: 10_000, child: 2_500, savings: 15_000 },
-  { name: "ช่างเทคนิค", salary: 32_000, tax: 1_500, house: 7_000, car: 5_000, card: 2_000, other: 9_500, child: 2_000, savings: 12_000 },
-  { name: "ผู้จัดการร้าน", salary: 45_000, tax: 3_000, house: 11_000, car: 6_000, card: 2_500, other: 13_500, child: 3_000, savings: 20_000 },
-  { name: "วิศวกร", salary: 60_000, tax: 5_000, house: 15_000, car: 8_000, card: 3_000, other: 17_000, child: 4_000, savings: 25_000 },
-  { name: "แพทย์", salary: 120_000, tax: 18_000, house: 30_000, car: 15_000, card: 5_000, other: 32_000, child: 7_000, savings: 40_000 },
+  { name: "พนักงานขาย", salary: 75_000, tax: 12_000, house: 15_000, car: 3_000, card: 1_800, other: 24_000, child: 4_200, savings: 18_000 },
+  { name: "ครู", salary: 96_000, tax: 18_000, house: 15_000, car: 3_000, card: 2_700, other: 27_000, child: 5_400, savings: 12_000 },
+  { name: "พนักงานออฟฟิศ", salary: 90_000, tax: 16_500, house: 13_500, car: 3_300, card: 2_100, other: 27_000, child: 4_800, savings: 21_000 },
+  { name: "พยาบาล", salary: 108_000, tax: 19_500, house: 18_000, car: 3_600, card: 3_000, other: 30_000, child: 6_000, savings: 15_000 },
+  { name: "ช่างเทคนิค", salary: 102_000, tax: 18_000, house: 16_500, car: 3_600, card: 2_400, other: 28_500, child: 5_700, savings: 18_000 },
+  { name: "ผู้จัดการร้าน", salary: 144_000, tax: 28_500, house: 24_000, car: 4_500, card: 3_600, other: 39_000, child: 7_800, savings: 27_000 },
+  { name: "วิศวกร", salary: 195_000, tax: 42_000, house: 33_000, car: 6_000, card: 4_500, other: 51_000, child: 10_200, savings: 45_000 },
+  { name: "แพทย์", salary: 360_000, tax: 90_000, house: 60_000, car: 9_000, card: 7_500, other: 90_000, child: 18_000, savings: 105_000 },
 ];
 
 /** หนี้ตั้งต้น = ค่าผ่อน × จำนวนเดือน */
@@ -42,8 +42,8 @@ export const DEBT_MONTHS = { house: 120, car: 50, card: 30 } as const;
 export type Debt = keyof typeof DEBT_MONTHS;
 export const DEBT_LABEL: Record<Debt, string> = { house: "บ้าน", car: "รถ", card: "บัตรเครดิต" };
 
-export const LOAN_UNIT = 10_000;
-export const LOAN_PAYMENT = 1_000;
+export const LOAN_UNIT = 30_000;
+export const LOAN_PAYMENT = 3_000;
 export const MAX_CHILDREN = 3;
 export const RESPONSE_SECONDS = 30;
 
@@ -76,14 +76,16 @@ export const STOCK_LABEL: Record<StockKind, string> = {
   fund: "กองทุนรวม",
   gold: "เหรียญทองคำสะสม",
 };
-/** หุ้น/กองทุนซื้อทีละ 100 เหรียญทองซื้อทีละเหรียญ
- * ราคาหุ้นตั้งให้สัดส่วนเข้ากับเงินเดือนและการ์ดจ่ายซะ: 100 หุ้น ≈ ฿5,000–฿60,000 */
-export const lotOf = (k: StockKind) => (k === "gold" ? 1 : 100);
+/** หุ้น/กองทุนซื้อทีละ 10 เหรียญทองซื้อทีละเหรียญ
+ * หุ้นราคา ฿30–฿1,200 ซื้อทีละ 10 หุ้น */
+export const lotOf = (k: StockKind) => (k === "gold" ? 1 : 10);
 export const unitOf = (k: StockKind) => (k === "gold" ? "เหรียญ" : k === "fund" ? "หน่วย" : "หุ้น");
 
 /** ทรัพย์สินที่ซื้อได้จากการ์ดดีล */
 export type AssetDeal = {
   name: string;
+  /** สถานการณ์บนการ์ด เช่น "เจ้าของย้ายงาน ขายด่วน" */
+  situation?: string;
   /** ราคาต่อหน่วย × units = ราคาเต็ม */
   price: number;
   down: number;
@@ -113,170 +115,187 @@ export type DealCard =
   | { type: "lend"; text: string; amount: number }
   | ({ type: "asset" } & AssetDeal);
 
-const stock = (s: StockKind, price: number): DealCard => ({ type: "stock", stock: s, price });
 const gold = (price: number, max: number, text: string): DealCard => ({ type: "stock", stock: "gold", price, max, text });
 const news = (s: StockKind, price: number, n: string): DealCard => ({ type: "stock", stock: s, price, news: n });
 const asset = (a: AssetDeal): DealCard => ({ type: "asset", ...a });
+/** อสังหาฯ ผ่อน: ราคาเต็ม − ดาวน์ = จำนอง */
+const home = (name: string, situation: string, price: number, down: number, cashflow: number, tag: string): DealCard =>
+  asset({ name, situation, price, down, mortgage: price - down, cashflow, tag, rental: true });
+/** จ่ายสดทั้งก้อน */
+const cashBuy = (name: string, situation: string, cost: number, cashflow: number, tag: string): DealCard =>
+  asset({ name, situation, price: cost, down: cost, mortgage: 0, cashflow, tag });
+/** อาคาร/ธุรกิจหลายหน่วย: ราคาเต็มหารเท่า ๆ กันต่อหน่วย */
+const multi = (name: string, situation: string, price: number, units: number, down: number, cashflow: number, tag: string, rental = true): DealCard =>
+  asset({ name, situation, price: price / units, units, down, mortgage: price - down, cashflow, tag, rental });
 
+// หน่วยเงินเป็นบาท = สเปก USD × 30 · ดีลเล็กใช้เงินไม่เกิน ฿150,000 · หุ้นซื้อได้ทีละ 10 หุ้น
 export const SMALL_DEALS: DealCard[] = [
-  stock("pharma", 50), stock("pharma", 100), stock("pharma", 200), stock("pharma", 300),
-  stock("ent", 100), stock("ent", 200), stock("ent", 300), stock("ent", 400),
-  stock("elec", 100), stock("elec", 200), stock("elec", 400), stock("elec", 500),
-  asset({ name: "คอนโด 1 ห้องนอน ใกล้รถไฟฟ้า", price: 900_000, down: 45_000, mortgage: 855_000, cashflow: 2_000, tag: "condo", rental: true }),
-  asset({ name: "คอนโดเก่ารีโนเวต", price: 600_000, down: 30_000, mortgage: 570_000, cashflow: 1_500, tag: "condo", rental: true }),
-  asset({ name: "ห้องแถวให้เช่า", price: 750_000, down: 40_000, mortgage: 710_000, cashflow: 1_000, tag: "shophouse", rental: true }),
-  asset({ name: "คอนโดขายทอดตลาด", price: 450_000, down: 20_000, mortgage: 430_000, cashflow: 2_500, tag: "condo", rental: true }),
-  asset({ name: "ที่ดินเปล่า 1 ไร่ ชานเมือง", price: 50_000, down: 50_000, mortgage: 0, cashflow: 0, tag: "land1" }),
-  asset({ name: "ตู้หยอดเหรียญซักผ้า 2 ตู้", price: 30_000, down: 30_000, mortgage: 0, cashflow: 1_200, tag: "laundry" }),
-  asset({ name: "ร้านกาแฟรถเข็น (ให้เช่าแฟรนไชส์)", price: 40_000, down: 40_000, mortgage: 0, cashflow: 1_500, tag: "coffee" }),
-  asset({ name: "เครื่องขายน้ำอัตโนมัติ", price: 25_000, down: 25_000, mortgage: 0, cashflow: 800, tag: "vending" }),
-  asset({ name: "ทาวน์โฮมยึดจากธนาคาร", price: 1_000_000, down: 50_000, mortgage: 950_000, cashflow: -500, tag: "townhouse", rental: true }),
-  { type: "split", stock: "pharma", factor: 2, text: "หุ้นบริษัทยาแตกพาร์ ใครถืออยู่ได้จำนวนหุ้น ×2" },
-  { type: "split", stock: "ent", factor: 0.5, text: "หุ้นบริษัทเอนเตอร์เทนเมนต์ลดพาร์ ใครถืออยู่จำนวนหุ้น ÷2" },
-  asset({ name: "ห้องเช่าหอพัก 4 ห้อง", price: 1_200_000, down: 50_000, mortgage: 1_150_000, cashflow: 3_000, tag: "dorm", rental: true }),
-  stock("fund", 100), stock("fund", 200),
-  gold(4_000, 10, "คนรู้จักขายเหรียญทองคำสะสม 10 เหรียญ เหรียญละ ฿4,000"),
-  gold(6_000, 5, "งานประมูลของสะสม มีเหรียญทองคำ 5 เหรียญ เหรียญละ ฿6,000"),
-  gold(3_000, 20, "ทายาทขายเหรียญทองคำของคุณปู่ 20 เหรียญ เหรียญละ ฿3,000"),
-  asset({ name: "คอนโด 2 ห้องนอน 1 ห้องน้ำ ใกล้มหาวิทยาลัย", price: 1_000_000, down: 50_000, mortgage: 950_000, cashflow: 1_500, tag: "condo21", rental: true }),
-  asset({ name: "คอนโด 2/1 ขายด่วน เจ้าของย้ายงาน", price: 850_000, down: 40_000, mortgage: 810_000, cashflow: 2_200, tag: "condo21", rental: true }),
-  asset({ name: "บ้านเดี่ยว 3 ห้องนอน 2 ห้องน้ำ ชานเมือง", price: 1_500_000, down: 50_000, mortgage: 1_450_000, cashflow: 1_000, tag: "house32", rental: true }),
-  asset({ name: "บ้าน 3/2 ขายทอดตลาด สภาพต้องซ่อมนิดหน่อย", price: 1_200_000, down: 40_000, mortgage: 1_160_000, cashflow: 2_500, tag: "house32", rental: true }),
-  asset({ name: "บ้าน 3/2 ในหมู่บ้านใหม่ (ค่าเช่าน้อยกว่าค่าผ่อน)", price: 1_800_000, down: 50_000, mortgage: 1_750_000, cashflow: -800, tag: "house32", rental: true }),
-  { type: "lend", text: "ญาติขอยืมเงิน ฿10,000 ไม่รู้จะได้คืนเมื่อไหร่", amount: 10_000 },
-  { type: "lend", text: "เพื่อนสนิทขอยืมเงินไปเปิดร้าน ฿20,000", amount: 20_000 },
-  // ราคาหุ้นขึ้นลงมาในการ์ดดีลเล็ก (ไม่มีในการ์ดตลาด): ราคาต่ำ = จังหวะซื้อ ราคาสูง = คนถืออยู่ขายทำกำไร
-  news("pharma", 400, "บริษัทยาได้ใบอนุญาตขายยาตัวใหม่"),
-  news("pharma", 450, "ผลทดลองยาใหม่ผ่าน นักลงทุนแห่ซื้อ"),
-  news("pharma", 20, "ยาหลักของบริษัทถูกเรียกคืน หุ้นร่วงหนัก"),
-  news("ent", 20, "บริษัทเอนเตอร์เทนเมนต์โดนฟ้องหนัก"),
-  news("ent", 500, "ซีรีส์ของบริษัทดังไปทั่วเอเชีย"),
-  news("elec", 700, "ได้สัญญาส่งชิปให้ค่ายรถยนต์"),
-  news("elec", 600, "ยอดขายสมาร์ตโฟนรุ่นใหม่ทะลุเป้า"),
-  news("elec", 50, "ขาดทุนติดกันสามไตรมาส"),
-  news("fund", 300, "ตลาดหุ้นขาขึ้นทั้งปี"),
-  news("fund", 50, "ตลาดหุ้นทั่วโลกตก กองทุนรวมร่วง"),
+  news("elec", 30, "ขาดทุนหนัก ผู้บริหารลาออก"),
+  news("elec", 150, "ชิปขาดตลาด ส่งของไม่ทัน"),
+  news("elec", 300, "ยอดขายทรงตัว"),
+  news("elec", 300, "เปิดโรงงานใหม่"),
+  news("elec", 600, "มือถือรุ่นใหม่ขายดี"),
+  news("elec", 900, "ได้สัญญาส่งชิปให้ค่ายรถยนต์"),
+  news("pharma", 150, "ยาหลักถูกเรียกคืน"),
+  news("pharma", 300, "ผลประกอบการทรงตัว"),
+  news("pharma", 600, "ขยายโรงงาน"),
+  news("pharma", 600, "ได้สัญญาส่งยาให้โรงพยาบาลรัฐ"),
+  news("pharma", 900, "ยาใหม่ผ่านการทดลองขั้นแรก"),
+  news("pharma", 1_200, "ยาใหม่ได้รับอนุมัติ"),
+  news("ent", 150, "หนังฟอร์มใหญ่ขาดทุนยับ"),
+  news("ent", 300, "ยอดผู้ชมแพลตฟอร์มลดลง"),
+  news("ent", 450, "ผลประกอบการตามคาด"),
+  news("ent", 600, "เซ็นสัญญาศิลปินดัง"),
+  news("ent", 900, "ซีรีส์ดังไปทั่วเอเชีย"),
+  news("fund", 300, "ตลาดหุ้นทั่วโลกตก"),
+  news("fund", 600, "ตลาดหุ้นแกว่งตัว"),
+  news("fund", 900, "ตลาดหุ้นฟื้นตัว"),
+  news("fund", 1_200, "ตลาดหุ้นขาขึ้นทั้งปี"),
+  cashBuy("หุ้นกู้บริษัทใหญ่", "ดอกเบี้ยคงที่ จ่ายทุกเดือน", 36_000, 600, "cd"),
+  cashBuy("เงินฝากประจำ 3 ปี", "ธนาคารจัดโปรดอกเบี้ยพิเศษ", 72_000, 1_200, "cd"),
+  gold(9_000, 10, "คนรู้จักขายเหรียญทองคำสะสม 10 เหรียญ เหรียญละ ฿9,000"),
+  gold(12_000, 5, "งานประมูลของสะสม มีเหรียญทองคำ 5 เหรียญ เหรียญละ ฿12,000"),
+  gold(15_000, 3, "ทายาทขายเหรียญทองคำของคุณปู่ 3 เหรียญ เหรียญละ ฿15,000"),
+  home("บ้าน 2/1", "เจ้าของเกษียณ ย้ายไปอยู่กับลูก (ไม่ต้องดาวน์)", 1_200_000, 0, 3_000, "house21"),
+  home("บ้าน 2/1", "ผู้เช่าเดิมอยู่ต่อ สัญญา 1 ปี", 1_350_000, 30_000, 4_800, "house21"),
+  home("บ้าน 2/1", "ใกล้โรงเรียน มีครอบครัวรอเช่า", 1_500_000, 60_000, 6_600, "house21"),
+  home("บ้าน 3/2", "หมู่บ้านชานเมือง เจ้าของย้ายงาน", 1_500_000, 60_000, 4_500, "house32"),
+  home("บ้าน 3/2", "ใกล้นิคมอุตสาหกรรม คนงานเช่าตลอด", 1_650_000, 90_000, 6_600, "house32"),
+  home("บ้าน 3/2", "ทำเลดี ติดถนนใหญ่", 1_950_000, 120_000, 9_000, "house32"),
+  home("บ้าน 3/2", "หมู่บ้านใหม่ ผู้เช่ายังน้อย ค่าเช่าไม่พอผ่อน", 1_800_000, 90_000, -3_000, "house32"),
+  home("คอนโด 2/1", "ใกล้มหาวิทยาลัย", 1_050_000, 30_000, 1_500, "condo21"),
+  home("คอนโด 2/1", "เจ้าของย้ายต่างประเทศ ขายด่วน", 1_200_000, 60_000, 3_600, "condo21"),
+  home("คอนโด 2/1", "ใกล้รถไฟฟ้า ห้องตกแต่งครบ", 1_350_000, 90_000, 4_800, "condo21"),
+  cashBuy("ที่ดินเปล่า 10 ไร่", "ชานเมือง ยังไม่มีความเจริญ", 60_000, 0, "land"),
+  cashBuy("ที่ดินเปล่า 20 ไร่", "เจ้าของต้องการเงินด่วน", 150_000, 0, "land"),
+  home("บ้านหลุดจำนอง", "ธนาคารยึดมาขาย ต้องซ่อมเอง", 960_000, 60_000, 3_000, "house32"),
+  home("บ้านต้องรีโนเวต", "สภาพทรุดโทรม ซื้อถูก", 840_000, 60_000, 3_000, "house21"),
+  cashBuy("ตู้หยอดเหรียญ", "ตั้งหน้าหอพัก", 15_000, 1_500, "vending"),
+  cashBuy("ตู้ซักผ้าหยอดเหรียญ", "ในหมู่บ้านใหญ่", 30_000, 3_600, "laundry"),
+  cashBuy("ร้านกาแฟเล็กสุดสัปดาห์", "จ้างคนช่วยขาย", 45_000, 6_000, "coffee"),
 ];
 
+// ดีลใหญ่: เงินดาวน์ ฿600,000 ขึ้นไป
 export const BIG_DEALS: DealCard[] = [
-  asset({ name: "อพาร์ตเมนต์ 8 ห้อง", price: 500_000, units: 8, down: 400_000, mortgage: 3_600_000, cashflow: 12_000, tag: "apartment", rental: true }),
-  asset({ name: "อพาร์ตเมนต์ 12 ห้อง", price: 500_000, units: 12, down: 600_000, mortgage: 5_400_000, cashflow: 18_000, tag: "apartment", rental: true }),
-  asset({ name: "อพาร์ตเมนต์ 24 ห้อง", price: 500_000, units: 24, down: 1_200_000, mortgage: 10_800_000, cashflow: 40_000, tag: "apartment", rental: true }),
-  asset({ name: "บ้านเดี่ยวให้เช่า 2 หลัง", price: 1_500_000, units: 2, down: 300_000, mortgage: 2_700_000, cashflow: 6_000, tag: "house", rental: true }),
-  asset({ name: "บ้านเดี่ยวให้เช่า 3 หลัง", price: 1_500_000, units: 3, down: 450_000, mortgage: 4_050_000, cashflow: 10_000, tag: "house", rental: true }),
-  asset({ name: "ตึกแถว 3 คูหา ปล่อยเช่า", price: 5_000_000, down: 500_000, mortgage: 4_500_000, cashflow: 15_000, tag: "shoprow", rental: true }),
-  asset({ name: "มินิมาร์ท (มีผู้จัดการแล้ว)", price: 1_500_000, down: 300_000, mortgage: 1_200_000, cashflow: 10_000, tag: "minimart" }),
-  asset({ name: "ร้านซ่อมมือถือ 2 สาขา", price: 800_000, down: 200_000, mortgage: 600_000, cashflow: 7_000, tag: "phoneshop" }),
-  asset({ name: "คาร์แคร์", price: 2_000_000, down: 400_000, mortgage: 1_600_000, cashflow: 14_000, tag: "carcare" }),
-  asset({ name: "โกดังให้เช่า", price: 7_000_000, down: 1_000_000, mortgage: 6_000_000, cashflow: 25_000, tag: "warehouse", rental: true }),
-  asset({ name: "อาคารสำนักงานเล็ก", price: 10_000_000, down: 1_500_000, mortgage: 8_500_000, cashflow: 35_000, tag: "office", rental: true }),
-  asset({ name: "รีสอร์ตเล็ก 10 หลัง", price: 8_000_000, down: 1_200_000, mortgage: 6_800_000, cashflow: 22_000, tag: "resort" }),
-  asset({ name: "ห้องเช่าใกล้มหาวิทยาลัย 20 ห้อง", price: 9_000_000, down: 900_000, mortgage: 8_100_000, cashflow: 30_000, tag: "uniroom", rental: true }),
-  asset({ name: "ที่ดินติดถนนใหญ่ 5 ไร่", price: 2_500_000, down: 250_000, mortgage: 2_250_000, cashflow: -5_000, tag: "land5" }),
-  asset({ name: "ปั๊มน้ำมันเล็ก", price: 6_000_000, down: 1_000_000, mortgage: 5_000_000, cashflow: 20_000, tag: "gas" }),
-  asset({ name: "ร้านอาหาร (ต้องจ้างคนดูแล)", price: 3_000_000, down: 600_000, mortgage: 2_400_000, cashflow: 9_000, tag: "restaurant" }),
-  asset({ name: "บ้านแฝด 2 หลัง ปล่อยเช่า", price: 1_400_000, units: 2, down: 280_000, mortgage: 2_520_000, cashflow: 7_000, tag: "duplex", rental: true }),
-  asset({ name: "ตึก 4 ห้องเช่า", price: 600_000, units: 4, down: 240_000, mortgage: 2_160_000, cashflow: 9_000, tag: "apartment", rental: true }),
+  multi("อพาร์ตเมนต์ 8 ห้อง", "เจ้าของอายุมากอยากเกษียณ", 4_800_000, 8, 960_000, 48_000, "apartment"),
+  multi("อพาร์ตเมนต์ 8 ห้อง", "ห้องเต็ม ใกล้โรงงาน", 4_500_000, 8, 900_000, 45_000, "apartment"),
+  multi("อพาร์ตเมนต์ 12 ห้อง", "ผู้เช่าเดิมครบ", 6_000_000, 12, 1_200_000, 60_000, "apartment"),
+  multi("อพาร์ตเมนต์ 12 ห้อง", "ใกล้มหาวิทยาลัย", 7_500_000, 12, 1_500_000, 72_000, "apartment"),
+  multi("อพาร์ตเมนต์ 24 ห้อง", "ใกล้รถไฟฟ้าสายใหม่", 12_000_000, 24, 2_400_000, 120_000, "apartment"),
+  multi("อพาร์ตเมนต์ยกตึก (หลุดจำนอง)", "ธนาคารยึดมาขาย ต้องหาผู้จัดการใหม่", 4_500_000, 10, 900_000, 42_000, "apartment"),
+  multi("มินิมอลล์", "ร้านค้าเช่าเต็ม ติดถนนใหญ่", 7_500_000, 1, 1_500_000, 75_000, "mall"),
+  multi("คาร์แคร์ล้างรถ", "ใกล้ห้าง ลูกค้าแน่นวันหยุด", 3_750_000, 1, 750_000, 36_000, "carwash", false),
+  multi("คาร์แคร์อัตโนมัติ", "เครื่องใหม่ จ้างคนน้อย", 4_500_000, 1, 900_000, 45_000, "carwash", false),
+  multi("ร้านสะดวกซัก", "หน้าหอพักใหญ่", 3_000_000, 1, 600_000, 30_000, "laundromat", false),
+  cashBuy("แฟรนไชส์ร้านพิซซ่า", "สาขาในชุมชน มีผู้จัดการแล้ว", 900_000, 45_000, "franchise"),
+  cashBuy("แฟรนไชส์ร้านพิซซ่า", "สาขาในห้าง ลูกค้าเยอะ", 1_500_000, 75_000, "franchise"),
+  multi("โรงแรมเล็ก B&B", "เมืองท่องเที่ยว เจ้าของเดิมเกษียณ", 6_000_000, 1, 1_200_000, 54_000, "bnb", false),
 ];
 
+// จ่ายซะ: ฿3,000–฿45,000 จ่ายสด (เงินไม่พอ ระบบกู้ธนาคารให้)
 export const DOODADS: { text: string; amount: number }[] = [
-  { text: "เปลี่ยนมือถือรุ่นใหม่", amount: 35_000 },
-  { text: "กินบุฟเฟต์โรงแรมกับเพื่อน", amount: 3_000 },
-  { text: "เที่ยวต่างประเทศ", amount: 40_000 },
-  { text: "ซื้อทีวีจอใหญ่", amount: 25_000 },
-  { text: "ซ่อมรถ", amount: 8_000 },
-  { text: "งานแต่งเพื่อน (ใส่ซอง + ชุดใหม่)", amount: 5_000 },
-  { text: "ซื้อนาฬิกาแบรนด์เนม", amount: 50_000 },
-  { text: "สมัครฟิตเนสรายปี", amount: 15_000 },
-  { text: "ค่าหมอฟัน", amount: 6_000 },
-  { text: "ซื้อเกมคอนโซล", amount: 18_000 },
-  { text: "ช้อปออนไลน์ช่วงลดราคา", amount: 7_000 },
-  { text: "ซื้อจักรยานราคาแพง", amount: 30_000 },
-  { text: "ปาร์ตี้วันเกิด", amount: 10_000 },
-  { text: "ค่าเทอมคอร์สออนไลน์ที่ไม่ได้เรียน", amount: 9_000 },
-  { text: "ซื้อกล้องถ่ายรูป", amount: 28_000 },
-  { text: "ค่าซ่อมบ้าน (หลังคารั่ว)", amount: 12_000 },
+  { text: "เลี้ยงข้าวเพื่อนมื้อหรู", amount: 3_000 },
+  { text: "ค่ากาแฟคาเฟ่ทั้งเดือน", amount: 3_000 },
+  { text: "โดนใบสั่งขับรถเร็ว", amount: 4_500 },
+  { text: "ซ่อมจอมือถือ", amount: 4_500 },
+  { text: "ใส่ซองงานแต่งเพื่อนสนิท", amount: 6_000 },
+  { text: "ตั๋วคอนเสิร์ต", amount: 6_000 },
+  { text: "ซื้อเสื้อผ้าแบรนด์เนมช่วงเซลล์", amount: 7_500 },
+  { text: "ไม้กอล์ฟชุดใหม่", amount: 9_000 },
+  { text: "ปาร์ตี้วันเกิด", amount: 9_000 },
+  { text: "พาแมวไปหาหมอ", amount: 12_000 },
+  { text: "สมัครฟิตเนสรายปี", amount: 12_000 },
+  { text: "ทำฟัน", amount: 18_000 },
+  { text: "ตู้เย็นเสีย ซื้อใหม่", amount: 19_500 },
+  { text: "ทริปพักผ่อนสุดสัปดาห์", amount: 22_500 },
+  { text: "ซื้อทีวีจอใหญ่", amount: 30_000 },
+  { text: "ซ่อมเกียร์รถ", amount: 45_000 },
 ];
 
 export type MarketCard =
-  | { type: "sellAsset"; text: string; tag: string; price: number; perUnit?: boolean }
+  | {
+      type: "sellAsset";
+      text: string;
+      tag: string;
+      price: number;
+      /** ราคาต่อห้อง/ต่อหลัง (คูณจำนวนหน่วย) */
+      perUnit?: boolean;
+      /** ให้ราคาเป็นกี่เท่าของราคาซื้อ (ใช้แทน price) */
+      multiple?: number;
+    }
   | { type: "sellStock"; text: string; stock: StockKind; price: number }
+  | { type: "split"; text: string; stock: StockKind; factor: number }
   | { type: "rentUp"; text: string; amount: number }
   | { type: "expense"; text: string; tags: string[]; amount: number }
   /** ทรัพย์สิน/ธุรกิจกลุ่มนี้ได้กระแสเงินสดเพิ่ม (ถาวร) */
   | { type: "cashflowUp"; text: string; tags: string[]; amount: number };
 
+// ตลาด: มีผลกับทุกคนที่ถือสินทรัพย์นั้น · ขายได้เงิน = ราคาเสนอซื้อ − จำนอง
 export const MARKETS: MarketCard[] = [
-  { type: "sellAsset", text: "คู่แต่งงานใหม่อยากได้คอนโดใกล้รถไฟฟ้า ให้ราคา ฿1,300,000", tag: "condo", price: 1_300_000 },
-  { type: "sellAsset", text: "นักลงทุนกวาดซื้อคอนโดไว้ปล่อยเช่า ให้ราคา ฿1,000,000", tag: "condo", price: 1_000_000 },
-  { type: "sellAsset", text: "ห้างใหม่จะมาเปิดใกล้ ๆ มีคนขอซื้อที่ดินเปล่า 1 ไร่ ฿300,000", tag: "land1", price: 300_000 },
-  { type: "sellAsset", text: "บริษัทอสังหาฯ จะทำหมู่บ้าน ขอซื้อที่ดิน 5 ไร่ ฿6,000,000", tag: "land5", price: 6_000_000 },
-  { type: "sellAsset", text: "ร้านสะดวกซื้ออยากได้ทำเลห้องแถว ให้ราคา ฿1,100,000", tag: "shophouse", price: 1_100_000 },
-  { type: "sellAsset", text: "นักลงทุนขอซื้ออพาร์ตเมนต์ทั้งตึก ให้ราคาห้องละ ฿600,000", tag: "apartment", price: 600_000, perUnit: true },
-  { type: "sellAsset", text: "บริษัทย้ายพนักงานมาประจำ ขอซื้อบ้านเช่าหลังละ ฿2,000,000", tag: "house", price: 2_000_000, perUnit: true },
-  { type: "sellAsset", text: "บริษัทขนส่งขยายสาขา ขอซื้อโกดัง ฿10,000,000", tag: "warehouse", price: 10_000_000 },
-  { type: "sellAsset", text: "เครือร้านสะดวกซื้อขอซื้อมินิมาร์ท ฿3,000,000", tag: "minimart", price: 3_000_000 },
-  { type: "rentUp", text: "นิคมอุตสาหกรรมเปิดใหม่ คนย้ายเข้าเยอะ ค่าเช่าขึ้น ทรัพย์สินให้เช่าทุกชิ้น +฿500/เดือน", amount: 500 },
-  { type: "expense", text: "ผู้เช่าหนีค่าเช่า ห้องพังต้องซ่อม เจ้าของคอนโด/ห้องแถวจ่าย ฿20,000", tags: ["condo", "condo21", "shophouse"], amount: 20_000 },
-  { type: "expense", text: "กฎหมายใหม่ ร้านซ่อมมือถือต้องอัปเกรดเครื่องมือ จ่าย ฿50,000", tags: ["phoneshop"], amount: 50_000 },
-  { type: "sellAsset", text: "รีสอร์ตได้รางวัลท่องเที่ยว เครือโรงแรมขอซื้อ ฿12,000,000", tag: "resort", price: 12_000_000 },
-  { type: "sellAsset", text: "ครอบครัวลูกสองย้ายเข้าเมือง ต้องการบ้าน 3/2 ให้ราคา ฿2,000,000", tag: "house32", price: 2_000_000 },
-  { type: "sellAsset", text: "มีคนขอซื้อบ้าน 3/2 ราคา ฿1,700,000", tag: "house32", price: 1_700_000 },
-  { type: "sellAsset", text: "หมู่บ้านใหม่ขายหมด คนแย่งซื้อบ้าน 3/2 มือสอง ให้ราคา ฿2,300,000", tag: "house32", price: 2_300_000 },
-  { type: "sellAsset", text: "อาจารย์มหาวิทยาลัยต้องการคอนโด 2/1 ให้ราคา ฿1,300,000", tag: "condo21", price: 1_300_000 },
-  { type: "sellAsset", text: "มีคนขอซื้อคอนโด 2/1 ราคา ฿1,100,000", tag: "condo21", price: 1_100_000 },
-  { type: "sellStock", text: "ราคาทองขึ้น นักสะสมรับซื้อเหรียญทองคำ เหรียญละ ฿8,000", stock: "gold", price: 8_000 },
-  { type: "sellStock", text: "ร้านทองรับซื้อเหรียญทองคำ เหรียญละ ฿5,000", stock: "gold", price: 5_000 },
-  { type: "sellAsset", text: "ครอบครัวใหญ่อยากอยู่ใกล้กัน ขอซื้อบ้านแฝดหลังละ ฿1,900,000", tag: "duplex", price: 1_900_000, perUnit: true },
-  { type: "cashflowUp", text: "มหาวิทยาลัยเปิดคณะใหม่ ห้องเช่าแถวมหาวิทยาลัยเต็ม คอนโด 2/1 และหอพักค่าเช่า +฿500/เดือน", tags: ["condo21", "dorm"], amount: 500 },
-  { type: "cashflowUp", text: "หอพักรอบ ๆ ไม่มีร้านซักผ้า ตู้หยอดเหรียญซักผ้าขายดี +฿400/เดือน", tags: ["laundry"], amount: 400 },
-  { type: "cashflowUp", text: "ร้านกาแฟรถเข็นได้ทำเลหน้าโรงพยาบาล กำไร +฿700/เดือน", tags: ["coffee"], amount: 700 },
-  { type: "cashflowUp", text: "ห้างใหม่มาเปิดข้าง ๆ คาร์แคร์ลูกค้าเพิ่ม +฿3,000/เดือน", tags: ["carcare"], amount: 3_000 },
-  { type: "expense", text: "ฝนตกหนัก น้ำท่วมหมู่บ้าน เจ้าของบ้านให้เช่าจ่ายค่าซ่อม ฿15,000", tags: ["house32", "house", "duplex", "townhouse"], amount: 15_000 },
+  { type: "sellAsset", text: "ครอบครัวลูกสองย้ายเข้าเมือง ต้องการบ้าน 3/2 ให้ราคา ฿3,000,000", tag: "house32", price: 3_000_000 },
+  { type: "split", text: "บริษัทเอนเตอร์เทนเมนต์แตกพาร์ 1 เป็น 2 ใครถืออยู่ได้จำนวนหุ้น ×2", stock: "ent", factor: 2 },
+  { type: "split", text: "ตลาดตก บริษัทเอนเตอร์เทนเมนต์รวมพาร์ 2 เป็น 1 ใครถืออยู่จำนวนหุ้น ÷2", stock: "ent", factor: 0.5 },
+  { type: "sellStock", text: "ข่าวดีบริษัทอิเล็กทรอนิกส์ หุ้นพุ่งไป ฿900", stock: "elec", price: 900 },
+  { type: "sellStock", text: "ยาตัวใหม่ได้รับอนุมัติ หุ้นบริษัทยาพุ่งไป ฿1,200", stock: "pharma", price: 1_200 },
+  { type: "sellStock", text: "ตลาดหุ้นขาขึ้น กองทุนรวมพุ่งไป ฿1,200", stock: "fund", price: 1_200 },
+  { type: "sellStock", text: "นักสะสมรับซื้อเหรียญทองคำ เหรียญละ ฿30,000", stock: "gold", price: 30_000 },
+  { type: "sellStock", text: "ราคาทองขึ้น ร้านทองรับซื้อเหรียญละ ฿45,000", stock: "gold", price: 45_000 },
+  { type: "sellAsset", text: "ครอบครัวเล็กอยากได้บ้าน 2/1 ให้ราคา ฿1,800,000", tag: "house21", price: 1_800_000 },
+  { type: "sellAsset", text: "มีคนขอซื้อบ้าน 2/1 ราคา ฿1,950,000", tag: "house21", price: 1_950_000 },
+  { type: "sellAsset", text: "มีคนขอซื้อบ้าน 3/2 ราคา ฿2,400,000", tag: "house32", price: 2_400_000 },
+  { type: "sellAsset", text: "ตลาดบ้านร้อนแรง คนแย่งซื้อบ้าน 3/2 ราคา ฿4,050,000", tag: "house32", price: 4_050_000 },
+  { type: "sellAsset", text: "อาจารย์มหาวิทยาลัยต้องการคอนโด ให้ราคา ฿1,650,000", tag: "condo21", price: 1_650_000 },
+  { type: "sellAsset", text: "นักลงทุนกวาดซื้อคอนโด ให้ราคา ฿1,950,000", tag: "condo21", price: 1_950_000 },
+  { type: "sellAsset", text: "บริษัทอสังหาฯ จะทำหมู่บ้าน ขอซื้อที่ดินแปลงละ ฿600,000", tag: "land", price: 600_000 },
+  { type: "sellAsset", text: "ห้างใหม่จะมาเปิด นายทุนกว้านซื้อที่ดินแปลงละ ฿1,200,000", tag: "land", price: 1_200_000 },
+  { type: "sellAsset", text: "นักลงทุนขอซื้ออพาร์ตเมนต์ยกตึก ห้องละ ฿900,000", tag: "apartment", price: 900_000, perUnit: true },
+  { type: "sellAsset", text: "กองทุนอสังหาฯ ขอซื้ออพาร์ตเมนต์ ห้องละ ฿1,350,000", tag: "apartment", price: 1_350_000, perUnit: true },
+  { type: "sellAsset", text: "นายทุนใหญ่ขอซื้อศูนย์การค้า ให้ราคา 2 เท่าของราคาซื้อ", tag: "mall", price: 0, multiple: 2 },
 ];
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
-export const baht = (n: number) => `${n < 0 ? "−" : ""}฿${thb.format(Math.abs(Math.round(n)))}`;
+/** หน่วยเงินในเกม: บาท (ตัวเลขการ์ดตั้งจากสเปก USD × 30) */
+export const money = (n: number) => `${n < 0 ? "−" : ""}฿${thb.format(Math.abs(Math.round(n)))}`;
 
 // ---------- ทางด่วน (วงนอก) ----------
 
 /** เข้าทางด่วนแล้วได้รายได้ต่อรอบ = รายได้จากทรัพย์สิน × ตัวคูณนี้ */
 export const FAST_MULTIPLIER = 20;
 /** ชนะเมื่อรายได้ต่อรอบเพิ่มขึ้นจากตอนเข้าทางด่วนเท่านี้ หรือซื้อความฝันของตัวเองได้ */
-export const FAST_GOAL = 500_000;
+export const FAST_GOAL = 1_500_000;
 
 export type FastBusiness = { name: string; short: string; cost: number; cashflow: number };
 
 export const FAST_BUSINESSES: FastBusiness[] = [
-  { name: "โรงแรมบูทีค", short: "โรงแรมบูทีค", cost: 6_000_000, cashflow: 150_000 },
-  { name: "ห้างสรรพสินค้าขนาดเล็ก", short: "ห้างเล็ก", cost: 10_000_000, cashflow: 260_000 },
-  { name: "โรงงานน้ำดื่ม", short: "โรงงานน้ำดื่ม", cost: 3_000_000, cashflow: 80_000 },
-  { name: "แฟรนไชส์กาแฟ 10 สาขา", short: "กาแฟ 10 สาขา", cost: 2_000_000, cashflow: 55_000 },
-  { name: "โรงเรียนกวดวิชา", short: "กวดวิชา", cost: 1_500_000, cashflow: 40_000 },
-  { name: "คลินิกทันตกรรม", short: "คลินิกฟัน", cost: 4_000_000, cashflow: 100_000 },
-  { name: "สวนทุเรียน 50 ไร่", short: "สวนทุเรียน", cost: 5_000_000, cashflow: 120_000 },
-  { name: "ปั๊มน้ำมัน 3 แห่ง", short: "ปั๊ม 3 แห่ง", cost: 8_000_000, cashflow: 200_000 },
-  { name: "คอนโดทั้งตึก", short: "คอนโดทั้งตึก", cost: 12_000_000, cashflow: 320_000 },
-  { name: "บริษัทขนส่ง", short: "ขนส่ง", cost: 7_000_000, cashflow: 170_000 },
-  { name: "โรงพิมพ์", short: "โรงพิมพ์", cost: 2_500_000, cashflow: 60_000 },
-  { name: "ศูนย์การค้าชุมชน", short: "คอมมูนิตี้มอลล์", cost: 9_000_000, cashflow: 230_000 },
-  { name: "รีสอร์ตริมทะเล", short: "รีสอร์ตทะเล", cost: 11_000_000, cashflow: 280_000 },
-  { name: "โรงงานอาหารแช่แข็ง", short: "อาหารแช่แข็ง", cost: 6_500_000, cashflow: 160_000 },
-  { name: "แอปจองคิวร้านค้า", short: "แอปจองคิว", cost: 1_000_000, cashflow: 30_000 },
-  { name: "เครือร้านอาหาร 5 สาขา", short: "ร้านอาหาร 5 สาขา", cost: 4_500_000, cashflow: 110_000 },
+  { name: "โรงแรมบูทีค", short: "โรงแรมบูทีค", cost: 18_000_000, cashflow: 450_000 },
+  { name: "ห้างสรรพสินค้าขนาดเล็ก", short: "ห้างเล็ก", cost: 30_000_000, cashflow: 780_000 },
+  { name: "โรงงานน้ำดื่ม", short: "โรงงานน้ำดื่ม", cost: 9_000_000, cashflow: 240_000 },
+  { name: "แฟรนไชส์กาแฟ 10 สาขา", short: "กาแฟ 10 สาขา", cost: 6_000_000, cashflow: 165_000 },
+  { name: "โรงเรียนกวดวิชา", short: "กวดวิชา", cost: 4_500_000, cashflow: 120_000 },
+  { name: "คลินิกทันตกรรม", short: "คลินิกฟัน", cost: 12_000_000, cashflow: 300_000 },
+  { name: "สวนทุเรียน 50 ไร่", short: "สวนทุเรียน", cost: 15_000_000, cashflow: 360_000 },
+  { name: "ปั๊มน้ำมัน 3 แห่ง", short: "ปั๊ม 3 แห่ง", cost: 24_000_000, cashflow: 600_000 },
+  { name: "คอนโดทั้งตึก", short: "คอนโดทั้งตึก", cost: 36_000_000, cashflow: 960_000 },
+  { name: "บริษัทขนส่ง", short: "ขนส่ง", cost: 21_000_000, cashflow: 510_000 },
+  { name: "โรงพิมพ์", short: "โรงพิมพ์", cost: 7_500_000, cashflow: 180_000 },
+  { name: "ศูนย์การค้าชุมชน", short: "คอมมูนิตี้มอลล์", cost: 27_000_000, cashflow: 690_000 },
+  { name: "รีสอร์ตริมทะเล", short: "รีสอร์ตทะเล", cost: 33_000_000, cashflow: 840_000 },
+  { name: "โรงงานอาหารแช่แข็ง", short: "อาหารแช่แข็ง", cost: 19_500_000, cashflow: 480_000 },
+  { name: "แอปจองคิวร้านค้า", short: "แอปจองคิว", cost: 3_000_000, cashflow: 90_000 },
+  { name: "เครือร้านอาหาร 5 สาขา", short: "ร้านอาหาร 5 สาขา", cost: 13_500_000, cashflow: 330_000 },
 ];
 
 export type Dream = { name: string; short: string; icon: string; cost: number };
 
 export const DREAMS: Dream[] = [
-  { name: "เที่ยวรอบโลก 1 ปี", short: "รอบโลก", icon: "🌍", cost: 3_000_000 },
-  { name: "บ้านพักริมทะเล", short: "บ้านริมทะเล", icon: "🏖️", cost: 8_000_000 },
-  { name: "ตั้งมูลนิธิช่วยเด็ก", short: "มูลนิธิ", icon: "🤝", cost: 5_000_000 },
-  { name: "สร้างโรงเรียนในชนบท", short: "โรงเรียน", icon: "🏫", cost: 4_000_000 },
-  { name: "เรือยอชต์ส่วนตัว", short: "เรือยอชต์", icon: "🛥️", cost: 10_000_000 },
-  { name: "ฟาร์มออร์แกนิกของครอบครัว", short: "ฟาร์ม", icon: "🌱", cost: 6_000_000 },
-  { name: "ส่งลูกเรียนต่างประเทศ", short: "ลูกเรียนนอก", icon: "🎓", cost: 3_500_000 },
-  { name: "สตูดิโอศิลปะของตัวเอง", short: "สตูดิโอ", icon: "🎨", cost: 2_500_000 },
+  { name: "เที่ยวรอบโลก 1 ปี", short: "รอบโลก", icon: "🌍", cost: 9_000_000 },
+  { name: "บ้านพักริมทะเล", short: "บ้านริมทะเล", icon: "🏖️", cost: 24_000_000 },
+  { name: "ตั้งมูลนิธิช่วยเด็ก", short: "มูลนิธิ", icon: "🤝", cost: 15_000_000 },
+  { name: "สร้างโรงเรียนในชนบท", short: "โรงเรียน", icon: "🏫", cost: 12_000_000 },
+  { name: "เรือยอชต์ส่วนตัว", short: "เรือยอชต์", icon: "🛥️", cost: 30_000_000 },
+  { name: "ฟาร์มออร์แกนิกของครอบครัว", short: "ฟาร์ม", icon: "🌱", cost: 18_000_000 },
+  { name: "ส่งลูกเรียนต่างประเทศ", short: "ลูกเรียนนอก", icon: "🎓", cost: 10_500_000 },
+  { name: "สตูดิโอศิลปะของตัวเอง", short: "สตูดิโอ", icon: "🎨", cost: 7_500_000 },
 ];
 
 export type FastEvent =

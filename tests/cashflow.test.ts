@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BIG_DEALS, BOARD, FAST_BOARD, FAST_GOAL, FAST_MULTIPLIER, MARKETS, PROFESSIONS, SMALL_DEALS } from "@/lib/cashflow/data";
+import { BIG_DEALS, BOARD, DOODADS, DREAMS, FAST_BOARD, FAST_GOAL, FAST_MULTIPLIER, LOAN_PAYMENT, LOAN_UNIT, MARKETS, PROFESSIONS, SMALL_DEALS } from "@/lib/cashflow/data";
 import {
   act,
   GameError,
@@ -42,6 +42,12 @@ function started(names?: string[]) {
   return act(lobby(names), HOST, { type: "start" }, ctx());
 }
 
+/** หาตำแหน่งการ์ดตามเงื่อนไข (ไม่ผูกกับลำดับการ์ด) */
+const smallIdx = (f: (d: (typeof SMALL_DEALS)[number]) => boolean) => SMALL_DEALS.findIndex(f);
+const marketIdx = (f: (m: (typeof MARKETS)[number]) => boolean) => MARKETS.findIndex(f);
+const pharma600 = () => smallIdx((d) => d.type === "stock" && d.stock === "pharma" && d.price === 600);
+const firstCondo = () => smallIdx((d) => d.type === "asset" && d.tag === "condo21");
+
 const me = (s: GameState) => ({ playerId: s.players[s.turn].id });
 const run = (s: GameState, a: Action, actor: Actor = me(s), rolls?: number[]) => act(s, actor, a, ctx(rolls));
 
@@ -57,11 +63,11 @@ describe("กระดานและข้อมูล", () => {
     const count = (sq: string) => BOARD.filter((b) => b === sq).length;
     expect(BOARD).toHaveLength(24);
     expect([count("opportunity"), count("payday"), count("market"), count("doodad")]).toEqual([10, 3, 4, 4]);
-    expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length]).toEqual([46, 18, 26]);
+    expect([SMALL_DEALS.length, BIG_DEALS.length, MARKETS.length]).toEqual([43, 13, 19]);
   });
 
   it("กระแสเงินสดตั้งต้นตรงกับตารางอาชีพ", () => {
-    const expected = [7_000, 7_500, 7_000, 9_000, 7_000, 9_000, 12_000, 20_000];
+    const expected = [640, 1_010, 920, 1_130, 1_100, 1_480, 1_950, 3_450].map((n) => n * 30);
     PROFESSIONS.forEach((pr, i) => {
       const total = pr.tax + pr.house + pr.car + pr.card + pr.other;
       expect(pr.salary - total).toBe(expected[i]);
@@ -122,19 +128,19 @@ describe("หนึ่งตา", () => {
     s.players[1].stocks.pharma = { qty: 500, cost: 2_500 };
     s.players[0].pos = 1; // ทอย 1 → ช่อง 2 โอกาส
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    s.decks.small = [2]; // หุ้นบริษัทยา ฿20
+    s.decks.small = [pharma600()]; // หุ้นบริษัทยา ฿600
     s = run(s, { type: "deal", size: "small" });
     expect(s.responders).toEqual({ [a.id]: false, [b.id]: false });
 
     expect(() => run(s, { type: "respond", buy: 100 }, { playerId: b.id })).toThrow("คนเปิดการ์ด");
     s = run(s, { type: "respond", sell: 500 }, { playerId: b.id });
-    expect(s.players[1].cash).toBe(b.cash + 500 * 200);
+    expect(s.players[1].cash).toBe(b.cash + 500 * 600);
     expect(s.players[1].stocks.pharma).toBeUndefined();
     expect(s.step).toBe("respond");
 
-    s.players[0].cash = 100_000;
+    s.players[0].cash = 200_000;
     s = run(s, { type: "respond", buy: 200 }, { playerId: a.id });
-    expect(s.players[0].stocks.pharma).toEqual({ qty: 200, cost: 40_000 });
+    expect(s.players[0].stocks.pharma).toEqual({ qty: 200, cost: 120_000 });
     expect(s.step).toBe("end");
   });
 
@@ -143,7 +149,7 @@ describe("หนึ่งตา", () => {
     s.players[1].stocks.elec = { qty: 100, cost: 1_000 };
     s.players[0].pos = 1;
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    s.decks.small = [8];
+    s.decks.small = [smallIdx((d) => d.type === "stock" && d.stock === "elec")];
     s = run(s, { type: "deal", size: "small" });
     s = run(s, { type: "respond" });
     expect(tick(s, 1_000)).toBeNull();
@@ -157,21 +163,25 @@ describe("หนึ่งตา", () => {
     s.players[0].cash = 100_000;
     s.players[0].pos = 1;
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    s.decks.small = [12]; // คอนโด 1 ห้องนอน
+    const i = firstCondo();
+    const d = SMALL_DEALS[i] as Extract<(typeof SMALL_DEALS)[number], { type: "asset" }>;
+    s.decks.small = [i];
     s = run(s, { type: "deal", size: "small" });
     s = run(s, { type: "respond", buy: true });
     const p = s.players[0];
-    expect(p.cash).toBe(55_000);
-    expect(p.assets[0]).toMatchObject({ cashflow: 2_000, mortgage: 855_000 });
+    expect(p.cash).toBe(100_000 - d.down);
+    expect(p.assets[0]).toMatchObject({ cashflow: d.cashflow, mortgage: d.mortgage });
 
-    // ตาคนที่ 2 ตกช่องตลาด เปิด "คอนโด ฿1,300,000"
+    // ตาคนที่ 2 ตกช่องตลาด เปิดการ์ดคนขอซื้อคอนโด
+    const mi = marketIdx((m) => m.type === "sellAsset" && m.tag === "condo21");
+    const offer = (MARKETS[mi] as { price: number }).price;
     s = run(s, { type: "endTurn" });
     s.players[1].pos = 6;
-    s.decks.market = [0];
+    s.decks.market = [mi];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     expect(Object.keys(s.responders)).toEqual([p.id]);
     s = run(s, { type: "respond", sellAssets: [p.assets[0].uid] }, { playerId: p.id });
-    expect(s.players[0].cash).toBe(55_000 + 1_300_000 - 855_000);
+    expect(s.players[0].cash).toBe(100_000 - d.down + offer - d.mortgage);
     expect(s.players[0].assets).toHaveLength(0);
   });
 
@@ -195,7 +205,7 @@ describe("โหมดซื้อดีลต่อ (host ตั้งค่า
     s = act(s, HOST, { type: "start" }, ctx());
     s.players[0].pos = 1;
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    s.decks.small = [12]; // คอนโด ดาวน์ 45,000
+    s.decks.small = [firstCondo()];
     s = run(s, { type: "deal", size: "small" });
     return s;
   }
@@ -246,63 +256,71 @@ describe("การ์ดแบบใหม่", () => {
   it("เหรียญทองคำ: ซื้อทีละเหรียญ ไม่เกินจำนวนที่มีขาย แล้วขายในการ์ดตลาดได้", () => {
     let s = opp();
     s.players[0].cash = 100_000;
-    s.decks.small = [SMALL_DEALS.findIndex((d) => d.type === "stock" && d.stock === "gold" && d.max === 10)];
+    s.decks.small = [smallIdx((d) => d.type === "stock" && d.stock === "gold" && d.max === 10)];
     s = run(s, { type: "deal", size: "small" });
     expect(() => run(s, { type: "respond", buy: 11 })).toThrow("มีขายแค่ 10");
     s = run(s, { type: "respond", buy: 7 });
-    expect(s.players[0].stocks.gold).toEqual({ qty: 7, cost: 28_000 });
+    expect(s.players[0].stocks.gold).toEqual({ qty: 7, cost: 63_000 });
 
     s = run(s, { type: "endTurn" });
     s.players[1].pos = 6;
-    s.decks.market = [MARKETS.findIndex((m) => m.type === "sellStock" && m.stock === "gold" && m.price === 8_000)];
+    s.decks.market = [marketIdx((m) => m.type === "sellStock" && m.stock === "gold" && m.price === 30_000)];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     s = run(s, { type: "respond", sell: 7 }, { playerId: s.players[0].id });
-    expect(s.players[0].cash).toBe(100_000 - 28_000 + 56_000);
+    expect(s.players[0].cash).toBe(100_000 - 63_000 + 7 * 30_000);
   });
 
-  it("ญาติขอยืมเงิน: จ่ายทันที (เงินไม่พอกู้ให้)", () => {
-    let s = opp();
-    s.players[0].cash = 5_000;
-    s.decks.small = [SMALL_DEALS.findIndex((d) => d.type === "lend" && d.amount === 10_000)];
-    s = run(s, { type: "deal", size: "small" });
-    expect(s.step).toBe("end");
-    expect(s.players[0].cash).toBe(5_000);
-    expect(s.players[0].loans).toBe(1);
-  });
-
-  it("ราคาหุ้นมาในการ์ดดีลเล็กเท่านั้น การ์ดตลาดมีแค่นักสะสมรับซื้อเหรียญทอง", () => {
-    const stockMarkets = MARKETS.filter((m) => m.type === "sellStock");
-    expect(stockMarkets.every((m) => m.type === "sellStock" && m.stock === "gold")).toBe(true);
-    // ดีลเล็กมีทั้งราคาต่ำและสูงของทุกหุ้น
-    for (const k of ["pharma", "ent", "elec", "fund"] as const) {
-      const prices = SMALL_DEALS.flatMap((d) => (d.type === "stock" && d.stock === k ? [d.price] : []));
-      expect(Math.max(...prices) / Math.min(...prices)).toBeGreaterThanOrEqual(5);
-    }
-  });
-
-  it("การ์ดตลาดรายได้เพิ่ม: ทรัพย์สินกลุ่มนั้นได้กระแสเงินสดเพิ่มถาวร", () => {
+  it("การ์ดตลาด: แตกพาร์/รวมพาร์ เปลี่ยนจำนวนหุ้นของทุกคนที่ถืออยู่", () => {
     let s = started();
-    s.players[0].assets.push({ uid: "x", name: "ตู้ซักผ้า", tag: "laundry", price: 30_000, units: 1, down: 30_000, mortgage: 0, cashflow: 1_200, rental: false });
+    s.players[0].stocks.ent = { qty: 50, cost: 5_000 };
+    s.players[1].stocks.ent = { qty: 15, cost: 3_000 };
     s.players[0].pos = 6;
-    s.decks.market = [MARKETS.findIndex((m) => m.type === "cashflowUp" && m.tags.includes("laundry"))];
+    s.decks.market = [marketIdx((m) => m.type === "split" && m.factor === 0.5)];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    expect(s.players[0].assets[0].cashflow).toBe(1_600);
+    expect(s.players[0].stocks.ent?.qty).toBe(25);
+    expect(s.players[1].stocks.ent?.qty).toBe(7);
+    expect(s.step).toBe("end");
+  });
+
+  it("การ์ดตลาด: หุ้นพุ่ง คนถือหุ้นขายได้ในราคาบนการ์ด", () => {
+    let s = started();
+    s.players[1].stocks.pharma = { qty: 100, cost: 15_000 };
+    const before = s.players[1].cash;
+    s.players[0].pos = 6;
+    const mi = marketIdx((m) => m.type === "sellStock" && m.stock === "pharma");
+    s.decks.market = [mi];
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s = run(s, { type: "respond", sell: 100 }, { playerId: s.players[1].id });
+    expect(s.players[1].cash).toBe(before + 100 * (MARKETS[mi] as { price: number }).price);
+  });
+
+  it("ศูนย์การค้า: ผู้ซื้อให้ราคา 2 เท่าของราคาซื้อ", () => {
+    let s = started();
+    const d = BIG_DEALS.find((x) => x.type === "asset" && x.tag === "mall") as Extract<(typeof BIG_DEALS)[number], { type: "asset" }>;
+    s.players[0].assets.push({ uid: "m", name: d.name, tag: "mall", price: d.price, units: 1, down: d.down, mortgage: d.mortgage, cashflow: d.cashflow, rental: true });
+    const before = s.players[0].cash;
+    s.players[0].pos = 6;
+    s.decks.market = [marketIdx((m) => m.type === "sellAsset" && m.tag === "mall")];
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    const mid = s.players[0].cash;
+    s = run(s, { type: "respond", sellAssets: ["m"] });
+    expect(s.players[0].cash).toBe(mid + d.price * 2 - d.mortgage);
   });
 
   it("บ้าน 3/2 มีการ์ดตลาดขอซื้อ", () => {
     let s = opp();
-    s.players[0].cash = 100_000;
-    s.decks.small = [SMALL_DEALS.findIndex((d) => d.type === "asset" && d.tag === "house32")];
+    s.players[0].cash = 1_000_000;
+    s.decks.small = [smallIdx((d) => d.type === "asset" && d.tag === "house32")];
     s = run(s, { type: "deal", size: "small" });
     s = run(s, { type: "respond", buy: true });
     const house = s.players[0].assets[0];
     expect(house.tag).toBe("house32");
     s = run(s, { type: "endTurn" });
     s.players[1].pos = 6;
-    s.decks.market = [MARKETS.findIndex((m) => m.type === "sellAsset" && m.tag === "house32" && m.price === 2_000_000)];
+    s.decks.market = [marketIdx((m) => m.type === "sellAsset" && m.tag === "house32" && m.price === 3_000_000)];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
     s = run(s, { type: "respond", sellAssets: [house.uid] }, { playerId: s.players[0].id });
-    expect(s.players[0].cash).toBe(100_000 - house.down + 2_000_000 - house.mortgage);
+    expect(s.players[0].cash).toBe(1_000_000 - house.down + 3_000_000 - house.mortgage);
   });
 });
 
@@ -311,11 +329,11 @@ describe("เงินกู้และหนี้", () => {
     let s = started();
     const p0 = s.players[0];
     const room = loanRoom(p0);
-    expect(room).toBe(Math.floor(monthlyCashflow(p0) / 1_000));
+    expect(room).toBe(Math.floor(monthlyCashflow(p0) / LOAN_PAYMENT));
     expect(() => run(s, { type: "loan", count: room + 1 })).toThrow("ติดลบ");
     s = run(s, { type: "loan", count: 2 });
-    expect(s.players[0].cash).toBe(p0.cash + 20_000);
-    expect(totalExpenses(s.players[0])).toBe(totalExpenses(p0) + 2_000);
+    expect(s.players[0].cash).toBe(p0.cash + 2 * LOAN_UNIT);
+    expect(totalExpenses(s.players[0])).toBe(totalExpenses(p0) + 2 * LOAN_PAYMENT);
     s = run(s, { type: "repay" });
     expect(s.players[0].loans).toBe(1);
   });
@@ -323,10 +341,13 @@ describe("เงินกู้และหนี้", () => {
   it("จ่ายไม่คาดฝันแล้วเงินไม่พอ กู้ให้อัตโนมัติ", () => {
     let s = started();
     s.players[0].cash = 0;
-    s.decks.doodad = [6]; // นาฬิกา ฿50,000
+    const di = DOODADS.reduce((best, d, k) => (d.amount > DOODADS[best].amount ? k : best), 0);
+    const amount = DOODADS[di].amount;
+    s.decks.doodad = [di];
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    expect(s.players[0].loans).toBe(5);
-    expect(s.players[0].cash).toBe(0);
+    const loans = Math.ceil(amount / LOAN_UNIT);
+    expect(s.players[0].loans).toBe(loans);
+    expect(s.players[0].cash).toBe(loans * LOAN_UNIT - amount);
   });
 
   it("ปิดหนี้บัตรเครดิต ตัดค่าผ่อนออก", () => {
@@ -342,15 +363,18 @@ describe("เงินกู้และหนี้", () => {
 
 describe("ออกจากสนามแข่งหนู → ทางด่วน", () => {
   /** ให้ผู้เล่นคนแรกซื้ออพาร์ตเมนต์ 24 ห้อง (+40,000) จนรายได้จากทรัพย์สินมากกว่ารายจ่าย */
+  /** ให้ผู้เล่นคนแรก (พนักงานขาย หนี้ปิดหมด) ซื้ออพาร์ตเมนต์ที่กระแสเงินสดสูงสุด จนรายได้จากทรัพย์สินมากกว่ารายจ่าย */
+  const best = BIG_DEALS.reduce((b, d, k) => (d.type === "asset" && d.cashflow > (BIG_DEALS[b] as { cashflow: number }).cashflow ? k : b), 0);
+  const bestCf = (BIG_DEALS[best] as { cashflow: number }).cashflow;
   function escaped() {
     let s = started();
-    const pr = PROFESSIONS[s.players[0].prof];
+    s.players[0].prof = 0;
+    const pr = PROFESSIONS[0];
     s.players[0].cash = 10_000_000;
     s.players[0].pos = 1;
-    // ให้รายจ่ายต่ำกว่า 40,000 แน่ ๆ: ปิดหนี้ทั้งหมด
     s.players[0].debts = { house: false, car: false, card: false };
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    s.decks.big = [2];
+    s.decks.big = [best];
     s = run(s, { type: "deal", size: "big" });
     s = run(s, { type: "respond", buy: true });
     return { s, pr };
@@ -360,7 +384,7 @@ describe("ออกจากสนามแข่งหนู → ทางด�
     const { s } = escaped();
     const p = s.players[0];
     expect(s.phase).toBe("playing");
-    expect(p.fast).toMatchObject({ pos: 0, income: 40_000 * FAST_MULTIPLIER, dream: -1 });
+    expect(p.fast).toMatchObject({ pos: 0, income: bestCf * FAST_MULTIPLIER, dream: -1 });
     expect(p.fast!.goal).toBe(p.fast!.income + FAST_GOAL);
   });
 
@@ -404,7 +428,7 @@ describe("ออกจากสนามแข่งหนู → ทางด�
   it("ซื้อความฝันของตัวเองได้ = ชนะ", () => {
     let { s } = escaped();
     s.players[0].fast!.dream = 0;
-    s.players[0].cash = 5_000_000;
+    s.players[0].cash = DREAMS[0].cost;
     s.turn = 0;
     s.step = "roll";
     s = run(s, { type: "roll" }, me(s), [0, 0]); // ช่อง 2 = ความฝัน index 0
