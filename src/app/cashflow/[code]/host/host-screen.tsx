@@ -312,6 +312,19 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
               ))}
             </ul>
           )}
+          <label className="flex items-start gap-3 rounded-2xl bg-stone-50 p-3">
+            <input
+              type="checkbox"
+              className="mt-1 size-5"
+              checked={state.options?.resellDeals === true}
+              disabled={busy}
+              onChange={(e) => send({ type: "setOptions", resellDeals: e.target.checked })}
+            />
+            <span>
+              <b>ซื้อดีลต่อได้</b>
+              <span className="block text-sm text-stone-500">ดีลที่คนเปิดไม่ซื้อ ส่งให้คนอื่นซื้อต่อ ใครกดก่อนได้ก่อน (ปิด = ทิ้งไป)</span>
+            </span>
+          </label>
           <button
             className="btn-primary w-full text-xl"
             disabled={busy || state.players.length < MIN_PLAYERS}
@@ -398,6 +411,9 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
                   {state.step === "deal" && "เลือกดีลเล็กหรือดีลใหญ่…"}
                   {state.step === "dream" && "เลือกความฝันบนทางด่วน…"}
                 </p>
+              )}
+              {state.step === "respond" && state.resale && (
+                <p className="text-[1.6cqw] font-semibold text-amber-700">เปิดให้คนอื่นซื้อต่อ ใครกดก่อนได้ก่อน!</p>
               )}
               {state.step === "respond" && (
                 <div className="flex flex-wrap justify-center gap-[0.6cqw] text-[1.4cqw]">

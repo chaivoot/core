@@ -23,12 +23,13 @@ const actionSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("endTurn") }),
   z.object({ type: z.literal("chooseDream"), dream: z.number().int().min(0).max(20) }),
+  z.object({ type: z.literal("setOptions"), resellDeals: z.boolean() }),
   z.object({ type: z.literal("loan"), count: z.number().int().min(1).max(1_000).optional() }),
   z.object({ type: z.literal("repay") }),
   z.object({ type: z.literal("payoff"), debt: z.enum(["house", "car", "card"]) }),
 ]);
 
-const HOST_ACTIONS = new Set(["start", "skipTurn"]);
+const HOST_ACTIONS = new Set(["start", "skipTurn", "setOptions"]);
 
 function view(room: Room, token: string | undefined) {
   const me = token ? (room.state.players.find((p) => p.token === token)?.id ?? null) : null;
