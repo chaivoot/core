@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BIG_DEALS,
   DOODADS,
+  DREAMS,
+  FAST_BUSINESSES,
+  FAST_EVENTS,
   MARKETS,
   SMALL_DEALS,
   STOCK_LABEL,
@@ -138,6 +141,7 @@ const SPECIAL: Record<string, [string, string, Tone]> = {
   baby: ["มีลูก", "ค่าเลี้ยงลูกเพิ่ม 1 คน", { band: "bg-pink-500", icon: "👶" }],
   downsize: ["ตกงาน", "จ่ายค่าใช้จ่าย 1 เดือน และหยุด 2 ตา", { band: "bg-stone-600", icon: "📉" }],
   bankrupt: ["ล้มละลาย", "เงินไม่พอจ่าย เริ่มต้นใหม่ด้วยอาชีพเดิม", { band: "bg-stone-900", icon: "⚠️" }],
+  fastPay: ["วันรับเงิน", "ได้รับรายได้ต่อรอบ", { band: "bg-amber-600", icon: "💵" }],
 };
 
 export function describeCard(card: Card): CardInfo {
@@ -172,6 +176,28 @@ export function describeCard(card: Card): CardInfo {
   }
   if (card.deck === "market") {
     return { kind: DECK_TONE.market.label, tone: DECK_TONE.market, title: MARKETS[card.index].text, lines: [] };
+  }
+  if (card.deck === "fastBiz") {
+    const b = FAST_BUSINESSES[card.index];
+    return {
+      kind: "ทางด่วน · ธุรกิจ",
+      tone: { band: "bg-teal-700", icon: "🏭" },
+      title: b.name,
+      lines: [`ราคา ${baht(b.cost)} (จ่ายสด)`, `รายได้ต่อรอบ +${baht(b.cashflow)}`],
+    };
+  }
+  if (card.deck === "dream") {
+    const d = DREAMS[card.index];
+    return {
+      kind: "ทางด่วน · ความฝัน",
+      tone: { band: "bg-violet-600", icon: d.icon },
+      title: d.name,
+      lines: [`ราคา ${baht(d.cost)}`, "ใครเลือกความฝันนี้ไว้ ซื้อได้แล้วชนะ"],
+    };
+  }
+  if (card.deck === "fastEvent") {
+    const e = FAST_EVENTS[card.index];
+    return { kind: "ทางด่วน · เหตุการณ์", tone: { band: "bg-rose-700", icon: "⚠️" }, title: e.text, lines: [] };
   }
   const [title, line, tone] = SPECIAL[card.deck];
   return { kind: "ช่องพิเศษ", tone, title, lines: [line] };

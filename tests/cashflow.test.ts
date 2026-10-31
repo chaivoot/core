@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOARD, MARKETS, PROFESSIONS, SMALL_DEALS, BIG_DEALS } from "@/lib/cashflow/data";
+import { BIG_DEALS, BOARD, FAST_BOARD, FAST_GOAL, FAST_MULTIPLIER, MARKETS, PROFESSIONS, SMALL_DEALS } from "@/lib/cashflow/data";
 import {
   act,
   GameError,
@@ -44,6 +44,13 @@ const me = (s: GameState) => ({ playerId: s.players[s.turn].id });
 const run = (s: GameState, a: Action, actor: Actor = me(s), rolls?: number[]) => act(s, actor, a, ctx(rolls));
 
 describe("กระดานและข้อมูล", () => {
+  it("ทางด่วน 32 ช่อง มุมเป็นวันรับเงิน", () => {
+    expect(FAST_BOARD).toHaveLength(32);
+    expect([0, 8, 16, 24].map((i) => FAST_BOARD[i].type)).toEqual(["payday", "payday", "payday", "payday"]);
+    expect(FAST_BOARD.filter((q) => q.type === "biz")).toHaveLength(16);
+    expect(FAST_BOARD.filter((q) => q.type === "dream")).toHaveLength(8);
+  });
+
   it("กระดาน 24 ช่องตามร่าง", () => {
     const count = (sq: string) => BOARD.filter((b) => b === sq).length;
     expect(BOARD).toHaveLength(24);
@@ -203,21 +210,81 @@ describe("เงินกู้และหนี้", () => {
   });
 });
 
-describe("ออกจากวงหนูวิ่ง", () => {
-  it("รายได้จากทรัพย์สินมากกว่ารายจ่าย = ชนะ", () => {
+describe("ออกจากวงหนูวิ่ง → ทางด่วน", () => {
+  /** ให้ผู้เล่นคนแรกซื้ออพาร์ตเมนต์ 24 ห้อง (+40,000) จนรายได้จากทรัพย์สินมากกว่ารายจ่าย */
+  function escaped() {
     let s = started();
+    const pr = PROFESSIONS[s.players[0].prof];
     s.players[0].cash = 10_000_000;
     s.players[0].pos = 1;
+    // ให้รายจ่ายต่ำกว่า 40,000 แน่ ๆ: ปิดหนี้ทั้งหมด
+    s.players[0].debts = { house: false, car: false, card: false };
     s = run(s, { type: "roll" }, me(s), [die(1)]);
-    s.decks.big = [2]; // อพาร์ตเมนต์ 24 ห้อง +40,000
+    s.decks.big = [2];
     s = run(s, { type: "deal", size: "big" });
     s = run(s, { type: "respond", buy: true });
+    return { s, pr };
+  }
+
+  it("ออกจากวงหนูวิ่งแล้วขึ้นทางด่วน เกมยังไม่จบ", () => {
+    const { s } = escaped();
     const p = s.players[0];
-    if (40_000 > totalExpenses(p)) {
-      expect(s.phase).toBe("over");
-      expect(s.winner).toBe(p.id);
-    } else {
-      expect(s.phase).toBe("playing");
+    expect(s.phase).toBe("playing");
+    expect(p.fast).toMatchObject({ pos: 0, income: 40_000 * FAST_MULTIPLIER, dream: -1 });
+    expect(p.fast!.goal).toBe(p.fast!.income + FAST_GOAL);
+  });
+
+  it("ตาแรกบนทางด่วนต้องเลือกความฝันก่อน แล้วทอย 2 ลูก", () => {
+    let { s } = escaped();
+    s = run(s, { type: "endTurn" });
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s = run(s, { type: "endTurn" });
+    if (s.turn !== 0) {
+      s = run(s, { type: "roll" }, me(s), [die(1)]);
+      s = run(s, { type: "endTurn" });
     }
+    expect(s.step).toBe("dream");
+    expect(() => run(s, { type: "roll" })).toThrow();
+    s = run(s, { type: "chooseDream", dream: 7 });
+    s = run(s, { type: "roll" }, me(s), [die(1), die(2)]); // 3 ช่อง → ธุรกิจ (ช่อง 3 = biz)
+    expect(s.dice).toEqual([1, 2]);
+    expect(s.players[0].fast!.pos).toBe(3);
+  });
+
+  it("ซื้อธุรกิจบนทางด่วนเพิ่มรายได้ต่อรอบ ถึงเป้าแล้วชนะ", () => {
+    let { s } = escaped();
+    const f = s.players[0].fast!;
+    f.dream = 1; // ช่อง 2 เป็นความฝัน index 0 (ไม่ใช่ของเรา)
+    s.players[0].cash = 100_000_000;
+    s.turn = 0;
+    s.step = "roll";
+    s = run(s, { type: "roll" }, me(s), [0, 0]); // ลูกเต๋า 1+1 = ช่อง 2 = ความฝัน (ไม่ใช่ของเรา)
+    expect(s.card?.deck).toBe("dream");
+    expect(s.step).toBe("end");
+    s.step = "roll";
+    s.players[0].fast!.income = s.players[0].fast!.goal - 100_000;
+    s.players[0].fast!.pos = 0;
+    s = run(s, { type: "roll" }, me(s), [0, die(2)]); // 1+2 = ช่อง 3 = ธุรกิจ index 1 (+260,000)
+    expect(s.card).toEqual({ deck: "fastBiz", index: 1 });
+    s = run(s, { type: "respond", buy: true });
+    expect(s.phase).toBe("over");
+    expect(s.winner).toBe(s.players[0].id);
+  });
+
+  it("ซื้อความฝันของตัวเองได้ = ชนะ", () => {
+    let { s } = escaped();
+    s.players[0].fast!.dream = 0;
+    s.players[0].cash = 5_000_000;
+    s.turn = 0;
+    s.step = "roll";
+    s = run(s, { type: "roll" }, me(s), [0, 0]); // ช่อง 2 = ความฝัน index 0
+    expect(s.step).toBe("respond");
+    s = run(s, { type: "respond", buy: true });
+    expect(s.phase).toBe("over");
+  });
+
+  it("คนบนทางด่วนไม่โดนการ์ดวงหนูวิ่ง และกู้เงินไม่ได้", () => {
+    const { s } = escaped();
+    expect(() => run(s, { type: "loan" })).toThrow("ทางด่วน");
   });
 });

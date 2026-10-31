@@ -4,6 +4,12 @@
 import {
   BIG_DEALS,
   BOARD,
+  DREAMS,
+  FAST_BOARD,
+  FAST_BUSINESSES,
+  FAST_EVENTS,
+  FAST_GOAL,
+  FAST_MULTIPLIER,
   COLORS,
   DEBT_LABEL,
   DEBT_MONTHS,
@@ -59,14 +65,29 @@ export type Player = {
   charity: number;
   /** จำนวนตาที่ต้องหยุด (ตกงาน) */
   skip: number;
+  /** อยู่ทางด่วนแล้ว (null/undefined = ยังอยู่วงหนูวิ่ง) */
+  fast?: FastState | null;
+};
+
+export type FastState = {
+  pos: number;
+  /** รายได้ต่อรอบ (ได้ทุกครั้งที่ผ่านช่องวันรับเงิน) */
+  income: number;
+  /** ชนะเมื่อรายได้ต่อรอบถึงเท่านี้ */
+  goal: number;
+  /** ความฝันที่เลือก (-1 = ยังไม่เลือก) */
+  dream: number;
+  businesses: { name: string; cost: number; cashflow: number }[];
+  dreamBought: boolean;
 };
 
 export type Deck = "small" | "big" | "doodad" | "market";
 export type Card =
   | { deck: Deck; index: number }
-  | { deck: "payday" | "charity" | "baby" | "downsize" | "bankrupt"; index?: undefined };
+  | { deck: "fastBiz" | "dream" | "fastEvent"; index: number }
+  | { deck: "payday" | "charity" | "baby" | "downsize" | "bankrupt" | "fastPay"; index?: undefined };
 
-export type Step = "roll" | "charity" | "deal" | "respond" | "end";
+export type Step = "roll" | "charity" | "deal" | "respond" | "end" | "dream";
 
 export type GameState = {
   phase: "lobby" | "playing" | "over";
@@ -95,6 +116,7 @@ export type Action =
   | { type: "deal"; size: "small" | "big" }
   | { type: "respond"; buy?: number | boolean; sell?: number; sellAssets?: string[] }
   | { type: "endTurn" }
+  | { type: "chooseDream"; dream: number }
   | { type: "loan"; count?: number }
   | { type: "repay" }
   | { type: "payoff"; debt: Debt };
@@ -279,8 +301,13 @@ function setResponders(s: GameState, ids: string[], ctx: Ctx) {
   s.step = ids.length > 0 ? "respond" : "end";
 }
 
+/** ผู้เล่นที่ยังอยู่วงหนูวิ่ง (การ์ดวงหนูวิ่งมีผลกับคนกลุ่มนี้เท่านั้น) */
+function ratRace(s: GameState) {
+  return s.players.filter((p) => !p.fast);
+}
+
 function holders(s: GameState, stock: StockKind) {
-  return s.players.filter((p) => (p.stocks[stock]?.qty ?? 0) > 0).map((p) => p.id);
+  return ratRace(s).filter((p) => (p.stocks[stock]?.qty ?? 0) > 0).map((p) => p.id);
 }
 
 function startTurn(s: GameState) {
@@ -289,7 +316,7 @@ function startTurn(s: GameState) {
     const p = current(s);
     if (p.skip <= 0) break;
     p.skip--;
-    log(s, `${p.name} ตกงาน หยุด 1 ตา`);
+    log(s, `${p.name} ${p.fast ? "พักรักษาตัว" : "ตกงาน"} หยุด 1 ตา`);
     s.turn = (s.turn + 1) % s.players.length;
   }
   s.step = "roll";
@@ -297,6 +324,8 @@ function startTurn(s: GameState) {
   s.card = null;
   s.responders = {};
   s.deadline = null;
+  const p = current(s);
+  if (p.fast && p.fast.dream < 0) s.step = "dream";
 }
 
 function finishCard(s: GameState) {
@@ -306,17 +335,85 @@ function finishCard(s: GameState) {
   }
 }
 
+/** ขึ้นทางด่วน: เงินสดเดิม + รายได้ต่อรอบแรก */
+function enterFast(s: GameState, p: Player) {
+  const income = passiveIncome(p) * FAST_MULTIPLIER;
+  p.fast = { pos: 0, income, goal: income + FAST_GOAL, dream: -1, businesses: [], dreamBought: false };
+  p.cash += income;
+  p.skip = 0;
+  p.charity = 0;
+  log(
+    s,
+    `🚀 ${p.name} ออกจากวงหนูวิ่ง ขึ้นทางด่วน! รายได้ต่อรอบ ${baht(income)} เป้าหมาย: เพิ่มอีก ${baht(FAST_GOAL)} หรือซื้อความฝันของตัวเอง`,
+  );
+}
+
 function checkWinner(s: GameState) {
   if (s.phase !== "playing") return;
   const n = s.players.length;
   for (let i = 0; i < n; i++) {
     const p = s.players[(s.turn + i) % n];
-    if (isFree(p)) {
+    if (!p.fast && isFree(p)) enterFast(s, p);
+  }
+  for (let i = 0; i < n; i++) {
+    const p = s.players[(s.turn + i) % n];
+    const f = p.fast;
+    if (f && (f.dreamBought || f.income >= f.goal)) {
       s.phase = "over";
       s.winner = p.id;
-      log(s, `🎉 ${p.name} ออกจากวงหนูวิ่งแล้ว! รายได้จากทรัพย์สิน ${baht(passiveIncome(p))} มากกว่ารายจ่าย ${baht(totalExpenses(p))}`);
+      log(
+        s,
+        f.dreamBought
+          ? `🏆 ${p.name} ซื้อความฝัน "${DREAMS[f.dream].name}" ได้แล้ว ชนะเกม!`
+          : `🏆 ${p.name} เพิ่มรายได้ต่อรอบได้ ${baht(FAST_GOAL)} ชนะเกม!`,
+      );
       return;
     }
+  }
+}
+
+function landFast(s: GameState, p: Player, f: FastState) {
+  const sq = FAST_BOARD[f.pos];
+  if (sq.type === "payday") {
+    s.card = { deck: "fastPay" };
+    s.step = "end";
+  } else if (sq.type === "biz") {
+    const b = FAST_BUSINESSES[sq.index];
+    s.card = { deck: "fastBiz", index: sq.index };
+    log(s, `${p.name} เจอโอกาส: ${b.name} ราคา ${baht(b.cost)}`);
+    s.responders = { [p.id]: false };
+    s.deadline = null;
+    s.step = "respond";
+  } else if (sq.type === "dream") {
+    s.card = { deck: "dream", index: sq.index };
+    if (sq.index === f.dream) {
+      s.responders = { [p.id]: false };
+      s.deadline = null;
+      s.step = "respond";
+    } else {
+      s.step = "end";
+    }
+  } else {
+    const e = FAST_EVENTS[sq.index];
+    s.card = { deck: "fastEvent", index: sq.index };
+    if (e.kind === "cash") {
+      const lose = Math.round(p.cash * e.pct);
+      p.cash -= lose;
+      log(s, `${p.name} ${e.text} (${baht(lose)})`);
+    } else if (e.kind === "loseBiz") {
+      const worst = [...f.businesses].sort((a, b) => a.cashflow - b.cashflow)[0];
+      if (worst) {
+        f.businesses = f.businesses.filter((b) => b !== worst);
+        f.income -= worst.cashflow;
+        log(s, `${p.name} ${e.short}! เสีย${worst.name} รายได้ต่อรอบ −${baht(worst.cashflow)}`);
+      } else {
+        log(s, `${p.name} ${e.short} แต่ยังไม่มีธุรกิจ ไม่เสียอะไร`);
+      }
+    } else {
+      p.skip = e.turns;
+      log(s, `${p.name} ${e.text}`);
+    }
+    s.step = "end";
   }
 }
 
@@ -346,14 +443,14 @@ function land(s: GameState, p: Player, ctx: Ctx) {
       log(s, `ตลาด: ${m.text}`);
       if (m.type === "sellStock") return setResponders(s, holders(s, m.stock), ctx);
       if (m.type === "sellAsset") {
-        const ids = s.players.filter((x) => x.assets.some((a) => a.tag === m.tag)).map((x) => x.id);
+        const ids = ratRace(s).filter((x) => x.assets.some((a) => a.tag === m.tag)).map((x) => x.id);
         return setResponders(s, ids, ctx);
       }
       if (m.type === "rentUp") {
-        for (const x of s.players) for (const a of x.assets) if (a.rental) a.cashflow += m.amount;
+        for (const x of ratRace(s)) for (const a of x.assets) if (a.rental) a.cashflow += m.amount;
       }
       if (m.type === "expense") {
-        for (const x of s.players) {
+        for (const x of ratRace(s)) {
           if (x.assets.some((a) => m.tags.includes(a.tag))) {
             log(s, `${x.name} จ่าย ${baht(m.amount)}`);
             charge(s, x, m.amount);
@@ -411,6 +508,28 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
   if (s.responders[p.id]) throw new GameError("ตอบการ์ดใบนี้ไปแล้ว");
   const card = s.card!;
   const opener = current(s).id === p.id;
+
+  if (card.deck === "fastBiz" || card.deck === "dream") {
+    const f = p.fast!;
+    if (a.buy) {
+      const item = card.deck === "fastBiz" ? FAST_BUSINESSES[card.index] : DREAMS[card.index];
+      if (item.cost > p.cash) throw new GameError("เงินสดไม่พอ (ทางด่วนกู้เงินไม่ได้)");
+      p.cash -= item.cost;
+      if (card.deck === "fastBiz") {
+        const b = FAST_BUSINESSES[card.index];
+        f.businesses.push({ name: b.name, cost: b.cost, cashflow: b.cashflow });
+        f.income += b.cashflow;
+        log(s, `${p.name} ซื้อ${b.name} ${baht(b.cost)} รายได้ต่อรอบ +${baht(b.cashflow)}`);
+      } else {
+        f.dreamBought = true;
+      }
+    } else {
+      log(s, `${p.name} ไม่ซื้อ`);
+    }
+    s.responders[p.id] = true;
+    finishCard(s);
+    return;
+  }
 
   if (card.deck === "market") {
     const m = MARKETS[card.index];
@@ -525,7 +644,18 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
   const p = findPlayer(s, actor.playerId);
   const myTurn = current(s).id === p.id;
 
+  if (p.fast && (action.type === "loan" || action.type === "repay" || action.type === "payoff")) {
+    throw new GameError("อยู่ทางด่วนแล้ว ไม่ต้องใช้เงินกู้หรือปิดหนี้");
+  }
+
   switch (action.type) {
+    case "chooseDream":
+      if (!myTurn || s.step !== "dream" || !p.fast) throw new GameError("ตอนนี้เลือกความฝันไม่ได้");
+      if (!DREAMS[action.dream]) throw new GameError("ไม่พบความฝันนี้");
+      p.fast.dream = action.dream;
+      s.step = "roll";
+      log(s, `${p.name} เลือกความฝัน: ${DREAMS[action.dream].name} (${baht(DREAMS[action.dream].cost)})`);
+      break;
     case "loan": {
       const n = Math.max(1, Math.floor(action.count ?? 1));
       if (n > loanRoom(p)) throw new GameError("กู้เพิ่มไม่ได้ กระแสเงินสดต่อเดือนจะติดลบ");
@@ -552,6 +682,20 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
     }
     case "roll": {
       if (!myTurn || s.step !== "roll") throw new GameError("ยังไม่ถึงตาทอยลูกเต๋า");
+      if (p.fast) {
+        // ทางด่วนทอย 2 ลูกเสมอ ผ่านวันรับเงินได้รายได้ต่อรอบ
+        const f = p.fast;
+        s.dice = [1 + Math.floor(ctx.rng() * 6), 1 + Math.floor(ctx.rng() * 6)];
+        for (let i = 0; i < s.dice[0] + s.dice[1]; i++) {
+          f.pos = (f.pos + 1) % FAST_BOARD.length;
+          if (FAST_BOARD[f.pos].type === "payday") {
+            p.cash += f.income;
+            log(s, `${p.name} วันรับเงิน +${baht(f.income)}`);
+          }
+        }
+        landFast(s, p, f);
+        break;
+      }
       const n = action.dice === 2 && p.charity > 0 ? 2 : 1;
       if (p.charity > 0) p.charity--;
       s.dice = Array.from({ length: n }, () => 1 + Math.floor(ctx.rng() * 6));
