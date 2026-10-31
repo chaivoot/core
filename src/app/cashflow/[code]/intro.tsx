@@ -2,7 +2,7 @@
 // ขนาดทุกอย่างเป็นหน่วย em ของกล่องนอก จึงใช้ได้ทั้งจอใหญ่และมือถือ
 
 import type { ReactNode } from "react";
-import { FAST_GOAL, baht } from "@/lib/cashflow/data";
+import { FAST_GOAL, money } from "@/lib/cashflow/data";
 
 type Slide = { title: string; body: ReactNode };
 
@@ -41,7 +41,7 @@ export const INTRO_SLIDES: Slide[] = [
           </Point>
           <Point>ถึงตอนนั้น ต่อให้ไม่ทำงาน เงินก็ยังพอใช้ = อิสรภาพทางการเงิน</Point>
           <Point>
-            ออกได้แล้วขึ้น <b>ทางด่วน</b> ใครซื้อความฝันของตัวเองได้ หรือเพิ่มรายได้ต่อรอบ {baht(FAST_GOAL)} ก่อน <b>ชนะ</b>
+            ออกได้แล้วขึ้น <b>ทางด่วน</b> ใครซื้อความฝันของตัวเองได้ หรือเพิ่มรายได้ต่อรอบ {money(FAST_GOAL)} ก่อน <b>ชนะ</b>
           </Point>
         </ul>
       </div>
@@ -110,7 +110,7 @@ export const INTRO_SLIDES: Slide[] = [
           <div className="rounded-[0.6em] bg-emerald-100 p-[0.6em] text-emerald-950">
             <p className="font-bold">ทรัพย์สิน</p>
             <p className="text-[0.85em]">เอาเงิน<b>เข้า</b>กระเป๋าทุกเดือน</p>
-            <p className="mt-[0.3em] text-[0.8em]">เช่น คอนโดให้เช่า +฿2,000/เดือน</p>
+            <p className="mt-[0.3em] text-[0.8em]">เช่น บ้านให้เช่า +฿4,500/เดือน</p>
           </div>
           <div className="rounded-[0.6em] bg-rose-100 p-[0.6em] text-rose-950">
             <p className="font-bold">หนี้สิน</p>

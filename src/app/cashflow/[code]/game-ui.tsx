@@ -10,7 +10,7 @@ import {
   MARKETS,
   SMALL_DEALS,
   STOCK_LABEL,
-  baht,
+  money,
   lotOf,
   priceRange,
   unitOf,
@@ -157,34 +157,35 @@ export function describeCard(card: Card): CardInfo {
       return {
         kind,
         tone: d.stock === "gold" ? { band: "bg-amber-500", icon: "🪙" } : tone,
-        title: d.text ?? `${STOCK_LABEL[d.stock]} ราคา ฿${d.price.toLocaleString("th-TH")}`,
+        title: d.text ?? `${STOCK_LABEL[d.stock]} ราคา ${money(d.price)}`,
         lines: [
           ...(d.news ? [`📰 ${d.news}`] : []),
           ...(d.stock === "gold"
             ? []
-            : [`ช่วงราคา ฿${priceRange(d.stock).lo.toLocaleString("th-TH")}–฿${priceRange(d.stock).hi.toLocaleString("th-TH")}`]),
+            : [`ช่วงราคา ${money(priceRange(d.stock).lo)}–${money(priceRange(d.stock).hi)}`]),
           d.max ? `คนเปิดการ์ดซื้อได้สูงสุด ${d.max} ${unit}` : `คนเปิดการ์ดซื้อได้ (ทีละ ${lotOf(d.stock)} ${unit})`,
           `ใครมี${STOCK_LABEL[d.stock]}อยู่ ขายได้ในราคานี้`,
         ],
       };
     }
     if (d.type === "split") return { kind, tone, title: d.text, lines: [] };
-    if (d.type === "lend") return { kind, tone: { band: "bg-rose-600", icon: "🤲" }, title: d.text, lines: [`จ่ายทันที ${baht(d.amount)}`] };
+    if (d.type === "lend") return { kind, tone: { band: "bg-rose-600", icon: "🤲" }, title: d.text, lines: [`จ่ายทันที ${money(d.amount)}`] };
     const full = d.price * (d.units ?? 1);
     return {
       kind,
       tone,
       title: d.name,
       lines: [
-        `ราคา ${baht(full)}`,
-        d.mortgage > 0 ? `เงินดาวน์ ${baht(d.down)} · จำนอง ${baht(d.mortgage)}` : `จ่ายสด ${baht(d.down)}`,
-        `กระแสเงินสด ${d.cashflow >= 0 ? "+" : ""}${baht(d.cashflow)}/เดือน`,
+        ...(d.situation ? [`📍 ${d.situation}`] : []),
+        `ราคา ${money(full)}`,
+        d.mortgage > 0 ? `เงินดาวน์ ${money(d.down)} · จำนอง ${money(d.mortgage)}` : `จ่ายสด ${money(d.down)}`,
+        `กระแสเงินสด ${d.cashflow >= 0 ? "+" : ""}${money(d.cashflow)}/เดือน`,
       ],
     };
   }
   if (card.deck === "doodad") {
     const d = DOODADS[card.index];
-    return { kind: DECK_TONE.doodad.label, tone: DECK_TONE.doodad, title: d.text, lines: [`จ่าย ${baht(d.amount)}`] };
+    return { kind: DECK_TONE.doodad.label, tone: DECK_TONE.doodad, title: d.text, lines: [`จ่าย ${money(d.amount)}`] };
   }
   if (card.deck === "market") {
     return { kind: DECK_TONE.market.label, tone: DECK_TONE.market, title: MARKETS[card.index].text, lines: [] };
@@ -195,7 +196,7 @@ export function describeCard(card: Card): CardInfo {
       kind: "ทางด่วน · ธุรกิจ",
       tone: { band: "bg-teal-700", icon: "🏭" },
       title: b.name,
-      lines: [`ราคา ${baht(b.cost)} (จ่ายสด)`, `รายได้ต่อรอบ +${baht(b.cashflow)}`],
+      lines: [`ราคา ${money(b.cost)} (จ่ายสด)`, `รายได้ต่อรอบ +${money(b.cashflow)}`],
     };
   }
   if (card.deck === "dream") {
@@ -204,7 +205,7 @@ export function describeCard(card: Card): CardInfo {
       kind: "ทางด่วน · ความฝัน",
       tone: { band: "bg-violet-600", icon: d.icon },
       title: d.name,
-      lines: [`ราคา ${baht(d.cost)}`, "ใครเลือกความฝันนี้ไว้ ซื้อได้แล้วชนะ"],
+      lines: [`ราคา ${money(d.cost)}`, "ใครเลือกความฝันนี้ไว้ ซื้อได้แล้วชนะ"],
     };
   }
   if (card.deck === "fastEvent") {
@@ -264,7 +265,7 @@ export function FreedomBar({ passive, expenses }: { passive: number; expenses: n
         <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
       </div>
       <p className="mt-0.5 text-xs text-stone-500">
-        รายได้จากทรัพย์สิน {baht(passive)} / รายจ่าย {baht(expenses)} ({Math.floor(pct)}%)
+        รายได้จากทรัพย์สิน {money(passive)} / รายจ่าย {money(expenses)} ({Math.floor(pct)}%)
       </p>
     </div>
   );
