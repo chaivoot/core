@@ -26,7 +26,7 @@ import {
   type PublicPlayer,
   type PublicState,
 } from "@/lib/cashflow/engine";
-import { CardView, Dice, FreedomBar, PlayerTag, Rat, useNow, useRoom } from "./game-ui";
+import { CardView, Dice, PlayerTag, Rat, cardKey, useNow, useRoom } from "./game-ui";
 
 type Send = ReturnType<typeof useRoom>["send"];
 
@@ -168,7 +168,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
         {state.dice && <Dice dice={state.dice} />}
       </div>
 
-      {state.card && <CardView card={state.card} />}
+      {state.card && <CardView key={cardKey(state)} card={state.card} />}
 
       {myTurn && state.step === "roll" && (
         me.charity > 0 ? (
@@ -394,103 +394,139 @@ function Stepper({ value, step, max, onChange }: { value: number; step: number; 
   );
 }
 
-function Row({ label, value, strong = false }: { label: string; value: number; strong?: boolean }) {
+/** แถวในแผ่นงบการเงิน: เส้นประเหมือนแบบฟอร์ม ตัวเลขเป็นลายมือ */
+function Row({ label, value, strong = false, sign = false }: { label: string; value: number; strong?: boolean; sign?: boolean }) {
   return (
-    <div className={`flex justify-between ${strong ? "font-bold" : ""}`}>
-      <span>{label}</span>
-      <span className={`tabular-nums ${value < 0 ? "text-rose-700" : ""}`}>{baht(value)}</span>
+    <div className={`flex items-end justify-between gap-2 border-b border-dashed border-amber-300/80 py-1 ${strong ? "font-bold" : ""}`}>
+      <span className="text-stone-700">{label}</span>
+      <span className={`font-hand text-lg leading-none tabular-nums ${value < 0 ? "text-rose-700" : "text-blue-900"}`}>
+        {sign && value > 0 ? "+" : ""}
+        {baht(value)}
+      </span>
     </div>
   );
 }
 
+function SheetHead({ children }: { children: React.ReactNode }) {
+  return <h3 className="bg-stone-800 px-2 py-0.5 text-xs font-semibold tracking-wider text-amber-50">{children}</h3>;
+}
+
+/** งบการเงินแบบแผ่นกระดาษ (เหมือนแบบฟอร์มที่ผู้เล่นกรอกเอง แต่ระบบกรอกให้) */
 function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: Send }) {
   const pr = profession(me);
   const passive = passiveIncome(me);
   const expenses = totalExpenses(me);
+  const cashflow = monthlyCashflow(me);
   const stocks = Object.entries(me.stocks);
+  const pct = expenses > 0 ? Math.min(100, Math.max(0, (passive / expenses) * 100)) : 0;
 
   return (
-    <div className="card space-y-4 text-sm">
-      <h2 className="text-base font-bold">งบการเงินของฉัน</h2>
-      <FreedomBar passive={passive} expenses={expenses} />
+    <div className="space-y-4 rounded-sm bg-[#fffbeb] p-4 text-sm shadow-md ring-1 ring-amber-200">
+      <div className="flex items-baseline justify-between border-b-2 border-stone-800 pb-1">
+        <h2 className="text-base font-bold tracking-wide">งบการเงิน</h2>
+        <span className="font-hand text-lg text-blue-900">
+          {me.name} · {pr.name}
+        </span>
+      </div>
 
-      <section className="space-y-1">
-        <h3 className="font-semibold text-emerald-800">รายรับต่อเดือน</h3>
+      {/* หลอดอิสรภาพ */}
+      <div>
+        <div className="flex justify-between text-xs text-stone-600">
+          <span>ทางออกจากวงหนูวิ่ง</span>
+          <span className="font-hand text-base text-blue-900">{Math.floor(pct)}%</span>
+        </div>
+        <div className="mt-1 h-3 overflow-hidden rounded-full bg-amber-100 ring-1 ring-amber-300">
+          <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="mt-1 text-xs text-stone-500">ออกได้เมื่อรายได้จากทรัพย์สินมากกว่ารายจ่ายรวม</p>
+      </div>
+
+      <section>
+        <SheetHead>รายรับต่อเดือน</SheetHead>
         <Row label="เงินเดือน" value={pr.salary} />
         <Row label="รายได้จากทรัพย์สิน" value={passive} />
+        {me.assets.map((a) => (
+          <div key={a.uid} className="flex justify-between gap-2 border-b border-dashed border-amber-200 py-0.5 pl-3 text-xs text-stone-500">
+            <span className="truncate">· {a.name}</span>
+            <span className="font-hand shrink-0 text-sm text-blue-900">{baht(a.cashflow)}</span>
+          </div>
+        ))}
       </section>
 
-      <section className="space-y-1">
-        <h3 className="font-semibold text-rose-800">รายจ่ายต่อเดือน</h3>
+      <section>
+        <SheetHead>รายจ่ายต่อเดือน</SheetHead>
         {expenseLines(me).map((l) => (
           <Row key={l.label} label={l.label} value={l.amount} />
         ))}
         <Row label="รวมรายจ่าย" value={expenses} strong />
       </section>
 
-      <div className="rounded-xl bg-teal-50 p-3 text-base">
-        <Row label="กระแสเงินสดต่อเดือน" value={monthlyCashflow(me)} strong />
+      <div className="flex items-center justify-between rounded-sm border-2 border-stone-800 bg-white px-3 py-2">
+        <span className="font-bold">กระแสเงินสดต่อเดือน</span>
+        <span className={`font-hand text-2xl leading-none ${cashflow < 0 ? "text-rose-700" : "text-emerald-700"}`}>{baht(cashflow)}</span>
       </div>
 
-      <section className="space-y-1">
-        <h3 className="font-semibold">ทรัพย์สิน</h3>
-        {me.assets.length === 0 && stocks.length === 0 && <p className="text-stone-500">ยังไม่มี</p>}
+      <section>
+        <SheetHead>ทรัพย์สิน</SheetHead>
+        <Row label="เงินสด" value={me.cash} />
         {me.assets.map((a) => (
-          <div key={a.uid} className="flex justify-between gap-2">
-            <span>{a.name}</span>
-            <span className="shrink-0 tabular-nums">{a.cashflow >= 0 ? "+" : ""}{baht(a.cashflow)}/ด.</span>
+          <div key={a.uid} className="flex justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
+            <span className="text-stone-700">{a.name}</span>
+            <span className="font-hand shrink-0 text-base text-blue-900">ดาวน์ {baht(a.down)}</span>
           </div>
         ))}
         {stocks.map(([k, h]) => (
-          <div key={k} className="flex justify-between gap-2">
-            <span>{STOCK_LABEL[k as keyof typeof STOCK_LABEL]}</span>
-            <span className="shrink-0 tabular-nums">
-              {h!.qty.toLocaleString("th-TH")} หุ้น (ทุน {baht(h!.cost)})
+          <div key={k} className="flex justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
+            <span className="text-stone-700">{STOCK_LABEL[k as keyof typeof STOCK_LABEL]}</span>
+            <span className="font-hand shrink-0 text-base text-blue-900">
+              {h!.qty.toLocaleString("th-TH")} หุ้น · ทุน {baht(h!.cost)}
             </span>
           </div>
         ))}
       </section>
 
-      <section className="space-y-2">
-        <h3 className="font-semibold">หนี้สิน</h3>
+      <section>
+        <SheetHead>หนี้สิน</SheetHead>
         {(Object.keys(DEBT_LABEL) as Debt[]).map((d) => {
           const amount = debtAmount(me, d);
           if (amount === 0) return null;
           return (
-            <div key={d} className="flex items-center justify-between gap-2">
-              <span>
-                {DEBT_LABEL[d]} {baht(amount)}
+            <div key={d} className="flex items-center justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
+              <span className="text-stone-700">{DEBT_LABEL[d]}</span>
+              <span className="flex items-center gap-2">
+                <span className="font-hand text-lg leading-none text-blue-900">{baht(amount)}</span>
+                <button
+                  className="rounded-md bg-white px-2 py-1 text-xs ring-1 ring-stone-300 disabled:opacity-40"
+                  disabled={busy || me.cash < amount}
+                  onClick={() => send({ type: "payoff", debt: d })}
+                >
+                  ปิดหนี้
+                </button>
               </span>
-              <button
-                className="btn-secondary min-h-9 px-3 text-sm"
-                disabled={busy || me.cash < amount}
-                onClick={() => send({ type: "payoff", debt: d })}
-              >
-                ปิดหนี้
-              </button>
             </div>
           );
         })}
         {me.assets
           .filter((a) => a.mortgage > 0)
           .map((a) => (
-            <div key={a.uid} className="flex justify-between gap-2 text-stone-600">
-              <span>จำนอง{a.name}</span>
-              <span className="tabular-nums">{baht(a.mortgage)}</span>
+            <div key={a.uid} className="flex justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
+              <span className="text-stone-700">จำนอง{a.name}</span>
+              <span className="font-hand shrink-0 text-lg leading-none text-blue-900">{baht(a.mortgage)}</span>
             </div>
           ))}
-        <div className="flex items-center justify-between gap-2 rounded-xl bg-stone-50 p-2">
-          <span>เงินกู้ธนาคาร {baht(me.loans * LOAN_UNIT)}</span>
-          <span className="flex gap-1">
+        <div className="flex items-center justify-between gap-2 border-b border-dashed border-amber-300/80 py-1">
+          <span className="text-stone-700">เงินกู้ธนาคาร</span>
+          <span className="flex items-center gap-1">
+            <span className="font-hand mr-1 text-lg leading-none text-blue-900">{baht(me.loans * LOAN_UNIT)}</span>
             <button
-              className="btn-secondary min-h-9 px-3 text-sm"
+              className="rounded-md bg-white px-2 py-1 text-xs ring-1 ring-stone-300 disabled:opacity-40"
               disabled={busy || loanRoom(me) < 1}
               onClick={() => send({ type: "loan" })}
             >
-              กู้ +{baht(LOAN_UNIT)}
+              กู้ +฿10,000
             </button>
             <button
-              className="btn-secondary min-h-9 px-3 text-sm"
+              className="rounded-md bg-white px-2 py-1 text-xs ring-1 ring-stone-300 disabled:opacity-40"
               disabled={busy || me.loans < 1 || me.cash < LOAN_UNIT}
               onClick={() => send({ type: "repay" })}
             >
@@ -498,7 +534,7 @@ function Statement({ me, busy, send }: { me: PublicPlayer; busy: boolean; send: 
             </button>
           </span>
         </div>
-        <p className="text-xs text-stone-500">กู้ได้อีก {baht(loanRoom(me) * LOAN_UNIT)} (ผ่อนก้อนละ ฿1,000/เดือน)</p>
+        <p className="mt-1 text-xs text-stone-500">กู้ได้อีก {baht(loanRoom(me) * LOAN_UNIT)} (ผ่อนก้อนละ ฿1,000/เดือน)</p>
       </section>
     </div>
   );
