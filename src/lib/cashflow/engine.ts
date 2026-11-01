@@ -289,6 +289,16 @@ export function loanRoom(p: PublicPlayer) {
   return Math.max(0, Math.floor(monthlyCashflow(p) / LOAN_PAYMENT));
 }
 
+/** ความคืบหน้าสู่เป้าหมาย: สนามแข่งหนู 0–100 (รายได้จากทรัพย์สิน ÷ รายจ่าย) · ทางด่วน 100–200 */
+export function goalProgress(p: PublicPlayer) {
+  if (p.fast) {
+    const gained = p.fast.income - (p.fast.goal - FAST_GOAL);
+    return 100 + Math.min(100, Math.max(0, (gained / FAST_GOAL) * 100));
+  }
+  const expenses = totalExpenses(p);
+  return expenses > 0 ? Math.min(100, (passiveIncome(p) / expenses) * 100) : 100;
+}
+
 export function isFree(p: PublicPlayer) {
   return passiveIncome(p) > totalExpenses(p);
 }
