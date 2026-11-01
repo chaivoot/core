@@ -206,7 +206,9 @@ describe("หนึ่งตา", () => {
     s = run(s, { type: "respond" });
     expect(tick(s, 1_000)).toBeNull();
     const after = tick(s, 1_000 + 31_000)!;
-    expect(after.step).toBe("end");
+    // คนเปิดไม่ซื้อ พอคนอื่นหมดเวลา จบตาให้อัตโนมัติ
+    expect(after.step).toBe("roll");
+    expect(after.turn).toBe(1);
     expect(after.players[1].stocks.elec?.qty).toBe(100);
   });
 
@@ -246,7 +248,49 @@ describe("หนึ่งตา", () => {
     s = run(s, { type: "deal", size: "big" });
     expect(() => run(s, { type: "respond", buy: true })).toThrow("เงินสดไม่พอ");
     s = run(s, { type: "respond", buy: false });
+    expect(s.step).toBe("roll");
+    expect(s.turn).toBe(1);
+  });
+});
+
+describe("จบตาอัตโนมัติ", () => {
+  function opp() {
+    const s = started();
+    s.players[0].pos = 1;
+    return run(s, { type: "roll" }, me(s), [die(1)]);
+  }
+
+  it("ซื้อแล้วยังไม่จบตา (กู้/ปิดหนี้ต่อได้)", () => {
+    let s = opp();
+    s.players[0].cash = 1_000_000;
+    s.decks.small = [firstCondo()];
+    s = run(s, { type: "deal", size: "small" });
+    s = run(s, { type: "respond", buy: true });
     expect(s.step).toBe("end");
+    expect(s.turn).toBe(0);
+  });
+
+  it("ไม่ซื้อหุ้นแต่มีคนถือหุ้นยังตัดสินใจอยู่ รอครบก่อนแล้วจบตา", () => {
+    let s = opp();
+    s.players[1].stocks.pharma = { qty: 100, cost: 1_000 };
+    s.decks.small = [pharma600()];
+    s = run(s, { type: "deal", size: "small" });
+    s = run(s, { type: "respond" });
+    expect(s.step).toBe("respond");
+    s = run(s, { type: "respond", sell: 100 }, { playerId: s.players[1].id });
+    expect(s.step).toBe("roll");
+    expect(s.turn).toBe(1);
+  });
+
+  it("ทางด่วน: ตกช่องวันรับเงิน รายได้เข้าเอง แล้วจบตาเลย", () => {
+    let s = started();
+    s.players[0].fast = { pos: 6, income: 100_000, goal: 100_000 + FAST_GOAL, dream: 0, businesses: [], dreamBought: false };
+    const cash = s.players[0].cash;
+    expect(FAST_BOARD[8].type).toBe("payday");
+    s = run(s, { type: "roll" }, me(s), [die(1), die(1)]); // 1 + 1 → ช่อง 8 วันรับเงิน
+    expect(s.players[0].cash).toBe(cash + 100_000);
+    expect(s.turn).toBe(1);
+    expect(s.step).toBe("roll");
   });
 });
 
@@ -265,7 +309,8 @@ describe("โหมดซื้อดีลต่อ (host ตั้งค่า
   it("ปิดโหมด (ค่าเริ่มต้น): คนเปิดไม่ซื้อ ดีลทิ้งไป", () => {
     let s = openCondo(false);
     s = run(s, { type: "respond", buy: false });
-    expect(s.step).toBe("end");
+    expect(s.step).toBe("roll");
+    expect(s.turn).toBe(1);
   });
 
   it("ขายสิทธิ์: คนเปิดประกาศค่านายหน้า คนแรกที่รับจ่ายค่านายหน้า + ดาวน์ แล้วได้ทรัพย์สิน", () => {
@@ -284,14 +329,16 @@ describe("โหมดซื้อดีลต่อ (host ตั้งค่า
     expect(s.players[2].assets).toHaveLength(1);
     expect(s.players[2].cash).toBe(1_000_000 - d.down - fee);
     expect(s.players[0].cash).toBe(a.cash + fee);
-    expect(s.step).toBe("end");
+    expect(s.step).toBe("roll"); // คนขายสิทธิ์จบตาอัตโนมัติ
+    expect(s.turn).toBe(1);
     expect(() => run(s, { type: "respond", buy: true }, { playerId: b.id })).toThrow();
   });
 
   it("คนเปิดกดไม่ซื้อ = จบ ดีลทิ้งไป (ไม่ส่งต่ออัตโนมัติ)", () => {
     let s = openCondo(true);
     s = run(s, { type: "respond", buy: false });
-    expect(s.step).toBe("end");
+    expect(s.step).toBe("roll");
+    expect(s.turn).toBe(1);
     expect(s.resale).toBeFalsy();
   });
 
