@@ -25,6 +25,10 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("endTurn") }),
   z.object({ type: z.literal("collect") }),
   z.object({ type: z.literal("finish") }),
+  z.object({ type: z.literal("setAway"), player: z.string().max(20), away: z.boolean() }),
+  z.object({ type: z.literal("leave"), player: z.string().max(20) }),
+  z.object({ type: z.literal("transfer"), player: z.string().max(20) }),
+  z.object({ type: z.literal("claim"), code: z.string().min(8).max(40) }),
   z.object({ type: z.literal("chooseDream"), dream: z.number().int().min(0).max(20) }),
   z.object({ type: z.literal("setOptions"), resellDeals: z.boolean().optional(), minutes: z.number().int().min(0).max(240).optional() }),
   z.object({ type: z.literal("intro"), slide: z.number().int().min(0).max(20).nullable() }),
@@ -34,7 +38,7 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("payoff"), debt: z.enum(["house", "car", "card"]) }),
 ]);
 
-const HOST_ACTIONS = new Set(["start", "skipTurn", "setOptions", "intro", "finish"]);
+const HOST_ACTIONS = new Set(["start", "skipTurn", "setOptions", "intro", "finish", "leave", "transfer"]);
 
 /** ห้องที่เริ่มเล่นด้วยชุดการ์ดเก่า เล่นต่อไม่ได้ (ลำดับการ์ดในสถานะเก่าชี้ไปคนละใบ) */
 const isStale = (room: Room) => room.state.phase !== "lobby" && room.state.deckVersion !== DECK_VERSION;
@@ -91,13 +95,24 @@ export async function POST(req: Request, ctx: RouteContext<"/cashflow/[code]/api
   let token = store.get(name)?.value;
 
   const actor: Actor = {};
+  const host = isHost(room0, store.get(hostCookie(room0.code))?.value);
   if (HOST_ACTIONS.has(input.type)) {
-    if (!isHost(room0, store.get(hostCookie(room0.code))?.value)) return json({ error: "host เท่านั้นที่ทำได้" }, 403);
+    if (!host) return json({ error: "host เท่านั้นที่ทำได้" }, 403);
     actor.host = true;
   }
+  // พัก/กลับมาเล่น: host ทำให้ใครก็ได้ ผู้เล่นทำให้ตัวเองได้
+  if (input.type === "setAway" && host) actor.host = true;
 
   let action: Action;
-  if (input.type === "join") {
+  let transferCode: string | undefined;
+  if (input.type === "transfer") {
+    transferCode = randomBytes(12).toString("base64url");
+    action = { ...input, code: transferCode };
+  } else if (input.type === "claim") {
+    // เครื่องใหม่: ได้ token ใหม่ เครื่องเดิมใช้ไม่ได้อีก
+    token = randomBytes(18).toString("base64url");
+    action = { ...input, token };
+  } else if (input.type === "join") {
     if (token && room0.state.players.some((p) => p.token === token)) {
       return json({ error: "มือถือเครื่องนี้เข้าห้องแล้ว" }, 400);
     }
@@ -117,7 +132,7 @@ export async function POST(req: Request, ctx: RouteContext<"/cashflow/[code]/api
     if (room.state.phase === "over" && room0.state.phase !== "over") {
       await archiveGame(room.code, room.state).catch((e) => console.error("archive cashflow game", e));
     }
-    if (input.type === "join") {
+    if (input.type === "join" || input.type === "claim") {
       store.set(name, token!, {
         httpOnly: true,
         sameSite: "lax",
@@ -126,7 +141,7 @@ export async function POST(req: Request, ctx: RouteContext<"/cashflow/[code]/api
         maxAge: 60 * 60 * 24,
       });
     }
-    return json(view(room, token));
+    return json({ ...view(room, token), transferCode });
   } catch (e) {
     if (e instanceof GameError) return json({ error: e.message }, 400);
     throw e;

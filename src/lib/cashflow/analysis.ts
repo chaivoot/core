@@ -19,6 +19,8 @@ export type PlayerReport = {
   color: string;
   profession: string;
   won: boolean;
+  /** ออกจากเกมกลางคัน */
+  left?: boolean;
   /** ทอยลูกเต๋ากี่ครั้ง */
   rolls: number;
   /** ออกจากสนามแข่งหนูในการทอยครั้งที่เท่าไหร่ของตัวเอง (null = ยังไม่ออก) */
@@ -78,6 +80,7 @@ function styleOf(r: Omit<PlayerReport, "style" | "insights">): StyleKey {
 
 function insightsOf(r: Omit<PlayerReport, "insights">): string[] {
   const out: string[] = [];
+  if (r.left) out.push("ออกจากเกมกลางคัน (สถิติด้านล่างนับถึงตอนที่ออก)");
   if (r.escapeRoll !== null) {
     out.push(`🚀 ออกจากสนามแข่งหนูได้ในตาที่ ${r.escapeRoll} — ทรัพย์สินทำงานแทนคุณแล้ว (ฝั่ง B/I ของ ESBI)`);
   } else {
@@ -133,6 +136,7 @@ export function analyze(state: GameState, endedBy?: GameReport["endedBy"]): Game
       color: p.color,
       profession: PROFESSIONS[p.prof]?.name ?? "",
       won: state.winner === p.id,
+      left: p.left === true,
       rolls: rollsList.length,
       escapeRoll,
       passive,

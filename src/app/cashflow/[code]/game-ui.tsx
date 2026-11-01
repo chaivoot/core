@@ -21,7 +21,12 @@ import {
 import type { Action, Card, PublicPlayer, PublicState } from "@/lib/cashflow/engine";
 
 export type RoomData = { version: number; me: string | null; deck?: string; build?: string; stale?: boolean; state: PublicState; report?: GameReport | null; mine?: PlayerReport | null };
-type ClientAction = Exclude<Action, { type: "join" }> | { type: "join"; name: string; color: string };
+/** ค่าที่เซิร์ฟเวอร์สุ่มให้ (token, รหัสย้ายเครื่อง) ไม่ต้องส่งมาจากเครื่อง */
+type ClientAction =
+  | Exclude<Action, { type: "join" | "transfer" | "claim" }>
+  | { type: "join"; name: string; color: string }
+  | { type: "transfer"; player: string }
+  | { type: "claim"; code: string };
 
 /**
  * หน้านี้เปิดค้างไว้ตั้งแต่ก่อนอัปเดตการ์ด (โค้ดในเครื่องเป็นชุดเก่า) → รีเฟรชให้เอง ครั้งเดียวต่อเวอร์ชัน
@@ -82,7 +87,7 @@ export function useRoom(code: string) {
   }, [url, accept]);
 
   const send = useCallback(
-    async (action: ClientAction) => {
+    async (action: ClientAction): Promise<(RoomData & { transferCode?: string }) | false> => {
       setBusy(true);
       setError(null);
       try {
@@ -97,7 +102,7 @@ export function useRoom(code: string) {
           return false;
         }
         accept(j);
-        return true;
+        return j as RoomData & { transferCode?: string };
       } catch {
         setError("เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง");
         return false;

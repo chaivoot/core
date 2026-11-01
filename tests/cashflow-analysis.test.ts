@@ -155,3 +155,69 @@ describe("ตกงาน", () => {
     expect(s.step).toBe("roll");
   });
 });
+
+describe("ผู้เล่นมีธุระด่วน", () => {
+  function three() {
+    let s = newGame();
+    ["เอ", "บี", "ซี"].forEach((name, i) => {
+      s = act(s, {}, { type: "join", name, color: ["red", "blue", "green"][i], token: `t${i}` }, ctx());
+    });
+    return act(s, HOST, { type: "start" }, ctx());
+  }
+
+  it("พักชั่วคราว: ถึงตาข้ามให้ กลับมาเล่นต่อได้ (ผู้เล่นกดเองได้)", () => {
+    let s = three();
+    const [a, b, c] = s.players;
+    s = act(s, { playerId: b.id }, { type: "setAway", player: b.id, away: true }, ctx());
+    expect(() => act(s, { playerId: a.id }, { type: "setAway", player: b.id, away: false }, ctx())).toThrow("host");
+    s.players[0].pos = BOARD.indexOf("doodad") - 1;
+    s.players[0].cash = 1_000_000;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s = run(s, { type: "endTurn" });
+    expect(s.players[s.turn].id).toBe(c.id); // ข้าม บี
+    s = act(s, { playerId: b.id }, { type: "setAway", player: b.id, away: false }, ctx());
+    expect(s.players[1].away).toBe(false);
+  });
+
+  it("พักตอนที่ถึงตาตัวเอง = ไปคนถัดไปทันที", () => {
+    let s = three();
+    const a = s.players[0];
+    s = act(s, HOST, { type: "setAway", player: a.id, away: true }, ctx());
+    expect(s.turn).toBe(1);
+    expect(s.step).toBe("roll");
+  });
+
+  it("คนที่พักไม่ต้องตอบการ์ด", () => {
+    let s = three();
+    s.players[1].stocks.pharma = { qty: 100, cost: 1_000 };
+    s = act(s, HOST, { type: "setAway", player: s.players[1].id, away: true }, ctx());
+    s.players[0].pos = 1;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s.decks.small = [SMALL_DEALS.findIndex((d) => d.type === "stock" && d.stock === "pharma")];
+    s = run(s, { type: "deal", size: "small" });
+    expect(Object.keys(s.responders)).toEqual([s.players[0].id]);
+  });
+
+  it("ออกจากเกม: เอาออกถาวร เหลือไม่ถึง 2 คนเกมจบ", () => {
+    let s = three();
+    const [, b, c] = s.players;
+    expect(() => run(s, { type: "leave", player: b.id })).toThrow("host");
+    s = act(s, HOST, { type: "leave", player: b.id }, ctx());
+    expect(s.players[1].left).toBe(true);
+    expect(s.phase).toBe("playing");
+    s = act(s, HOST, { type: "leave", player: c.id }, ctx());
+    expect(s.phase).toBe("over");
+    expect(analyze(s).players.find((p) => p.id === b.id)!.left).toBe(true);
+  });
+
+  it("ย้ายเครื่อง: รหัสใช้ได้ครั้งเดียว token เปลี่ยน และไม่ส่งรหัสไปเครื่องอื่น", () => {
+    let s = three();
+    const b = s.players[1];
+    s = act(s, HOST, { type: "transfer", player: b.id, code: "secret-code-1" }, ctx());
+    expect(JSON.stringify(publicState(s))).not.toContain("secret-code-1");
+    expect(() => act(s, {}, { type: "claim", code: "wrong-code-xx", token: "new" }, ctx())).toThrow("รหัสย้ายเครื่อง");
+    s = act(s, {}, { type: "claim", code: "secret-code-1", token: "new-token" }, ctx());
+    expect(s.players[1].token).toBe("new-token");
+    expect(() => act(s, {}, { type: "claim", code: "secret-code-1", token: "again" }, ctx())).toThrow("รหัสย้ายเครื่อง");
+  });
+});
