@@ -906,7 +906,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
     s.winner = null;
     s.endedBy = "host";
     s.endedAt = ctx.now;
-    log(s, "host จบเกม ดูสรุปผลการเล่นได้เลย");
+    log(s, "host ยุติเกม ดูสรุปผลการเล่นได้เลย");
     return s;
   }
 

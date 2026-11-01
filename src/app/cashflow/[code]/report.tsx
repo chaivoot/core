@@ -74,7 +74,7 @@ export function GameSummaryHeader({ report }: { report: GameReport }) {
     <div className="card space-y-1 p-4 text-center">
       <p className="text-lg font-bold">สรุปผลการเล่น</p>
       <p className="text-sm text-stone-500">
-        {report.winner ? `🏆 ${report.winner} ชนะ` : report.endedBy === "time" ? "⏰ หมดเวลา" : "host จบเกม"} · ทอยทั้งหมด {report.rolls} ครั้ง
+        {report.winner ? `🏆 ${report.winner} ชนะ` : report.endedBy === "time" ? "⏰ หมดเวลา" : "host ยุติเกม"} · ทอยทั้งหมด {report.rolls} ครั้ง
         {report.minutes !== null && ` · ${report.minutes} นาที`}
       </p>
     </div>

@@ -214,7 +214,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
     return (
       <div className="card space-y-2 text-center">
         {w && <Rat color={w.color} className="mx-auto w-24" />}
-        <p className="text-xl font-bold">{!w ? (state.endedBy === "time" ? "⏰ หมดเวลา เกมจบแล้ว" : "host จบเกมแล้ว") : w.id === me.id ? "คุณชนะเกม! 🏆" : `${w.name} ชนะเกม`}</p>
+        <p className="text-xl font-bold">{!w ? (state.endedBy === "time" ? "⏰ หมดเวลา เกมจบแล้ว" : "host ยุติเกมแล้ว") : w.id === me.id ? "คุณชนะเกม! 🏆" : `${w.name} ชนะเกม`}</p>
         <p className="text-sm text-stone-500">เกมจบ</p>
       </div>
     );

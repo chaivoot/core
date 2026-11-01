@@ -267,11 +267,12 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
   );
 }
 
-/** แถบบนจอ host: เวลาเล่น · รอบ · ตาของใคร · ปุ่มของ host */
+/** แถบบนจอ host: เวลาเล่น · ผู้นำ · ขึ้นทางด่วนกี่คน · ตาของใคร · ปุ่มของ host */
 function TopBar({ state, code, now, busy, send }: { state: PublicState; code: string; now: number; busy: boolean; send: Send }) {
   const clock = gameClock(state, now);
   const turnPlayer = state.players[state.turn];
-  const round = Math.floor((state.rolls ?? 0) / Math.max(1, state.players.length)) + 1;
+  const leader = [...state.players].sort((a, b) => progress(b) - progress(a))[0];
+  const fastCount = state.players.filter((p) => p.fast).length;
   const pct = clock.limit ? Math.min(100, (clock.elapsed / clock.limit) * 100) : 0;
   const low = clock.remaining !== null && clock.remaining <= 5 * 60_000;
   const tone = clock.up ? "text-rose-600" : low ? "text-amber-600" : "text-stone-900";
@@ -305,9 +306,32 @@ function TopBar({ state, code, now, busy, send }: { state: PublicState; code: st
         )}
       </div>
 
+
+      {/* ผู้นำ: ใกล้เป้าหมายที่สุด (ยังไม่มีใครมีรายได้จากทรัพย์สิน = ยังไม่มีผู้นำ) */}
+      <div className="hidden shrink-0 items-center gap-2 min-[1000px]:flex">
+        {leader && progress(leader) > 0 ? (
+          <>
+            <Rat color={leader.color} className="w-9" />
+            <div className="leading-tight">
+              <p className="text-xs text-stone-500">ผู้นำ 👑</p>
+              <p className="font-bold" style={{ color: colorHex(leader.color) }}>
+                {leader.name} <span className="text-sm text-stone-500">{leader.fast ? "🚀" : `${Math.floor(progress(leader))}%`}</span>
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="leading-tight">
+            <p className="text-xs text-stone-500">ผู้นำ 👑</p>
+            <p className="text-stone-400">ยังไม่มี</p>
+          </div>
+        )}
+      </div>
+
       <div className="shrink-0 text-center leading-tight">
-        <p className="text-xs text-stone-500">รอบที่</p>
-        <p className="text-xl font-bold">{round}</p>
+        <p className="text-xs text-stone-500">ขึ้นทางด่วน</p>
+        <p className="text-xl font-bold">
+          🚀 {fastCount}/{state.players.length}
+        </p>
       </div>
 
       {state.phase === "playing" && (
@@ -326,13 +350,13 @@ function TopBar({ state, code, now, busy, send }: { state: PublicState; code: st
               ⏭ ข้ามตา
             </button>
             <button
-              className="btn-ghost min-h-9 px-2 text-sm"
+              className="btn min-h-9 border border-rose-300 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100"
               disabled={busy}
               onClick={() => {
-                if (window.confirm("จบเกมตอนนี้แล้วดูสรุปผลการเล่นของทุกคน?")) send({ type: "finish" });
+                if (window.confirm("ยุติเกมตอนนี้?\n\nทุกคนจะเล่นต่อไม่ได้ และจะเห็นสรุปผลการเล่นของตัวเองทันที")) send({ type: "finish" });
               }}
             >
-              🏁 จบเกม
+              ⏹ ยุติเกม
             </button>
           </div>
         </>

@@ -87,7 +87,7 @@ export default async function InsightsPage() {
       </div>
 
       {reports.length === 0 ? (
-        <p className="card p-6 text-center text-stone-500">ยังไม่มีเกมที่เก็บไว้ เล่นจบสักเกม (หรือให้ host กด &quot;จบเกม · ดูสรุป&quot;) แล้วข้อมูลจะขึ้นที่นี่</p>
+        <p className="card p-6 text-center text-stone-500">ยังไม่มีเกมที่เก็บไว้ เล่นจบสักเกม (หรือให้ host กด &quot;⏹ ยุติเกม&quot;) แล้วข้อมูลจะขึ้นที่นี่</p>
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -201,7 +201,7 @@ export default async function InsightsPage() {
                       {" "}
                       · ห้อง {g.roomCode} · {r.players.length} คน · ทอย {r.rolls} ครั้ง
                       {r.minutes !== null && ` · ${r.minutes} นาที`} ·{" "}
-                      {r.endedBy === "win" ? `🏆 ${r.winner}` : r.endedBy === "time" ? "⏰ หมดเวลา" : r.endedBy === "host" ? "host จบเกม" : "หมดอายุ"}
+                      {r.endedBy === "win" ? `🏆 ${r.winner}` : r.endedBy === "time" ? "⏰ หมดเวลา" : r.endedBy === "host" ? "host ยุติเกม" : "หมดอายุ"}
                     </span>
                   </summary>
                   <div className="mt-3 grid gap-3 md:grid-cols-2">
