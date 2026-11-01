@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BIG_DEALS,
   COLORS,
@@ -43,8 +44,16 @@ import { IntroSlide } from "./intro";
 
 type Send = ReturnType<typeof useRoom>["send"];
 
-export function PlayerScreen({ code }: { code: string }) {
+export function PlayerScreen({ code, claim }: { code: string; claim?: string }) {
   const { data, error, busy, send, clearError } = useRoom(code);
+  const router = useRouter();
+  const claimed = useRef(false);
+  // เปิดจาก QR ย้ายเครื่อง: รับตัวผู้เล่นเดิมมาเล่นบนเครื่องนี้ แล้วลบรหัสออกจาก URL
+  useEffect(() => {
+    if (!claim || claimed.current) return;
+    claimed.current = true;
+    void send({ type: "claim", code: claim }).then(() => router.replace(`/cashflow/${code}`));
+  }, [claim, code, router, send]);
   if (!data) {
     return <p className="p-8 text-center text-stone-500">{error ?? "กำลังโหลด…"}</p>;
   }
@@ -108,7 +117,7 @@ function GameTabs({ data, me, busy, send }: { data: RoomData; me: PublicPlayer; 
   const { state } = data;
   const myTurn = state.phase === "playing" && state.players[state.turn]?.id === me.id;
   const mustRespond = state.step === "respond" && state.responders[me.id] === false;
-  const needsMe = state.phase === "playing" && (mustRespond || (myTurn && state.step !== "respond"));
+  const needsMe = state.phase === "playing" && !me.away && !me.left && (mustRespond || (myTurn && state.step !== "respond"));
   // เรื่องที่ต้องทำตอนนี้ (เปลี่ยนเมื่อขึ้นตาใหม่/ขั้นใหม่/การ์ดใหม่)
   const sig = needsMe ? `${state.turnSeq ?? 0}:${state.step}:${state.card ? cardKey(state) : ""}` : "";
   const [choice, setChoice] = useState<{ tab: Tab; sig: string }>({ tab: "me", sig: "" });
@@ -120,7 +129,22 @@ function GameTabs({ data, me, busy, send }: { data: RoomData; me: PublicPlayer; 
       <Header me={me} state={state} />
       {tab === "me" && (
         <>
-          <ActionPanel state={state} me={me} busy={busy} send={send} />
+          {me.left ? (
+            <div className="card space-y-1 text-center">
+              <p className="text-lg font-bold">คุณออกจากเกมแล้ว 🚪</p>
+              <p className="text-sm text-stone-500">ดูกระดานและความคืบหน้าของเพื่อน ๆ ได้ที่แท็บกระดาน</p>
+            </div>
+          ) : me.away && state.phase === "playing" ? (
+            <div className="card space-y-3 text-center">
+              <p className="text-lg font-bold">⏸ คุณพักอยู่</p>
+              <p className="text-sm text-stone-500">ถึงตาคุณระบบจะข้ามให้ เงินและทรัพย์สินยังอยู่ครบ</p>
+              <button className="btn-primary w-full py-3 text-lg" disabled={busy} onClick={() => send({ type: "setAway", player: me.id, away: false })}>
+                ▶ กลับมาเล่น
+              </button>
+            </div>
+          ) : (
+            <ActionPanel state={state} me={me} busy={busy} send={send} />
+          )}
           {myReport && data.report && (
             <>
               <GameSummaryHeader report={data.report} />
@@ -129,6 +153,19 @@ function GameTabs({ data, me, busy, send }: { data: RoomData; me: PublicPlayer; 
           )}
           <MyLog state={state} me={me} />
           {me.fast ? <FastSheet me={me} /> : <Statement me={me} busy={busy} send={send} />}
+          {state.phase === "playing" && !me.away && !me.left && (
+            <button
+              className="btn-ghost w-full text-sm text-stone-500"
+              disabled={busy}
+              onClick={() => {
+                if (window.confirm("ขอพักชั่วคราว? ถึงตาคุณระบบจะข้ามให้ จนกว่าจะกด 'กลับมาเล่น'")) {
+                  send({ type: "setAway", player: me.id, away: true });
+                }
+              }}
+            >
+              ⏸ ขอพักชั่วคราว (มีธุระด่วน)
+            </button>
+          )}
         </>
       )}
       {tab === "board" && <BoardTab state={state} me={me} />}
@@ -162,7 +199,7 @@ function GameTabs({ data, me, busy, send }: { data: RoomData; me: PublicPlayer; 
 /** แท็บกระดาน: กระดานกลาง + ความคืบหน้าของทุกคน */
 function BoardTab({ state, me }: { state: PublicState; me: PublicPlayer }) {
   const turn = state.players[state.turn];
-  const ranked = [...state.players].sort((a, b) => goalProgress(b) - goalProgress(a));
+  const ranked = [...state.players].sort((a, b) => Number(!!a.left) - Number(!!b.left) || goalProgress(b) - goalProgress(a));
   return (
     <>
       <GameBoard state={state} className="w-full">
@@ -196,6 +233,8 @@ function BoardTab({ state, me }: { state: PublicState; me: PublicPlayer }) {
                     {p.id === me.id && " (คุณ)"}
                   </b>
                   {isTurn && <span className="shrink-0 rounded-full bg-amber-100 px-2 text-xs text-amber-800">กำลังเล่น</span>}
+                  {p.away && <span className="shrink-0 rounded-full bg-stone-100 px-2 text-xs text-stone-600">⏸ พักอยู่</span>}
+                  {p.left && <span className="shrink-0 rounded-full bg-stone-100 px-2 text-xs text-stone-600">🚪 ออกแล้ว</span>}
                 </span>
                 <span className="shrink-0">
                   {p.skip > 0 && <span className="mr-1 text-xs text-stone-500">หยุด {p.skip} ตา</span>}

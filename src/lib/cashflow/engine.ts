@@ -71,6 +71,12 @@ export type Player = {
   fast?: FastState | null;
   /** เงินเดือนที่ยังไม่ได้กดรับ (จำนวนครั้งที่ผ่าน/ตกช่องเงินเดือนในตานี้) */
   payday?: number;
+  /** พักชั่วคราว (ธุระด่วน): ข้ามตาให้เอง การ์ดที่ต้องตอบถือว่าไม่ทำอะไร */
+  away?: boolean;
+  /** ออกจากเกมกลางคัน (ไม่กลับมาแล้ว) */
+  left?: boolean;
+  /** รหัสย้ายเครื่อง (ความลับ ใช้ครั้งเดียว) */
+  transfer?: string;
 };
 
 export type FastState = {
@@ -211,6 +217,14 @@ export type Action =
   | { type: "endTurn" }
   | { type: "collect" }
   | { type: "finish" }
+  /** host พัก/ปลุกผู้เล่นคนไหนก็ได้ · ผู้เล่นพัก/กลับมาเองได้ */
+  | { type: "setAway"; player: string; away: boolean }
+  /** host เอาผู้เล่นออกจากเกม */
+  | { type: "leave"; player: string }
+  /** host สร้างรหัสย้ายเครื่องให้ผู้เล่น (เซิร์ฟเวอร์สุ่ม code ให้) */
+  | { type: "transfer"; player: string; code: string }
+  /** เครื่องใหม่ใช้รหัสย้ายเครื่อง (เซิร์ฟเวอร์สุ่ม token ใหม่ให้) */
+  | { type: "claim"; code: string; token: string }
   | { type: "chooseDream"; dream: number }
   | { type: "setOptions"; resellDeals?: boolean; minutes?: number }
   | { type: "intro"; slide: number | null }
@@ -460,15 +474,19 @@ function forfeitPayday(s: GameState, p: Player) {
 }
 
 function setResponders(s: GameState, ids: string[], ctx: Ctx) {
-  s.responders = Object.fromEntries(ids.map((id) => [id, false]));
+  const live = ids.filter((id) => s.players.some((p) => p.id === id && active(p)));
+  s.responders = Object.fromEntries(live.map((id) => [id, false]));
   s.deadline = ctx.now + RESPONSE_SECONDS * 1000;
   s.step = ids.length > 0 ? "respond" : "end";
 }
 
 /** ผู้เล่นที่ยังอยู่สนามแข่งหนู (การ์ดสนามแข่งหนูมีผลกับคนกลุ่มนี้เท่านั้น) */
 function ratRace(s: GameState) {
-  return s.players.filter((p) => !p.fast);
+  return s.players.filter((p) => !p.fast && !p.left);
 }
+
+/** ยังเล่นอยู่จริง (ไม่ได้พัก ไม่ได้ออก) — ใช้เลือกคนที่ต้องตอบการ์ด */
+const active = (p: Player) => !p.away && !p.left;
 
 function holders(s: GameState, stock: StockKind) {
   return ratRace(s).filter((p) => (p.stocks[stock]?.qty ?? 0) > 0).map((p) => p.id);
@@ -476,8 +494,13 @@ function holders(s: GameState, stock: StockKind) {
 
 function startTurn(s: GameState) {
   // ข้ามคนที่ตกงาน (แต่ละรอบลดตาที่ต้องหยุดลง จึงไม่วนไม่จบ)
-  for (let guard = 0; guard < s.players.length * 3; guard++) {
+  for (let guard = 0; guard < s.players.length * 4; guard++) {
     const p = current(s);
+    // คนที่ออกจากเกม/พักอยู่ ข้ามไปเลย (ถ้าทุกคนพักหมด หยุดที่คนนี้ รอ host ปลุก)
+    if (p.left || (p.away && s.players.some((x) => active(x)))) {
+      s.turn = (s.turn + 1) % s.players.length;
+      continue;
+    }
     if (p.skip <= 0) break;
     p.skip--;
     log(s, `${p.name} ${p.fast ? "พักรักษาตัว" : "ตกงาน"} หยุด 1 ตา`, p.id);
@@ -533,12 +556,12 @@ function checkWinner(s: GameState) {
   const n = s.players.length;
   for (let i = 0; i < n; i++) {
     const p = s.players[(s.turn + i) % n];
-    if (!p.fast && isFree(p)) enterFast(s, p);
+    if (!p.fast && !p.left && isFree(p)) enterFast(s, p);
   }
   for (let i = 0; i < n; i++) {
     const p = s.players[(s.turn + i) % n];
     const f = p.fast;
-    if (f && (f.dreamBought || f.income >= f.goal)) {
+    if (f && !p.left && (f.dreamBought || f.income >= f.goal)) {
       s.phase = "over";
       s.winner = p.id;
       s.endedBy = "win";
@@ -922,6 +945,64 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
     return s;
   }
 
+  if (action.type === "claim") {
+    const p = s.players.find((x) => x.transfer && x.transfer === action.code);
+    if (!p || p.left) throw new GameError("รหัสย้ายเครื่องไม่ถูกต้อง หรือใช้ไปแล้ว");
+    p.token = action.token;
+    p.transfer = undefined;
+    log(s, `${p.name} ย้ายมาเล่นบนเครื่องใหม่`, p.id);
+    return s;
+  }
+
+  if (action.type === "transfer") {
+    if (!actor.host) throw new GameError("host เท่านั้นที่ย้ายเครื่องให้ผู้เล่นได้");
+    const p = findPlayer(s, action.player);
+    if (p.left) throw new GameError("ผู้เล่นคนนี้ออกจากเกมแล้ว");
+    p.transfer = action.code;
+    return s;
+  }
+
+  if (action.type === "setAway" || action.type === "leave") {
+    const p = findPlayer(s, action.player);
+    const self = actor.playerId === p.id;
+    if (!actor.host && !(self && action.type === "setAway")) throw new GameError("host เท่านั้นที่ทำได้");
+    if (p.left) throw new GameError("ผู้เล่นคนนี้ออกจากเกมแล้ว");
+    if (action.type === "setAway" && !action.away) {
+      p.away = false;
+      log(s, `${p.name} กลับมาเล่นแล้ว`, p.id);
+      return s;
+    }
+    if (action.type === "setAway") {
+      p.away = true;
+      log(s, `⏸ ${p.name} พักชั่วคราว (ถึงตาจะข้ามให้)`, p.id);
+    } else {
+      p.left = true;
+      p.away = false;
+      p.transfer = undefined;
+      log(s, `🚪 ${p.name} ออกจากเกม`, p.id);
+    }
+    // การ์ดที่รอคนนี้ตอบอยู่ ถือว่าไม่ทำอะไร
+    if (s.step === "respond" && s.responders[p.id] === false && current(s).id !== p.id) {
+      s.responders[p.id] = true;
+      finishCard(s);
+    }
+    // กำลังเป็นตาของคนนี้ → ไปคนถัดไป
+    if (current(s).id === p.id) {
+      collectPayday(s, p);
+      s.autoEnd = false;
+      nextTurn(s);
+    }
+    // เหลือผู้เล่นไม่ถึง 2 คน → จบเกม
+    if (s.players.filter((x) => !x.left).length < 2) {
+      s.phase = "over";
+      s.winner = null;
+      s.endedBy = "host";
+      s.endedAt = ctx.now;
+      log(s, "เหลือผู้เล่นไม่ถึง 2 คน จบเกม ดูสรุปผลการเล่นได้เลย");
+    }
+    return s;
+  }
+
   if (action.type === "skipTurn") {
     if (!actor.host) throw new GameError("host เท่านั้นที่ข้ามตาได้");
     log(s, `host ข้ามตาของ ${current(s).name}`, current(s).id);
@@ -1094,7 +1175,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
 }
 
 /** ส่งให้มือถือ/จอ host - ตัดความลับออก */
-export type PublicPlayer = Omit<Player, "token">;
+export type PublicPlayer = Omit<Player, "token" | "transfer">;
 export type PublicState = Omit<GameState, "players" | "decks" | "events"> & {
   players: PublicPlayer[];
   /** เหลือการ์ดในกองกี่ใบ (ไม่ส่งลำดับการ์ดออกไป) */
@@ -1107,7 +1188,7 @@ export function publicState(s: GameState): PublicState {
   return {
     ...rest,
     deckLeft: { small: decks.small.length, big: decks.big.length, doodad: decks.doodad.length, market: decks.market.length },
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ตัด token ออก
-    players: players.map(({ token, ...p }) => p),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ตัด token และรหัสย้ายเครื่องออก
+    players: players.map(({ token, transfer, ...p }) => p),
   };
 }

@@ -17,6 +17,8 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
   const state = data?.state;
   /** เพิ่งเล่าคำอธิบายจบ: กลับมาหน้า QR ให้คนมาทีหลังสแกนเข้าก่อนเริ่มเกม */
   const [introDone, setIntroDone] = useState(false);
+  /** ผู้เล่นที่ host แตะเพื่อจัดการ (พัก/ย้ายเครื่อง/ออก) */
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   if (!state) return <p className="p-8 text-center text-stone-500">กำลังโหลด…</p>;
 
@@ -255,10 +257,25 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
         )}
         {/* เรียงจากคนที่ใกล้เป้าหมายที่สุด (คนบนทางด่วนอยู่บนสุด) */}
         {!data?.report && [...state.players]
-          .sort((a, b) => progress(b) - progress(a))
+          .sort((a, b) => Number(!!a.left) - Number(!!b.left) || progress(b) - progress(a))
           .map((p) => (
-            <PlayerCard key={p.id} p={p} active={p.id === turnPlayer.id && state.phase === "playing"} />
+            <PlayerCard
+              key={p.id}
+              p={p}
+              active={p.id === turnPlayer.id && state.phase === "playing"}
+              onClick={state.phase === "playing" && !p.left ? () => setMenuFor(p.id) : undefined}
+            />
           ))}
+        {state.phase === "playing" && <p className="text-center text-xs text-stone-400">แตะชื่อผู้เล่นเพื่อ พัก / ย้ายเครื่อง / ออกจากเกม</p>}
+        {menuFor && state.phase === "playing" && (
+          <PlayerMenu
+            p={state.players.find((x) => x.id === menuFor)!}
+            code={code}
+            busy={busy}
+            send={send}
+            onClose={() => setMenuFor(null)}
+          />
+        )}
         {error && <p className="text-sm text-rose-700">{error}</p>}
         <Log state={state} />
       </aside>
@@ -271,7 +288,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
 function TopBar({ state, code, now, busy, send }: { state: PublicState; code: string; now: number; busy: boolean; send: Send }) {
   const clock = gameClock(state, now);
   const turnPlayer = state.players[state.turn];
-  const leader = [...state.players].sort((a, b) => progress(b) - progress(a))[0];
+  const leader = state.players.filter((p) => !p.left).sort((a, b) => progress(b) - progress(a))[0];
   const fastCount = state.players.filter((p) => p.fast).length;
   const pct = clock.limit ? Math.min(100, (clock.elapsed / clock.limit) * 100) : 0;
   const low = clock.remaining !== null && clock.remaining <= 5 * 60_000;
@@ -368,15 +385,24 @@ function TopBar({ state, code, now, busy, send }: { state: PublicState; code: st
 const progress = goalProgress;
 
 /** การ์ดผู้เล่นบนจอ host: เท่าที่จำเป็น — ชื่อ, ความคืบหน้าสู่เป้าหมาย (%) */
-function PlayerCard({ p, active }: { p: PublicPlayer; active: boolean }) {
+function PlayerCard({ p, active, onClick }: { p: PublicPlayer; active: boolean; onClick?: () => void }) {
   const ring = active ? { boxShadow: `0 0 0 3px ${colorHex(p.color)}` } : undefined;
   const fast = !!p.fast;
   const pct = fast ? progress(p) - 100 : progress(p);
   return (
-    <div className={`card space-y-1.5 px-3 py-2 ${fast ? "bg-indigo-950 text-indigo-50 ring-indigo-900" : ""}`} style={ring}>
+    <div
+      className={`card space-y-1.5 px-3 py-2 ${fast ? "bg-indigo-950 text-indigo-50 ring-indigo-900" : ""} ${p.away || p.left ? "opacity-60" : ""} ${onClick ? "cursor-pointer hover:ring-stone-300" : ""}`}
+      style={ring}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
+    >
       <div className="flex items-center justify-between gap-2">
         <PlayerTag p={p} />
         <span className="shrink-0 text-sm">
+          {p.away && <span className="mr-2 opacity-80">⏸ พักอยู่</span>}
+          {p.left && <span className="mr-2 opacity-80">🚪 ออกแล้ว</span>}
           {p.skip > 0 && <span className="mr-2 opacity-70">หยุด {p.skip} ตา</span>}
           {fast && "🚀 "}
           <b className="text-lg">{Math.floor(pct)}%</b>
@@ -384,6 +410,67 @@ function PlayerCard({ p, active }: { p: PublicPlayer; active: boolean }) {
       </div>
       <div className={`h-2.5 overflow-hidden rounded-full ${fast ? "bg-indigo-800" : "bg-stone-200"}`}>
         <div className={`h-full rounded-full transition-all ${fast ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/** เมนูจัดการผู้เล่น (host): พักชั่วคราว · ย้ายเครื่อง · ออกจากเกม */
+function PlayerMenu({ p, code, busy, send, onClose }: { p: PublicPlayer; code: string; busy: boolean; send: Send; onClose: () => void }) {
+  const [qr, setQr] = useState<{ url: string; svg: string } | null>(null);
+
+  async function moveDevice() {
+    const res = await send({ type: "transfer", player: p.id });
+    if (!res || !res.transferCode) return;
+    const url = `${window.location.origin}/cashflow/${code}?t=${res.transferCode}`;
+    const QRCode = (await import("qrcode")).default;
+    setQr({ url, svg: await QRCode.toString(url, { type: "svg", margin: 1, errorCorrectionLevel: "M" }) });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="card w-full max-w-sm space-y-3 p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <PlayerTag p={p} />
+          <button className="btn-ghost min-h-8 px-2" onClick={onClose} aria-label="ปิด">
+            ✕
+          </button>
+        </div>
+        {qr ? (
+          <div className="space-y-2 text-center">
+            <p className="font-semibold">📱 สแกนด้วยเครื่องใหม่</p>
+            <div className="mx-auto w-56 rounded-2xl bg-white p-2 ring-1 ring-stone-200" dangerouslySetInnerHTML={{ __html: qr.svg }} />
+            <p className="text-sm text-stone-500">เครื่องใหม่จะได้หนู เงิน และทรัพย์สินเดิมของ {p.name} · เครื่องเดิมจะใช้ไม่ได้อีก · QR นี้ใช้ได้ครั้งเดียว</p>
+            <button className="btn-secondary w-full" onClick={onClose}>
+              เสร็จแล้ว
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            <button
+              className="btn-secondary w-full justify-start"
+              disabled={busy}
+              onClick={async () => {
+                if (await send({ type: "setAway", player: p.id, away: !p.away })) onClose();
+              }}
+            >
+              {p.away ? "▶ กลับมาเล่น" : "⏸ พักชั่วคราว (ถึงตาจะข้ามให้)"}
+            </button>
+            <button className="btn-secondary w-full justify-start" disabled={busy} onClick={moveDevice}>
+              📱 ย้ายเครื่อง (แบตหมด / ให้คนอื่นเล่นแทน)
+            </button>
+            <button
+              className="btn w-full justify-start border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100"
+              disabled={busy}
+              onClick={async () => {
+                if (!window.confirm(`ให้ ${p.name} ออกจากเกม?\n\nเอาออกจากลำดับการเล่นถาวร กลับมาเล่นต่อไม่ได้`)) return;
+                if (await send({ type: "leave", player: p.id })) onClose();
+              }}
+            >
+              🚪 ออกจากเกม (ไม่กลับมาแล้ว)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
