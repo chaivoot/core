@@ -115,6 +115,8 @@ export type GameState = {
   deckVersion?: string;
   /** หน้าคำอธิบายก่อนเริ่มเกมที่ host เปิดอยู่ (null = ไม่ได้เปิด) มือถือแสดงหน้าเดียวกัน */
   intro?: number | null;
+  /** คนที่ถึงตาไม่ซื้อการ์ดใบนี้ → พอทุกคนตอบครบ จบตาให้อัตโนมัติ */
+  autoEnd?: boolean;
   /** ดีลใบนี้คนเปิดไม่ซื้อ และเปิดให้คนอื่นซื้อต่อ (ใครกดก่อนได้ก่อน) */
   resale?: boolean;
   /** ค่านายหน้าที่คนเปิดการ์ดประกาศขายสิทธิ์ (บาท) */
@@ -388,6 +390,7 @@ function startTurn(s: GameState) {
   s.resale = false;
   s.rightFee = undefined;
   s.rightPct = undefined;
+  s.autoEnd = false;
   const p = current(s);
   if (p.fast && p.fast.dream < 0) s.step = "dream";
 }
@@ -396,7 +399,15 @@ function finishCard(s: GameState) {
   if (s.step === "respond" && Object.values(s.responders).every(Boolean)) {
     s.step = "end";
     s.deadline = null;
+    if (s.autoEnd) nextTurn(s);
   }
+}
+
+/** จบตาคนปัจจุบัน (เงินเดือนที่ไม่ได้กดรับ = อด) แล้วไปคนถัดไป */
+function nextTurn(s: GameState) {
+  forfeitPayday(s, current(s));
+  s.turn = (s.turn + 1) % s.players.length;
+  startTurn(s);
 }
 
 /** ขึ้นทางด่วน: เงินสดเดิม + รายได้ต่อรอบแรก */
@@ -442,8 +453,8 @@ function checkWinner(s: GameState) {
 function landFast(s: GameState, p: Player, f: FastState) {
   const sq = FAST_BOARD[f.pos];
   if (sq.type === "payday") {
-    s.card = { deck: "fastPay" };
-    s.step = "end";
+    // รายได้เข้าอัตโนมัติไปแล้วตอนเดินผ่าน ไม่มีอะไรต้องตัดสินใจ จบตาเลย
+    nextTurn(s);
   } else if (sq.type === "biz") {
     const b = FAST_BUSINESSES[sq.index];
     s.card = { deck: "fastBiz", index: sq.index };
@@ -611,6 +622,7 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
       }
     } else {
       log(s, `${p.name} ไม่ซื้อ`, p.id);
+      s.autoEnd = true;
     }
     s.responders[p.id] = true;
     finishCard(s);
@@ -632,6 +644,7 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
       // ขายก่อน แล้วค่อยซื้อ (เผื่ออยากเอาเงินจากการขายมาซื้อ)
       if (a.sell) sellStock(s, p, d.stock, a.sell, d.price);
       const qty = typeof a.buy === "number" ? a.buy : 0;
+      if (opener && qty === 0) s.autoEnd = true;
       if (qty > 0) {
         if (!opener) throw new GameError("คนเปิดการ์ดเท่านั้นที่ซื้อได้");
         const lot = lotOf(d.stock);
@@ -676,6 +689,7 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
       }
     } else if (d.type === "asset") {
       log(s, `${p.name} ไม่${s.resale ? "รับสิทธิ์" : "ซื้อ"}${d.name}`, p.id);
+      if (opener) s.autoEnd = true;
     }
   }
   s.responders[p.id] = true;
@@ -754,9 +768,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
   if (action.type === "skipTurn") {
     if (!actor.host) throw new GameError("host เท่านั้นที่ข้ามตาได้");
     log(s, `host ข้ามตาของ ${current(s).name}`, current(s).id);
-    forfeitPayday(s, current(s));
-    s.turn = (s.turn + 1) % s.players.length;
-    startTurn(s);
+    nextTurn(s);
     return s;
   }
 
@@ -888,6 +900,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       const others = ratRace(s).filter((x) => x.id !== p.id).map((x) => x.id);
       if (others.length === 0) throw new GameError("ไม่มีผู้เล่นคนอื่นรับสิทธิ์ได้");
       s.resale = true;
+      s.autoEnd = true;
       s.rightPct = pct;
       s.rightFee = Math.round((d.down * pct) / 100);
       log(s, `${p.name} ขายสิทธิ์${d.name} ค่านายหน้า ${pct}% = ${money(s.rightFee)} (ใครกดรับก่อนได้ก่อน)`, p.id);
@@ -900,9 +913,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       break;
     case "endTurn":
       if (!myTurn || s.step !== "end") throw new GameError("ยังจบตาไม่ได้");
-      forfeitPayday(s, p);
-      s.turn = (s.turn + 1) % s.players.length;
-      startTurn(s);
+      nextTurn(s);
       break;
   }
 

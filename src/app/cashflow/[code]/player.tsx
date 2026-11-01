@@ -314,7 +314,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
         </p>
       )}
 
-      {myTurn && state.step === "end" && (me.payday ?? 0) > 0 && !me.fast && monthlyCashflow(me) >= 0 && (
+      {myTurn && (state.step === "end" || mustRespond) && (me.payday ?? 0) > 0 && !me.fast && monthlyCashflow(me) >= 0 && (
         <p className="text-center text-sm font-medium text-rose-600">ยังไม่ได้กดรับเงินเดือน ถ้าจบตาตอนนี้จะอดเงินเดือน</p>
       )}
       {myTurn && state.step === "end" && (
@@ -361,7 +361,7 @@ function Respond({
             {card.deck === "dream" ? "ซื้อความฝัน" : "ซื้อ"} ({money(cost)})
           </button>
           <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "respond", buy: false })}>
-            ไม่ซื้อ
+            ไม่ซื้อ (จบตา)
           </button>
         </div>
       </div>
@@ -411,7 +411,7 @@ function Respond({
             ยืนยัน
           </button>
           <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "respond" })}>
-            {canBuy ? "ไม่ซื้อ" : "ไม่ขาย"}
+            {canBuy ? "ไม่ซื้อ (จบตา)" : "ไม่ขาย"}
           </button>
         </div>
       </div>
@@ -493,7 +493,7 @@ function Respond({
           {state.resale ? `รับสิทธิ์ (${money(total)})` : `ซื้อ (${money(d.down)})`}
         </button>
         <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "respond", buy: false })}>
-          {state.resale ? "ไม่รับ" : "ไม่ซื้อ (จบ)"}
+          {state.resale ? "ไม่รับ" : "ไม่ซื้อ (จบตา)"}
         </button>
       </div>
       {state.resale && fee > 0 && (
