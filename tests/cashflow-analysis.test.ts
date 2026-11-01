@@ -221,3 +221,36 @@ describe("ผู้เล่นมีธุระด่วน", () => {
     expect(() => act(s, {}, { type: "claim", code: "secret-code-1", token: "again" }, ctx())).toThrow("รหัสย้ายเครื่อง");
   });
 });
+
+describe("ลงงบหลังซื้อขาย", () => {
+  const opp = () => {
+    const s = started();
+    s.players[0].pos = 1;
+    return run(s, { type: "roll" }, me(s), [die(1)]);
+  };
+
+  it("ซื้อหุ้นสองครั้ง: ต้นทุนเฉลี่ย", () => {
+    let s = opp();
+    s.players[0].cash = 1_000_000;
+    s.players[0].stocks.pharma = { qty: 10, cost: 3_000 }; // เดิม 10 หุ้น @300
+    s.decks.small = [SMALL_DEALS.findIndex((d) => d.type === "stock" && d.stock === "pharma" && d.price === 600)];
+    s = run(s, { type: "deal", size: "small" });
+    s = run(s, { type: "respond", buy: 10 });
+    expect(s.players[0].entry).toMatchObject({ kind: "buyStock", cash: -6_000, qty: 10, price: 600, holdQty: 20, avgCost: 450 });
+  });
+
+  it("ซื้อทรัพย์สิน: ดาวน์ + จำนอง = ราคาเต็ม", () => {
+    let s = opp();
+    s.players[0].cash = 1_000_000;
+    const i = SMALL_DEALS.findIndex((d) => d.type === "asset" && d.mortgage > 0);
+    const d = SMALL_DEALS[i] as Extract<(typeof SMALL_DEALS)[number], { type: "asset" }>;
+    s.decks.small = [i];
+    s = run(s, { type: "deal", size: "small" });
+    s = run(s, { type: "respond", buy: true });
+    const e = s.players[0].entry!;
+    expect(e.kind).toBe("buyAsset");
+    expect(e.cash).toBe(-d.down);
+    expect(e.down! + e.mortgage!).toBe(e.full);
+    expect(e.cashflow).toBe(d.cashflow);
+  });
+});

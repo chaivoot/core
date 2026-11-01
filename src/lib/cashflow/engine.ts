@@ -77,6 +77,35 @@ export type Player = {
   left?: boolean;
   /** รหัสย้ายเครื่อง (ความลับ ใช้ครั้งเดียว) */
   transfer?: string;
+  /** รายการลงงบล่าสุด (ซื้อ/ขาย) ให้มือถืออธิบายว่าเงินไปไหน */
+  entry?: JournalEntry;
+};
+
+/** การลงงบหนึ่งรายการ: เงินสดเปลี่ยนเท่าไหร่ ได้อะไรมา/เสียอะไรไป */
+export type JournalEntry = {
+  seq: number;
+  kind: "buyStock" | "sellStock" | "buyAsset" | "sellAsset";
+  name: string;
+  /** เงินสดเปลี่ยน (+ เข้า / − ออก) */
+  cash: number;
+  // หุ้น/ทอง
+  stock?: StockKind;
+  qty?: number;
+  price?: number;
+  /** ถือรวมหลังรายการนี้ และต้นทุนเฉลี่ยต่อหน่วย */
+  holdQty?: number;
+  avgCost?: number;
+  /** ขาย: ต้นทุนของส่วนที่ขาย */
+  soldCost?: number;
+  // ทรัพย์สิน
+  full?: number;
+  down?: number;
+  mortgage?: number;
+  cashflow?: number;
+  /** ค่านายหน้าที่จ่ายเพิ่ม (รับสิทธิ์ต่อ) */
+  fee?: number;
+  /** ขาย: ราคาขายรวม */
+  gross?: number;
 };
 
 export type FastState = {
@@ -721,6 +750,7 @@ function sellAsset(s: GameState, p: Player, a: Asset, unitPrice: number, perUnit
   p.assets = p.assets.filter((x) => x.uid !== a.uid);
   p.cash += got;
   ev(s, p, "sellAsset", { v: got, pr: got - a.down, cf: a.cashflow, x: a.name });
+  p.entry = { seq: ++s.seq, kind: "sellAsset", name: a.name, cash: got, gross, mortgage: a.mortgage, down: a.down, cashflow: a.cashflow };
   log(s, `${p.name} ขาย${a.name} ${money(gross)} หักจำนอง ได้เงินสด ${money(got)}`, p.id);
 }
 
@@ -729,6 +759,19 @@ function sellStock(s: GameState, p: Player, stock: StockKind, qty: number, price
   if (!h || qty <= 0) return;
   if (qty > h.qty) throw new GameError("มีหุ้นไม่พอขาย");
   const soldCost = h.cost - Math.round((h.cost * (h.qty - qty)) / h.qty);
+  const leftQty = h.qty - qty;
+  p.entry = {
+    seq: ++s.seq,
+    kind: "sellStock",
+    name: STOCK_LABEL[stock],
+    cash: qty * price,
+    stock,
+    qty,
+    price,
+    soldCost,
+    holdQty: leftQty,
+    avgCost: leftQty > 0 ? (h.cost - soldCost) / leftQty : 0,
+  };
   ev(s, p, "sellStock", { v: qty * price, pr: qty * price - soldCost, x: STOCK_LABEL[stock] });
   h.cost = Math.round((h.cost * (h.qty - qty)) / h.qty);
   h.qty -= qty;
@@ -800,6 +843,17 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
         h.qty += qty;
         h.cost += cost;
         ev(s, p, "buyStock", { v: cost, x: dealLabel(d) });
+        p.entry = {
+          seq: ++s.seq,
+          kind: "buyStock",
+          name: STOCK_LABEL[d.stock],
+          cash: -cost,
+          stock: d.stock,
+          qty,
+          price: d.price,
+          holdQty: h.qty,
+          avgCost: h.cost / h.qty,
+        };
         log(s, `${p.name} ซื้อ${STOCK_LABEL[d.stock]} ${qty.toLocaleString("th-TH")} ${unitOf(d.stock)} ที่ ${money(d.price)} (${money(cost)})`, p.id);
       }
     } else if (d.type === "asset" && a.buy) {
@@ -828,6 +882,17 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
       });
       log(s, `${p.name} ซื้อ${d.name} จ่าย ${money(d.down)} ได้กระแสเงินสด ${money(d.cashflow)}/เดือน`, p.id);
       ev(s, p, s.resale ? "rightBuy" : "buyAsset", { v: d.down, cf: d.cashflow, pr: fee || undefined, x: dealLabel(d) });
+      p.entry = {
+        seq: ++s.seq,
+        kind: "buyAsset",
+        name: d.name,
+        cash: -(d.down + fee),
+        full: d.price * (d.units ?? 1),
+        down: d.down,
+        mortgage: d.mortgage,
+        cashflow: d.cashflow,
+        fee: fee || undefined,
+      };
       if (s.resale) {
         // มีคนซื้อต่อแล้ว คนอื่นไม่ต้องตอบ
         for (const id of Object.keys(s.responders)) s.responders[id] = true;
