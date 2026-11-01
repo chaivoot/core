@@ -34,7 +34,7 @@ import {
   type PublicPlayer,
   type PublicState,
 } from "@/lib/cashflow/engine";
-import { CardView, Dice, PlayerTag, Rat, cardKey, useNow, useRoom } from "./game-ui";
+import { CardView, Dice, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom } from "./game-ui";
 import { GameBoard } from "./board";
 import { GameSummaryHeader, PlayerReportCard } from "./report";
 import { IntroSlide } from "./intro";
@@ -85,7 +85,7 @@ export function PlayerScreen({ code }: { code: string }) {
         </>
       ) : (
         <>
-          <Header me={me} />
+          <Header me={me} state={state} />
           <BoardToggle state={state} />
           <ActionPanel state={state} me={me} busy={busy} send={send} />
           {/* จบเกม: สรุปผลการเล่นของตัวเอง */}
@@ -179,7 +179,9 @@ function JoinForm({ state, busy, send }: { state: PublicState; busy: boolean; se
   );
 }
 
-function Header({ me }: { me: PublicPlayer }) {
+function Header({ me, state }: { me: PublicPlayer; state: PublicState }) {
+  const now = useNow();
+  const clock = gameClock(state, now);
   return (
     <div className="card flex items-center gap-3">
       <Rat color={me.color} className="w-16 shrink-0" />
@@ -192,6 +194,11 @@ function Header({ me }: { me: PublicPlayer }) {
       <div className="text-right">
         <p className="text-xs text-stone-500">เงินสด</p>
         <p className="text-xl font-bold">{money(me.cash)}</p>
+        {state.phase === "playing" && clock.remaining !== null && (
+          <p className={`font-mono text-xs tabular-nums ${clock.up ? "text-rose-600" : "text-stone-500"}`}>
+            ⏱ {clock.up ? "หมดเวลา จบเมื่อจบตานี้" : `เหลือ ${fmtClock(clock.remaining)}`}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -207,7 +214,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
     return (
       <div className="card space-y-2 text-center">
         {w && <Rat color={w.color} className="mx-auto w-24" />}
-        <p className="text-xl font-bold">{!w ? "host จบเกมแล้ว" : w.id === me.id ? "คุณชนะเกม! 🏆" : `${w.name} ชนะเกม`}</p>
+        <p className="text-xl font-bold">{!w ? (state.endedBy === "time" ? "⏰ หมดเวลา เกมจบแล้ว" : "host จบเกมแล้ว") : w.id === me.id ? "คุณชนะเกม! 🏆" : `${w.name} ชนะเกม`}</p>
         <p className="text-sm text-stone-500">เกมจบ</p>
       </div>
     );

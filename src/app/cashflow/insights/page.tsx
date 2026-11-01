@@ -58,7 +58,10 @@ export default async function InsightsPage() {
   const kpis: [string, string][] = [
     ["เกมทั้งหมด", num(reports.length)],
     ["จบแบบมีคนชนะ", `${reports.filter((r) => r.endedBy === "win").length}`],
-    ["host กดจบ / หมดอายุ", `${reports.filter((r) => r.endedBy === "host").length} / ${reports.filter((r) => r.endedBy === "expired").length}`],
+    [
+      "หมดเวลา / host กดจบ / ห้องหมดอายุ",
+      `${reports.filter((r) => r.endedBy === "time").length} / ${reports.filter((r) => r.endedBy === "host").length} / ${reports.filter((r) => r.endedBy === "expired").length}`,
+    ],
     ["ผู้เล่นทั้งหมด", num(players.length)],
     ["เวลาเฉลี่ยต่อเกม", `${num(avg(reports.flatMap((r) => (r.minutes === null ? [] : [r.minutes]))))} นาที`],
     ["ออกจากสนามแข่งหนูได้", `${escaped.length} คน (${pct(escaped.length, players.length)})`],
@@ -198,7 +201,7 @@ export default async function InsightsPage() {
                       {" "}
                       · ห้อง {g.roomCode} · {r.players.length} คน · ทอย {r.rolls} ครั้ง
                       {r.minutes !== null && ` · ${r.minutes} นาที`} ·{" "}
-                      {r.endedBy === "win" ? `🏆 ${r.winner}` : r.endedBy === "host" ? "host จบเกม" : "หมดอายุ"}
+                      {r.endedBy === "win" ? `🏆 ${r.winner}` : r.endedBy === "time" ? "⏰ หมดเวลา" : r.endedBy === "host" ? "host จบเกม" : "หมดอายุ"}
                     </span>
                   </summary>
                   <div className="mt-3 grid gap-3 md:grid-cols-2">

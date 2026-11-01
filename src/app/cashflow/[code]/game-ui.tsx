@@ -112,6 +112,24 @@ export function useRoom(code: string) {
 }
 
 /** นาฬิกาสำหรับนับถอยหลัง (อัปเดตทุกวินาที) */
+/** เวลาเกม: เล่นมาเท่าไหร่ เหลือเท่าไหร่ (ถ้าตั้งเวลาเล่นไว้) */
+export function gameClock(state: PublicState, now: number) {
+  const limit = (state.options?.minutes ?? 0) * 60_000;
+  const start = state.startedAt ?? now;
+  const end = state.phase === "over" ? (state.endedAt ?? now) : now;
+  const elapsed = Math.max(0, end - start);
+  return { elapsed, limit, remaining: limit ? Math.max(0, limit - elapsed) : null, up: limit > 0 && elapsed >= limit };
+}
+
+/** 1:05:09 / 42:15 */
+export function fmtClock(ms: number) {
+  const t = Math.floor(ms / 1000);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = String(t % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}
+
 export function useNow() {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
