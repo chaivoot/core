@@ -675,7 +675,9 @@ function land(s: GameState, p: Player, ctx: Ctx) {
       ev(s, p, "downsize", { v: totalExpenses(p) });
       charge(s, p, totalExpenses(p));
       p.skip = 2;
-      s.step = "end";
+      // ตกงาน = จบตาเลย (ไม่มีโอกาสกดรับเงินเดือนที่ผ่านมา จึงให้อัตโนมัติก่อน ไม่ถือว่าอด)
+      collectPayday(s, p);
+      nextTurn(s);
       return;
   }
 }

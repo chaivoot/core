@@ -9,7 +9,7 @@ export const STYLES: Record<StyleKey, { label: string; icon: string; desc: strin
   builder: { label: "นักสร้างกระแสเงินสด", icon: "🏘️", desc: "เน้นซื้อทรัพย์สินที่ให้เงินเข้าทุกเดือน" },
   trader: { label: "นักเก็งกำไร", icon: "📈", desc: "เน้นหุ้น/ทอง หาเงินก้อนจากส่วนต่างราคา" },
   balanced: { label: "สายผสม", icon: "⚖️", desc: "มีทั้งทรัพย์สินสร้างรายได้และเก็งกำไร" },
-  cautious: { label: "ระวังมาก", icon: "🛡️", desc: "มีเงินพอแต่ปล่อยโอกาสบ่อย" },
+  cautious: { label: "มีความระมัดระวัง", icon: "🛡️", desc: "คิดรอบคอบก่อนลงทุน บางครั้งปล่อยโอกาสที่มีเงินพอซื้อ" },
   watcher: { label: "ผู้เฝ้าดู", icon: "👀", desc: "ยังไม่ได้ลงทุนเลย" },
 };
 

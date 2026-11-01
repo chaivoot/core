@@ -142,3 +142,16 @@ describe("ทำบุญ", () => {
     expect(s.step).toBe("end");
   });
 });
+
+describe("ตกงาน", () => {
+  it("ตกงาน: จ่ายค่าใช้จ่าย 1 เดือน หยุด 2 ตา แล้วจบตาเลย", () => {
+    let s = started();
+    s.players[0].cash = 1_000_000;
+    s.players[0].pos = BOARD.indexOf("downsize") - 1;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    expect(s.players[0].skip).toBe(2);
+    expect(s.players[0].cash).toBeLessThan(1_000_000);
+    expect(s.turn).toBe(1);
+    expect(s.step).toBe("roll");
+  });
+});
