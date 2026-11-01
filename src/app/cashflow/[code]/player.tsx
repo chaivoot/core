@@ -23,6 +23,7 @@ import {
   debtAmount,
   expenseLines,
   canSellRight,
+  goalProgress,
   loanRoom,
   logText,
   logWho,
@@ -34,7 +35,8 @@ import {
   type PublicPlayer,
   type PublicState,
 } from "@/lib/cashflow/engine";
-import { CardView, Dice, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom } from "./game-ui";
+import { adviceFor } from "@/lib/cashflow/analysis";
+import { CardView, Dice, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom, type RoomData } from "./game-ui";
 import { GameBoard } from "./board";
 import { GameSummaryHeader, PlayerReportCard } from "./report";
 import { IntroSlide } from "./intro";
@@ -50,7 +52,7 @@ export function PlayerScreen({ code }: { code: string }) {
   const me = state.players.find((p) => p.id === data.me);
 
   return (
-    <main className="mx-auto max-w-md space-y-4 p-4 pb-16">
+    <main className="mx-auto max-w-md space-y-4 p-4 pb-28">
       {data.stale && (
         <p className="rounded-xl bg-amber-100 p-3 text-sm font-medium text-amber-900">
           เกมมีการอัปเดตการ์ดระหว่างเล่น ห้องนี้เล่นต่อไม่ได้ รอ host สร้างห้องใหม่แล้วสแกน QR อีกครั้ง
@@ -84,51 +86,159 @@ export function PlayerScreen({ code }: { code: string }) {
           )}
         </>
       ) : (
+        <GameTabs data={data} me={me} busy={busy} send={send} />
+      )}
+    </main>
+  );
+}
+
+type Tab = "me" | "board" | "analysis";
+
+const TABS: { id: Tab; icon: string; label: string }[] = [
+  { id: "me", icon: "🐭", label: "ของฉัน" },
+  { id: "board", icon: "🗺️", label: "กระดาน" },
+  { id: "analysis", icon: "💡", label: "วิเคราะห์" },
+];
+
+/**
+ * เมนูด้านล่างแบบแอปมือถือ: ของฉัน · กระดาน + เพื่อน ๆ · วิเคราะห์
+ * ถึงตาเรา/ต้องตอบการ์ด → เด้งกลับแท็บ "ของฉัน" ให้เอง (ครั้งเดียวต่อเรื่อง กดไปแท็บอื่นต่อได้)
+ */
+function GameTabs({ data, me, busy, send }: { data: RoomData; me: PublicPlayer; busy: boolean; send: Send }) {
+  const { state } = data;
+  const myTurn = state.phase === "playing" && state.players[state.turn]?.id === me.id;
+  const mustRespond = state.step === "respond" && state.responders[me.id] === false;
+  const needsMe = state.phase === "playing" && (mustRespond || (myTurn && state.step !== "respond"));
+  // เรื่องที่ต้องทำตอนนี้ (เปลี่ยนเมื่อขึ้นตาใหม่/ขั้นใหม่/การ์ดใหม่)
+  const sig = needsMe ? `${state.turnSeq ?? 0}:${state.step}:${state.card ? cardKey(state) : ""}` : "";
+  const [choice, setChoice] = useState<{ tab: Tab; sig: string }>({ tab: "me", sig: "" });
+  const tab: Tab = needsMe && choice.sig !== sig ? "me" : choice.tab;
+  const myReport = data.report?.players.find((r) => r.id === me.id);
+
+  return (
+    <>
+      <Header me={me} state={state} />
+      {tab === "me" && (
         <>
-          <Header me={me} state={state} />
-          <BoardToggle state={state} />
           <ActionPanel state={state} me={me} busy={busy} send={send} />
-          {/* จบเกม: สรุปผลการเล่นของตัวเอง */}
-          {data.report?.players.find((r) => r.id === me.id) && (
+          {myReport && data.report && (
             <>
               <GameSummaryHeader report={data.report} />
-              <PlayerReportCard r={data.report.players.find((r) => r.id === me.id)!} />
+              <PlayerReportCard r={myReport} />
             </>
           )}
           <MyLog state={state} me={me} />
           {me.fast ? <FastSheet me={me} /> : <Statement me={me} busy={busy} send={send} />}
         </>
       )}
-    </main>
+      {tab === "board" && <BoardTab state={state} me={me} />}
+      {tab === "analysis" && <AnalysisTab data={data} me={me} />}
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+        <div className="mx-auto grid max-w-md grid-cols-3">
+          {TABS.map((t) => {
+            const on = tab === t.id;
+            const alert = t.id === "me" && needsMe && !on;
+            return (
+              <button
+                key={t.id}
+                className={`relative flex flex-col items-center gap-0.5 py-2 text-sm ${on ? "font-bold text-teal-700" : "text-stone-500"}`}
+                aria-current={on ? "page" : undefined}
+                onClick={() => setChoice({ tab: t.id, sig })}
+              >
+                <span className="text-2xl leading-none">{t.icon}</span>
+                {alert ? <span className="font-bold text-rose-600">ถึงตาคุณ!</span> : t.label}
+                {alert && <span className="absolute top-1.5 right-[30%] size-2.5 animate-ping rounded-full bg-rose-500" />}
+                {on && <span className="absolute inset-x-6 top-0 h-0.5 rounded-full bg-teal-600" />}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 }
 
-/** ดูกระดานบนมือถือ (ปิดไว้ก่อน กดเปิด/ปิดเอง) */
-function BoardToggle({ state }: { state: PublicState }) {
-  const [open, setOpen] = useState(false);
+/** แท็บกระดาน: กระดานกลาง + ความคืบหน้าของทุกคน */
+function BoardTab({ state, me }: { state: PublicState; me: PublicPlayer }) {
   const turn = state.players[state.turn];
+  const ranked = [...state.players].sort((a, b) => goalProgress(b) - goalProgress(a));
   return (
-    <div className="space-y-2">
-      <button className="btn-secondary w-full" onClick={() => setOpen((x) => !x)} aria-expanded={open}>
-        {open ? "ซ่อนกระดาน" : "🗺️ ดูกระดาน"}
-      </button>
-      {open && (
-        <GameBoard state={state} className="w-full">
-          <div className="absolute inset-[26.6%] flex flex-col items-center justify-center gap-[1cqw] rounded-full bg-white text-center ring-1 ring-stone-200">
-            {turn && (
-              <>
-                <Rat color={turn.color} className="w-[12cqw]" />
-                <p className="text-[4cqw] leading-tight font-bold" style={{ color: colorHex(turn.color) }}>
-                  {turn.name}
-                </p>
-                <p className="text-[3cqw] text-stone-500">กำลังเล่น</p>
-              </>
-            )}
-            {state.dice && <Dice dice={state.dice} />}
-          </div>
-        </GameBoard>
+    <>
+      <GameBoard state={state} className="w-full">
+        <div className="absolute inset-[26.6%] flex flex-col items-center justify-center gap-[1cqw] rounded-full bg-white text-center ring-1 ring-stone-200">
+          {turn && state.phase === "playing" && (
+            <>
+              <Rat color={turn.color} className="w-[12cqw]" />
+              <p className="text-[4cqw] leading-tight font-bold" style={{ color: colorHex(turn.color) }}>
+                {turn.name}
+              </p>
+              <p className="text-[3cqw] text-stone-500">กำลังเล่น</p>
+            </>
+          )}
+          {state.dice && <Dice dice={state.dice} />}
+        </div>
+      </GameBoard>
+      <div className="card space-y-3">
+        <p className="font-semibold">ความคืบหน้าของทุกคน</p>
+        {ranked.map((p, i) => {
+          const fast = !!p.fast;
+          const pct = fast ? goalProgress(p) - 100 : goalProgress(p);
+          const isTurn = state.phase === "playing" && p.id === turn?.id;
+          return (
+            <div key={p.id} className={`space-y-1 rounded-xl p-2 ${p.id === me.id ? "bg-teal-50" : ""}`}>
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="w-4 text-stone-400">{i + 1}</span>
+                  <Rat color={p.color} className="w-8 shrink-0" />
+                  <b className="truncate" style={{ color: colorHex(p.color) }}>
+                    {p.name}
+                    {p.id === me.id && " (คุณ)"}
+                  </b>
+                  {isTurn && <span className="shrink-0 rounded-full bg-amber-100 px-2 text-xs text-amber-800">กำลังเล่น</span>}
+                </span>
+                <span className="shrink-0">
+                  {p.skip > 0 && <span className="mr-1 text-xs text-stone-500">หยุด {p.skip} ตา</span>}
+                  {fast && "🚀 "}
+                  <b>{Math.floor(pct)}%</b>
+                </span>
+              </div>
+              <div className={`h-2 overflow-hidden rounded-full ${fast ? "bg-indigo-100" : "bg-stone-200"}`}>
+                <div className={`h-full rounded-full transition-all ${fast ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+        <p className="text-xs text-stone-500">สนามแข่งหนู: รายได้จากทรัพย์สิน ÷ รายจ่าย · 🚀 ทางด่วน: รายได้ที่เพิ่มขึ้น ÷ เป้าหมาย</p>
+      </div>
+    </>
+  );
+}
+
+/** แท็บวิเคราะห์: การเล่นของตัวเองจนถึงตอนนี้ + คำแนะนำแบบกว้าง ๆ */
+function AnalysisTab({ data, me }: { data: RoomData; me: PublicPlayer }) {
+  const r = data.report?.players.find((x) => x.id === me.id) ?? data.mine;
+  if (!r) return <p className="card text-center text-stone-500">เล่นไปสักตาก่อน แล้วการวิเคราะห์จะขึ้นที่นี่</p>;
+  const tips = adviceFor(r, !!me.fast);
+  return (
+    <>
+      <p className="px-1 text-sm text-stone-500">{data.report ? "ผลการเล่นทั้งเกม" : "การเล่นของคุณจนถึงตอนนี้ (อัปเดตทุกครั้งที่มีการเปลี่ยนแปลง)"}</p>
+      <PlayerReportCard r={r} />
+      {!data.report && (
+        <div className="card space-y-2">
+          <p className="font-semibold">💡 คำแนะนำ</p>
+          <ul className="space-y-2 text-sm text-stone-700">
+            {tips.map((t) => (
+              <li key={t} className="flex gap-2">
+                <span className="text-amber-500">▸</span>
+                <span>{t}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-stone-400">คำแนะนำกว้าง ๆ ชวนคิด ไม่ได้บอกว่าต้องซื้อการ์ดใบไหน</p>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

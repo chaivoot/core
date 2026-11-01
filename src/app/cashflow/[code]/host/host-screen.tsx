@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { DREAMS, FAST_GOAL, MAX_PLAYERS, MIN_PLAYERS, money, colorHex } from "@/lib/cashflow/data";
-import { logText, passiveIncome, TIME_LIMITS, totalExpenses, type PublicPlayer, type PublicState } from "@/lib/cashflow/engine";
+import { goalProgress, logText, TIME_LIMITS, type PublicPlayer, type PublicState } from "@/lib/cashflow/engine";
 import { GameBoard } from "../board";
 import { GameSummaryHeader, PlayerReportCard } from "../report";
 import { IntroSlide, INTRO_SLIDES } from "../intro";
@@ -365,15 +365,7 @@ function TopBar({ state, code, now, busy, send }: { state: PublicState; code: st
   );
 }
 
-/** ความคืบหน้าสู่เป้าหมาย: สนามแข่งหนู 0–100 (รายได้จากทรัพย์สิน ÷ รายจ่าย) ทางด่วน 100–200 */
-function progress(p: PublicPlayer) {
-  if (p.fast) {
-    const gained = p.fast.income - (p.fast.goal - FAST_GOAL);
-    return 100 + Math.min(100, Math.max(0, (gained / FAST_GOAL) * 100));
-  }
-  const expenses = totalExpenses(p);
-  return expenses > 0 ? Math.min(100, (passiveIncome(p) / expenses) * 100) : 100;
-}
+const progress = goalProgress;
 
 /** การ์ดผู้เล่นบนจอ host: เท่าที่จำเป็น — ชื่อ, ความคืบหน้าสู่เป้าหมาย (%) */
 function PlayerCard({ p, active }: { p: PublicPlayer; active: boolean }) {

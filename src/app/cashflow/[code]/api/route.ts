@@ -43,7 +43,9 @@ function view(room: Room, token: string | undefined) {
   const me = token ? (room.state.players.find((p) => p.token === token)?.id ?? null) : null;
   // จบเกมแล้ว: ส่งสรุปผลการเล่นของทุกคน (วิเคราะห์จากเหตุการณ์ที่เก็บฝั่งเซิร์ฟเวอร์)
   const report = room.state.phase === "over" && room.state.gameId ? analyze(room.state) : null;
-  return { version: room.version, me, deck: DECK_VERSION, build: process.env.APP_BUILD, stale: isStale(room), state: publicState(room.state), report };
+  // ระหว่างเล่น: วิเคราะห์เฉพาะของตัวเอง (ไม่เปิดเผยข้อมูลการตัดสินใจของคนอื่น)
+  const mine = me && room.state.phase === "playing" && room.state.gameId ? (analyze(room.state).players.find((r) => r.id === me) ?? null) : null;
+  return { version: room.version, me, deck: DECK_VERSION, build: process.env.APP_BUILD, stale: isStale(room), state: publicState(room.state), report, mine };
 }
 
 const json = (body: unknown, status = 200) =>
