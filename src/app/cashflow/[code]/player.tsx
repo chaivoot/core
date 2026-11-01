@@ -36,6 +36,7 @@ import {
 } from "@/lib/cashflow/engine";
 import { CardView, Dice, PlayerTag, Rat, cardKey, useNow, useRoom } from "./game-ui";
 import { GameBoard } from "./board";
+import { GameSummaryHeader, PlayerReportCard } from "./report";
 import { IntroSlide } from "./intro";
 
 type Send = ReturnType<typeof useRoom>["send"];
@@ -87,6 +88,13 @@ export function PlayerScreen({ code }: { code: string }) {
           <Header me={me} />
           <BoardToggle state={state} />
           <ActionPanel state={state} me={me} busy={busy} send={send} />
+          {/* จบเกม: สรุปผลการเล่นของตัวเอง */}
+          {data.report?.players.find((r) => r.id === me.id) && (
+            <>
+              <GameSummaryHeader report={data.report} />
+              <PlayerReportCard r={data.report.players.find((r) => r.id === me.id)!} />
+            </>
+          )}
           <MyLog state={state} me={me} />
           {me.fast ? <FastSheet me={me} /> : <Statement me={me} busy={busy} send={send} />}
         </>
@@ -199,7 +207,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
     return (
       <div className="card space-y-2 text-center">
         {w && <Rat color={w.color} className="mx-auto w-24" />}
-        <p className="text-xl font-bold">{w?.id === me.id ? "คุณชนะเกม! 🏆" : `${w?.name} ชนะเกม`}</p>
+        <p className="text-xl font-bold">{!w ? "host จบเกมแล้ว" : w.id === me.id ? "คุณชนะเกม! 🏆" : `${w.name} ชนะเกม`}</p>
         <p className="text-sm text-stone-500">เกมจบ</p>
       </div>
     );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { GameReport } from "@/lib/cashflow/analysis";
 import {
   BIG_DEALS,
   DECK_VERSION,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/cashflow/data";
 import type { Action, Card, PublicPlayer, PublicState } from "@/lib/cashflow/engine";
 
-export type RoomData = { version: number; me: string | null; deck?: string; build?: string; stale?: boolean; state: PublicState };
+export type RoomData = { version: number; me: string | null; deck?: string; build?: string; stale?: boolean; state: PublicState; report?: GameReport | null };
 type ClientAction = Exclude<Action, { type: "join" }> | { type: "join"; name: string; color: string };
 
 /**

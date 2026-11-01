@@ -127,6 +127,13 @@
       "when": 1793465547034,
       "tag": "0017_cashflow_room_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793511474313,
+      "tag": "0018_cashflow_games",
+      "breakpoints": true
     }
   ]
 }

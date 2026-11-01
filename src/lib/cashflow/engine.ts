@@ -115,6 +115,16 @@ export type GameState = {
   deckVersion?: string;
   /** หน้าคำอธิบายก่อนเริ่มเกมที่ host เปิดอยู่ (null = ไม่ได้เปิด) มือถือแสดงหน้าเดียวกัน */
   intro?: number | null;
+  /** เหตุการณ์สำหรับวิเคราะห์ (ตัดออกก่อนส่งให้เครื่องผู้เล่น) */
+  events?: GameEvent[];
+  /** จำนวนครั้งที่ทอยลูกเต๋าทั้งเกม */
+  rolls?: number;
+  /** รหัสเกม (ใช้เก็บสรุปถาวร ห้องเดียวเล่นได้เกมเดียว) */
+  gameId?: string;
+  startedAt?: number;
+  endedAt?: number;
+  /** จบเพราะมีคนชนะ หรือ host กดจบเกม */
+  endedBy?: "win" | "host";
   /** คนที่ถึงตาไม่ซื้อการ์ดใบนี้ → พอทุกคนตอบครบ จบตาให้อัตโนมัติ */
   autoEnd?: boolean;
   /** ดีลใบนี้คนเปิดไม่ซื้อ และเปิดให้คนอื่นซื้อต่อ (ใครกดก่อนได้ก่อน) */
@@ -132,6 +142,52 @@ export type GameOptions = {
 
 export type LogEntry = string | { t: string; p: string };
 
+/**
+ * เหตุการณ์ที่เก็บไว้วิเคราะห์การเล่น (ไม่ส่งออกไปกับสถานะห้อง)
+ * n = ลำดับการทอยทั้งเกม · v = จำนวนเงิน · cf = กระแสเงินสด/เดือน · pr = กำไร · x = ชื่อการ์ด/หุ้น
+ * a = ตอนไม่ซื้อ มีเงินพอไหม (cash = เงินสดพอ, loan = ต้องกู้เพิ่มถึงพอ, no = กู้ก็ไม่พอ)
+ */
+export type GameEvent = {
+  n: number;
+  p: string;
+  k:
+    | "roll"
+    | "deal"
+    | "buyAsset"
+    | "declineAsset"
+    | "buyStock"
+    | "declineStock"
+    | "sellStock"
+    | "sellAsset"
+    | "sellRight"
+    | "rightBuy"
+    | "loan"
+    | "forcedLoan"
+    | "forcedSale"
+    | "repay"
+    | "payoff"
+    | "doodad"
+    | "lend"
+    | "expense"
+    | "downsize"
+    | "baby"
+    | "charity"
+    | "noCharity"
+    | "payday"
+    | "paydayLost"
+    | "fast"
+    | "fastBuy"
+    | "fastDecline"
+    | "dream"
+    | "bankrupt"
+    | "win";
+  v?: number;
+  cf?: number;
+  pr?: number;
+  x?: string;
+  a?: "cash" | "loan" | "no";
+};
+
 export type Action =
   | { type: "join"; name: string; color: string; token: string }
   | { type: "start" }
@@ -142,6 +198,7 @@ export type Action =
   | { type: "respond"; buy?: number | boolean; sell?: number; sellAssets?: string[] }
   | { type: "endTurn" }
   | { type: "collect" }
+  | { type: "finish" }
   | { type: "chooseDream"; dream: number }
   | { type: "setOptions"; resellDeals: boolean }
   | { type: "intro"; slide: number | null }
@@ -267,6 +324,23 @@ function draw(s: GameState, deck: Deck, ctx: Ctx) {
 }
 
 /** บันทึกเหตุการณ์ who = ผู้เล่นที่เกี่ยวข้อง (ใช้ทำบันทึกส่วนตัวบนมือถือ) */
+function ev(s: GameState, p: { id: string }, k: GameEvent["k"], extra: Omit<GameEvent, "n" | "p" | "k"> = {}) {
+  (s.events ??= []).push({ n: s.rolls ?? 0, p: p.id, k, ...extra });
+}
+
+/** ตอนตัดสินใจไม่ซื้อ มีเงินพอไหม */
+function afford(p: Player, amount: number): GameEvent["a"] {
+  if (p.cash >= amount) return "cash";
+  return p.cash + loanRoom(p) * LOAN_UNIT >= amount ? "loan" : "no";
+}
+
+/** ชื่อการ์ดดีลไว้สรุปผล (ทรัพย์สินใส่สถานการณ์ด้วย ให้แยกใบได้) */
+function dealLabel(d: DealCard) {
+  if (d.type === "asset") return d.situation ? `${d.name} — ${d.situation}` : d.name;
+  if (d.type === "stock") return `${STOCK_LABEL[d.stock]} ${money(d.price)}`;
+  return d.text;
+}
+
 function log(s: GameState, text: string, who?: string) {
   s.log.push(who ? { t: text, p: who } : text);
   if (s.log.length > LOG_LIMIT) s.log.splice(0, s.log.length - LOG_LIMIT);
@@ -313,6 +387,7 @@ function charge(s: GameState, p: Player, amount: number) {
   if (loans > 0) {
     p.loans += loans;
     p.cash += loans * LOAN_UNIT;
+    ev(s, p, "forcedLoan", { v: loans * LOAN_UNIT });
     log(s, `${p.name} เงินไม่พอ กู้ธนาคาร ${money(loans * LOAN_UNIT)}`, p.id);
   }
 
@@ -322,10 +397,12 @@ function charge(s: GameState, p: Player, amount: number) {
     const got = Math.floor(a.down / 2);
     p.assets = p.assets.filter((x) => x.uid !== a.uid);
     p.cash += got;
+    ev(s, p, "forcedSale", { v: got, pr: got - a.down, x: a.name });
     log(s, `${p.name} เงินไม่พอ ต้องขาย${a.name} ได้ ${money(got)}`, p.id);
   }
 
   if (p.cash < 0) {
+    ev(s, p, "bankrupt");
     freshPlayer(p, p.prof);
     log(s, `${p.name} ล้มละลาย! เริ่มต้นใหม่ด้วยอาชีพเดิม`, p.id);
     s.card = { deck: "bankrupt" };
@@ -334,6 +411,7 @@ function charge(s: GameState, p: Player, amount: number) {
 
 function payday(s: GameState, p: Player) {
   const cf = monthlyCashflow(p);
+  ev(s, p, "payday", { v: cf });
   if (cf >= 0) p.cash += cf;
   else charge(s, p, -cf);
   log(s, `${p.name} รับเงินเดือน ${cf >= 0 ? "+" : ""}${money(cf)}`, p.id);
@@ -355,6 +433,7 @@ function forfeitPayday(s: GameState, p: Player) {
   if (n <= 0) return;
   if (monthlyCashflow(p) < 0) return collectPayday(s, p);
   p.payday = 0;
+  ev(s, p, "paydayLost", { v: monthlyCashflow(p) * n });
   log(s, `${p.name} ไม่ได้กดรับเงินเดือน อดเงินเดือน${n > 1 ? ` ${n} ครั้ง` : ""}`, p.id);
 }
 
@@ -415,6 +494,7 @@ function enterFast(s: GameState, p: Player) {
   collectPayday(s, p);
   const income = passiveIncome(p) * FAST_MULTIPLIER;
   p.fast = { pos: 0, income, goal: income + FAST_GOAL, dream: -1, businesses: [], dreamBought: false };
+  ev(s, p, "fast", { v: income });
   p.cash += income;
   p.skip = 0;
   p.charity = 0;
@@ -438,6 +518,8 @@ function checkWinner(s: GameState) {
     if (f && (f.dreamBought || f.income >= f.goal)) {
       s.phase = "over";
       s.winner = p.id;
+      s.endedBy = "win";
+      ev(s, p, "win");
       log(
         s,
         f.dreamBought
@@ -510,6 +592,7 @@ function land(s: GameState, p: Player, ctx: Ctx) {
       const d = DOODADS[index];
       s.card = { deck: "doodad", index };
       log(s, `${p.name} จ่ายซะ: ${d.text} ${money(d.amount)}`, p.id);
+      ev(s, p, "doodad", { v: d.amount, x: d.text });
       charge(s, p, d.amount);
       s.step = "end";
       return;
@@ -550,6 +633,7 @@ function land(s: GameState, p: Player, ctx: Ctx) {
         for (const x of ratRace(s)) {
           if (x.assets.some((a) => m.tags.includes(a.tag))) {
             log(s, `${x.name} จ่าย ${money(m.amount)}`, x.id);
+            ev(s, x, "expense", { v: m.amount, x: m.text });
             charge(s, x, m.amount);
           }
         }
@@ -565,6 +649,7 @@ function land(s: GameState, p: Player, ctx: Ctx) {
       s.card = { deck: "baby" };
       if (p.children < MAX_CHILDREN) {
         p.children++;
+        ev(s, p, "baby", { v: profession(p).child });
         log(s, `${p.name} มีลูกเพิ่ม ค่าใช้จ่าย +${money(profession(p).child)}/เดือน`, p.id);
       } else {
         log(s, `${p.name} มีลูกครบ ${MAX_CHILDREN} คนแล้ว ไม่มีค่าใช้จ่ายเพิ่ม`, p.id);
@@ -574,6 +659,7 @@ function land(s: GameState, p: Player, ctx: Ctx) {
     case "downsize":
       s.card = { deck: "downsize" };
       log(s, `${p.name} ตกงาน! จ่ายค่าใช้จ่าย 1 เดือน ${money(totalExpenses(p))} และหยุด 2 ตา`, p.id);
+      ev(s, p, "downsize", { v: totalExpenses(p) });
       charge(s, p, totalExpenses(p));
       p.skip = 2;
       s.step = "end";
@@ -586,6 +672,7 @@ function sellAsset(s: GameState, p: Player, a: Asset, unitPrice: number, perUnit
   const got = gross - a.mortgage;
   p.assets = p.assets.filter((x) => x.uid !== a.uid);
   p.cash += got;
+  ev(s, p, "sellAsset", { v: got, pr: got - a.down, cf: a.cashflow, x: a.name });
   log(s, `${p.name} ขาย${a.name} ${money(gross)} หักจำนอง ได้เงินสด ${money(got)}`, p.id);
 }
 
@@ -593,6 +680,8 @@ function sellStock(s: GameState, p: Player, stock: StockKind, qty: number, price
   const h = p.stocks[stock];
   if (!h || qty <= 0) return;
   if (qty > h.qty) throw new GameError("มีหุ้นไม่พอขาย");
+  const soldCost = h.cost - Math.round((h.cost * (h.qty - qty)) / h.qty);
+  ev(s, p, "sellStock", { v: qty * price, pr: qty * price - soldCost, x: STOCK_LABEL[stock] });
   h.cost = Math.round((h.cost * (h.qty - qty)) / h.qty);
   h.qty -= qty;
   if (h.qty === 0) delete p.stocks[stock];
@@ -614,14 +703,17 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
       p.cash -= item.cost;
       if (card.deck === "fastBiz") {
         const b = FAST_BUSINESSES[card.index];
+        ev(s, p, "fastBuy", { v: b.cost, cf: b.cashflow, x: b.name });
         f.businesses.push({ name: b.name, cost: b.cost, cashflow: b.cashflow });
         f.income += b.cashflow;
         log(s, `${p.name} ซื้อ${b.name} ${money(b.cost)} รายได้ต่อรอบ +${money(b.cashflow)}`, p.id);
       } else {
         f.dreamBought = true;
+        ev(s, p, "dream", { v: item.cost, x: DREAMS[card.index].name });
       }
     } else {
       log(s, `${p.name} ไม่ซื้อ`, p.id);
+      ev(s, p, "fastDecline", { x: card.deck === "fastBiz" ? FAST_BUSINESSES[card.index].name : DREAMS[card.index].name });
       s.autoEnd = true;
     }
     s.responders[p.id] = true;
@@ -644,7 +736,10 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
       // ขายก่อน แล้วค่อยซื้อ (เผื่ออยากเอาเงินจากการขายมาซื้อ)
       if (a.sell) sellStock(s, p, d.stock, a.sell, d.price);
       const qty = typeof a.buy === "number" ? a.buy : 0;
-      if (opener && qty === 0) s.autoEnd = true;
+      if (opener && qty === 0) {
+        s.autoEnd = true;
+        ev(s, p, "declineStock", { v: d.price * lotOf(d.stock), x: dealLabel(d), a: afford(p, d.price * lotOf(d.stock)) });
+      }
       if (qty > 0) {
         if (!opener) throw new GameError("คนเปิดการ์ดเท่านั้นที่ซื้อได้");
         const lot = lotOf(d.stock);
@@ -656,6 +751,7 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
         const h = (p.stocks[d.stock] ??= { qty: 0, cost: 0 });
         h.qty += qty;
         h.cost += cost;
+        ev(s, p, "buyStock", { v: cost, x: dealLabel(d) });
         log(s, `${p.name} ซื้อ${STOCK_LABEL[d.stock]} ${qty.toLocaleString("th-TH")} ${unitOf(d.stock)} ที่ ${money(d.price)} (${money(cost)})`, p.id);
       }
     } else if (d.type === "asset" && a.buy) {
@@ -683,13 +779,17 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
         rental: d.rental === true,
       });
       log(s, `${p.name} ซื้อ${d.name} จ่าย ${money(d.down)} ได้กระแสเงินสด ${money(d.cashflow)}/เดือน`, p.id);
+      ev(s, p, s.resale ? "rightBuy" : "buyAsset", { v: d.down, cf: d.cashflow, pr: fee || undefined, x: dealLabel(d) });
       if (s.resale) {
         // มีคนซื้อต่อแล้ว คนอื่นไม่ต้องตอบ
         for (const id of Object.keys(s.responders)) s.responders[id] = true;
       }
     } else if (d.type === "asset") {
       log(s, `${p.name} ไม่${s.resale ? "รับสิทธิ์" : "ซื้อ"}${d.name}`, p.id);
-      if (opener) s.autoEnd = true;
+      if (opener) {
+        s.autoEnd = true;
+        ev(s, p, "declineAsset", { v: d.down, cf: d.cashflow, x: dealLabel(d), a: afford(p, d.down) });
+      }
     }
   }
   s.responders[p.id] = true;
@@ -742,6 +842,10 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
     }
     s.phase = "playing";
     s.deckVersion = DECK_VERSION;
+    s.gameId = ctx.id() + ctx.id();
+    s.startedAt = ctx.now;
+    s.events = [];
+    s.rolls = 0;
     s.intro = null;
     s.turn = 0;
     s.log = ["เริ่มเกม! ลำดับ: " + s.players.map((p) => `${p.name} (${profession(p).name})`).join(" → ")];
@@ -764,6 +868,17 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
   }
 
   if (s.phase !== "playing") throw new GameError("เกมยังไม่เริ่ม หรือจบไปแล้ว");
+
+  if (action.type === "finish") {
+    // host จบเกมก่อนมีคนชนะ (เช่น หมดเวลา) แล้วดูสรุปผล
+    if (!actor.host) throw new GameError("host เท่านั้นที่จบเกมได้");
+    s.phase = "over";
+    s.winner = null;
+    s.endedBy = "host";
+    s.endedAt = ctx.now;
+    log(s, "host จบเกม ดูสรุปผลการเล่นได้เลย");
+    return s;
+  }
 
   if (action.type === "skipTurn") {
     if (!actor.host) throw new GameError("host เท่านั้นที่ข้ามตาได้");
@@ -792,6 +907,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       if (n > loanRoom(p)) throw new GameError("กู้เพิ่มไม่ได้ กระแสเงินสดต่อเดือนจะติดลบ");
       p.loans += n;
       p.cash += n * LOAN_UNIT;
+      ev(s, p, "loan", { v: n * LOAN_UNIT });
       log(s, `${p.name} กู้ธนาคาร ${money(n * LOAN_UNIT)}`, p.id);
       break;
     }
@@ -800,6 +916,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       if (p.cash < LOAN_UNIT) throw new GameError("เงินสดไม่พอ");
       p.loans--;
       p.cash -= LOAN_UNIT;
+      ev(s, p, "repay", { v: LOAN_UNIT });
       log(s, `${p.name} คืนเงินกู้ ${money(LOAN_UNIT)}`, p.id);
       break;
     case "payoff": {
@@ -808,11 +925,14 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       if (p.cash < amount) throw new GameError("เงินสดไม่พอ");
       p.cash -= amount;
       p.debts[action.debt] = false;
+      ev(s, p, "payoff", { v: amount, cf: profession(p)[action.debt], x: DEBT_LABEL[action.debt] });
       log(s, `${p.name} ปิดหนี้${DEBT_LABEL[action.debt]} ${money(amount)}`, p.id);
       break;
     }
     case "roll": {
       if (!myTurn || s.step !== "roll") throw new GameError("ยังไม่ถึงตาทอยลูกเต๋า");
+      s.rolls = (s.rolls ?? 0) + 1;
+      ev(s, p, "roll", { x: p.fast ? "fast" : undefined });
       if (p.fast) {
         // ทางด่วนทอย 2 ลูกเสมอ ผ่านวันรับเงินได้รายได้ต่อรอบ
         const f = p.fast;
@@ -848,9 +968,11 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
         if (p.cash < amount) throw new GameError("เงินสดไม่พอ");
         p.cash -= amount;
         p.charity = 3;
+        ev(s, p, "charity", { v: amount });
         log(s, `${p.name} ทำบุญ ${money(amount)} เลือกทอย 2 ลูกได้ 3 ตา`, p.id);
       } else {
         log(s, `${p.name} ไม่ทำบุญ`, p.id);
+        ev(s, p, "noCharity");
       }
       s.step = "end";
       break;
@@ -861,6 +983,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       s.card = { deck: action.size, index };
       s.resale = false;
       const d: DealCard = (action.size === "small" ? SMALL_DEALS : BIG_DEALS)[index];
+      ev(s, p, "deal", { x: action.size });
       if (d.type === "split") {
         for (const x of s.players) {
           const h = x.stocks[d.stock];
@@ -874,6 +997,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       } else if (d.type === "lend") {
         // ต้องจ่ายทันที เหมือนการ์ดจ่ายซะ แต่มาจากกองดีลเล็ก
         log(s, `${p.name} ${d.text}`, p.id);
+        ev(s, p, "lend", { v: d.amount, x: d.text });
         charge(s, p, d.amount);
         s.step = "end";
       } else if (d.type === "stock") {
@@ -903,6 +1027,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       s.autoEnd = true;
       s.rightPct = pct;
       s.rightFee = Math.round((d.down * pct) / 100);
+      ev(s, p, "sellRight", { v: s.rightFee, x: dealLabel(d) });
       log(s, `${p.name} ขายสิทธิ์${d.name} ค่านายหน้า ${pct}% = ${money(s.rightFee)} (ใครกดรับก่อนได้ก่อน)`, p.id);
       setResponders(s, others, ctx);
       break;
@@ -918,19 +1043,21 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
   }
 
   checkWinner(s);
+  if ((s.phase as GameState["phase"]) === "over" && !s.endedAt) s.endedAt = ctx.now;
   return s;
 }
 
 /** ส่งให้มือถือ/จอ host - ตัดความลับออก */
 export type PublicPlayer = Omit<Player, "token">;
-export type PublicState = Omit<GameState, "players" | "decks"> & {
+export type PublicState = Omit<GameState, "players" | "decks" | "events"> & {
   players: PublicPlayer[];
   /** เหลือการ์ดในกองกี่ใบ (ไม่ส่งลำดับการ์ดออกไป) */
   deckLeft: Record<Deck, number>;
 };
 
 export function publicState(s: GameState): PublicState {
-  const { decks, players, ...rest } = s;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- เหตุการณ์ใช้วิเคราะห์ฝั่งเซิร์ฟเวอร์เท่านั้น
+  const { decks, players, events, ...rest } = s;
   return {
     ...rest,
     deckLeft: { small: decks.small.length, big: decks.big.length, doodad: decks.doodad.length, market: decks.market.length },

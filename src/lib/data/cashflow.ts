@@ -1,8 +1,9 @@
 import "server-only";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
-import { and, count, eq, gt, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { cashflowRooms } from "@/lib/db/schema";
+import { cashflowGames, cashflowRooms } from "@/lib/db/schema";
+import { analyze, type GameReport } from "@/lib/cashflow/analysis";
 import { newGame, type GameState } from "@/lib/cashflow/engine";
 
 // ไม่มีตัวที่สับสนกันง่าย (0/O, 1/I)
@@ -56,10 +57,14 @@ export async function createRoom(ip: string | null): Promise<{ code: string; hos
     }
   }
   const hostToken = randomBytes(24).toString("base64url");
-  // ลบห้องที่ไม่มีใครเล่นเกิน 24 ชั่วโมง
-  await db
-    .delete(cashflowRooms)
-    .where(lt(cashflowRooms.updatedAt, sql`now() - make_interval(hours => ${ROOM_TTL_HOURS})`));
+  // ลบห้องที่ไม่มีใครเล่นเกิน 24 ชั่วโมง (เกมที่เล่นค้างไว้ เก็บสรุปไว้ก่อนลบ)
+  const stale = lt(cashflowRooms.updatedAt, sql`now() - make_interval(hours => ${ROOM_TTL_HOURS})`);
+  const old = await db.select().from(cashflowRooms).where(stale);
+  for (const row of old) {
+    const state = row.state as GameState;
+    if (state.phase === "playing" && (state.rolls ?? 0) > 0) await archiveGame(row.code, state, "expired");
+  }
+  await db.delete(cashflowRooms).where(stale);
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = newCode();
@@ -101,4 +106,28 @@ export async function updateRoom(
     if (rows.length > 0) return { ...room, state: next, version: rows[0].version };
   }
   throw new Error("มีคนกดพร้อมกันเยอะ ลองใหม่อีกครั้ง");
+}
+
+/** เก็บสรุปเกมถาวร (เรียกซ้ำได้ เขียนทับของเดิม) */
+export async function archiveGame(code: string, state: GameState, endedBy?: GameReport["endedBy"]) {
+  if (!state.gameId || state.phase === "lobby") return;
+  const report = analyze(state, endedBy);
+  const values = {
+    roomCode: code,
+    startedAt: state.startedAt ? new Date(state.startedAt) : null,
+    endedAt: state.endedAt ? new Date(state.endedAt) : new Date(),
+    endedBy: report.endedBy,
+    playerCount: state.players.length,
+    report,
+    events: state.events ?? [],
+    deckVersion: state.deckVersion ?? null,
+  };
+  await db
+    .insert(cashflowGames)
+    .values({ id: state.gameId, ...values })
+    .onConflictDoUpdate({ target: cashflowGames.id, set: values });
+}
+
+export async function listGames(limit = 200) {
+  return db.select().from(cashflowGames).orderBy(desc(cashflowGames.createdAt)).limit(limit);
 }
