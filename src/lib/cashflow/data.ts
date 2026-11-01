@@ -449,3 +449,16 @@ export const DECK_VERSION = (() => {
   for (let i = 0; i < src.length; i++) h = ((h << 5) + h + src.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
 })();
+
+/**
+ * ROI ต่อปี = กระแสเงินสดต่อปี ÷ เงินที่ควักจ่ายจริง (เงินดาวน์) × 100
+ * ใช้เทียบดีลกันง่าย ๆ ว่าเงินที่ลงไปทำงานได้คุ้มแค่ไหน
+ */
+export function roiText(down: number, cashflowPerMonth: number) {
+  if (cashflowPerMonth === 0) return "ROI 0% (ไม่มีกระแสเงินสด รอขายทำกำไร)";
+  if (down <= 0) return cashflowPerMonth > 0 ? "ROI ∞ (ไม่ต้องควักเงินลง)" : "ROI ติดลบ (ต้องควักจ่ายทุกเดือน)";
+  const pct = ((cashflowPerMonth * 12) / down) * 100;
+  const shown = Math.abs(pct) >= 10 ? Math.round(pct) : Math.round(pct * 10) / 10;
+  if (cashflowPerMonth < 0) return `ROI ${shown}%/ปี (ค่าเช่าไม่พอผ่อน ต้องควักจ่ายทุกเดือน)`;
+  return `ROI ${shown}%/ปี · คืนทุนใน ~${Math.ceil(down / cashflowPerMonth)} เดือน`;
+}

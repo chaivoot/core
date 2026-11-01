@@ -15,6 +15,7 @@ import {
   money,
   lotOf,
   priceRange,
+  roiText,
   unitOf,
   colorHex,
 } from "@/lib/cashflow/data";
@@ -226,6 +227,7 @@ export function describeCard(card: Card): CardInfo {
         `ราคา ${money(full)}`,
         d.mortgage > 0 ? `เงินดาวน์ ${money(d.down)} · จำนอง ${money(d.mortgage)}` : `จ่ายสด ${money(d.down)}`,
         `กระแสเงินสด ${d.cashflow >= 0 ? "+" : ""}${money(d.cashflow)}/เดือน`,
+        `📊 ${roiText(d.down, d.cashflow)}`,
       ],
     };
   }
@@ -242,7 +244,7 @@ export function describeCard(card: Card): CardInfo {
       kind: "ทางด่วน · ธุรกิจ",
       tone: { band: "bg-teal-700", icon: "🏭" },
       title: b.name,
-      lines: [`ราคา ${money(b.cost)} (จ่ายสด)`, `รายได้ต่อรอบ +${money(b.cashflow)}`],
+      lines: [`ราคา ${money(b.cost)} (จ่ายสด)`, `รายได้ต่อรอบ +${money(b.cashflow)}`, `📊 คืนทุนใน ~${Math.ceil(b.cost / b.cashflow)} รอบวันรับเงิน`],
     };
   }
   if (card.deck === "dream") {

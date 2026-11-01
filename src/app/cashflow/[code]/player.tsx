@@ -40,6 +40,7 @@ import { adviceFor } from "@/lib/cashflow/analysis";
 import { CardView, Dice, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom, type RoomData } from "./game-ui";
 import { GameBoard } from "./board";
 import { GameSummaryHeader, PlayerReportCard } from "./report";
+import { JournalCard } from "./journal";
 import { IntroSlide } from "./intro";
 
 type Send = ReturnType<typeof useRoom>["send"];
@@ -145,6 +146,7 @@ function GameTabs({ data, me, busy, send }: { data: RoomData; me: PublicPlayer; 
           ) : (
             <ActionPanel state={state} me={me} busy={busy} send={send} />
           )}
+          {me.entry && state.phase === "playing" && <JournalCard key={me.entry.seq} entry={me.entry} />}
           {myReport && data.report && (
             <>
               <GameSummaryHeader report={data.report} />
