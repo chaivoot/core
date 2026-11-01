@@ -95,7 +95,7 @@ export function PlayerScreen({ code }: { code: string }) {
 type Tab = "me" | "board" | "analysis";
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
-  { id: "me", icon: "🐭", label: "ของฉัน" },
+  { id: "me", icon: "🐭", label: "หนูของฉัน" },
   { id: "board", icon: "🗺️", label: "กระดาน" },
   { id: "analysis", icon: "💡", label: "วิเคราะห์" },
 ];
