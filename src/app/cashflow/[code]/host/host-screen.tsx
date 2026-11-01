@@ -267,11 +267,10 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
   );
 }
 
-/** แถบบนจอ host: เวลาเล่น · รอบ · ตาของใคร · ปุ่มของ host */
+/** แถบบนจอ host: เวลาเล่น · ผู้นำ · ขึ้นทางด่วนกี่คน · ตาของใคร · ปุ่มของ host */
 function TopBar({ state, code, now, busy, send }: { state: PublicState; code: string; now: number; busy: boolean; send: Send }) {
   const clock = gameClock(state, now);
   const turnPlayer = state.players[state.turn];
-  const round = Math.floor((state.rolls ?? 0) / Math.max(1, state.players.length)) + 1;
   const leader = [...state.players].sort((a, b) => progress(b) - progress(a))[0];
   const fastCount = state.players.filter((p) => p.fast).length;
   const pct = clock.limit ? Math.min(100, (clock.elapsed / clock.limit) * 100) : 0;
@@ -307,10 +306,6 @@ function TopBar({ state, code, now, busy, send }: { state: PublicState; code: st
         )}
       </div>
 
-      <div className="shrink-0 text-center leading-tight">
-        <p className="text-xs text-stone-500">รอบที่</p>
-        <p className="text-xl font-bold">{round}</p>
-      </div>
 
       {/* ผู้นำ: ใกล้เป้าหมายที่สุด (ยังไม่มีใครมีรายได้จากทรัพย์สิน = ยังไม่มีผู้นำ) */}
       <div className="hidden shrink-0 items-center gap-2 min-[1000px]:flex">
