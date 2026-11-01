@@ -120,3 +120,25 @@ describe("เวลาเล่น", () => {
     expect(s.phase).toBe("playing");
   });
 });
+
+describe("ทำบุญ", () => {
+  it("ไม่ทำบุญ = จบตาเลย", () => {
+    let s = started();
+    s.players[0].pos = BOARD.indexOf("charity") - 1;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    expect(s.step).toBe("charity");
+    s = run(s, { type: "charity", give: false });
+    expect(s.turn).toBe(1);
+    expect(s.step).toBe("roll");
+  });
+
+  it("ทำบุญแล้วยังไม่จบตา", () => {
+    let s = started();
+    s.players[0].cash = 1_000_000;
+    s.players[0].pos = BOARD.indexOf("charity") - 1;
+    s = run(s, { type: "roll" }, me(s), [die(1)]);
+    s = run(s, { type: "charity", give: true });
+    expect(s.turn).toBe(0);
+    expect(s.step).toBe("end");
+  });
+});

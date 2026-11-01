@@ -292,7 +292,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
             ทำบุญ {money(Math.round((profession(me).salary + passiveIncome(me)) * 0.1))}
           </button>
           <button className="btn-secondary" disabled={busy} onClick={() => send({ type: "charity", give: false })}>
-            ไม่ทำบุญ
+            ไม่ทำบุญ (จบตา)
           </button>
         </div>
       )}
@@ -329,7 +329,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
         </p>
       )}
 
-      {myTurn && (state.step === "end" || mustRespond) && (me.payday ?? 0) > 0 && !me.fast && monthlyCashflow(me) >= 0 && (
+      {myTurn && (state.step === "end" || state.step === "charity" || mustRespond) && (me.payday ?? 0) > 0 && !me.fast && monthlyCashflow(me) >= 0 && (
         <p className="text-center text-sm font-medium text-rose-600">ยังไม่ได้กดรับเงินเดือน ถ้าจบตาตอนนี้จะอดเงินเดือน</p>
       )}
       {myTurn && state.step === "end" && (

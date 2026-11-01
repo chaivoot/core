@@ -1003,6 +1003,9 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
       } else {
         log(s, `${p.name} ไม่ทำบุญ`, p.id);
         ev(s, p, "noCharity");
+        // ไม่ทำบุญ = จบตาเลย
+        nextTurn(s);
+        break;
       }
       s.step = "end";
       break;
