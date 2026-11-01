@@ -13,6 +13,7 @@ import {
   type PublicState,
 } from "@/lib/cashflow/engine";
 import { GameBoard } from "../board";
+import { GameSummaryHeader, PlayerReportCard } from "../report";
 import { IntroSlide, INTRO_SLIDES } from "../intro";
 import { CardView, Dice, FreedomBar, PlayerTag, Rat, cardKey, useNow, useRoom } from "../game-ui";
 
@@ -164,7 +165,12 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
       <GameBoard state={state} className="mx-auto w-full max-w-[min(100%,calc(100dvh-2rem))]">
         {/* กลางวง */}
         <div className="absolute inset-[26.6%] flex flex-col items-center justify-center gap-[0.8cqw] overflow-hidden rounded-full bg-white p-[2%] text-center shadow-inner ring-1 ring-stone-200">
-          {state.phase === "over" && winner ? (
+          {state.phase === "over" && !winner ? (
+            <>
+              <p className="text-[3cqw] font-bold text-stone-800">จบเกม</p>
+              <p className="text-[1.8cqw] text-stone-500">ดูสรุปผลการเล่นของแต่ละคนด้านข้าง</p>
+            </>
+          ) : state.phase === "over" && winner ? (
             <>
               <Rat color={winner.color} className="w-[12cqw]" />
               <p className="text-[3.5cqw] font-bold" style={{ color: colorHex(winner.color) }}>
@@ -225,16 +231,38 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
           <h1 className="text-xl font-bold">กระแสเงินสด</h1>
           <span className="font-mono text-stone-500">ห้อง {code}</span>
         </div>
+        {/* จบเกม: สรุปผลการเล่นทุกคน (เรียงตามความคืบหน้า) */}
+        {data?.report && (
+          <>
+            <GameSummaryHeader report={data.report} />
+            {[...data.report.players]
+              .sort((a, b) => Number(b.won) - Number(a.won) || b.freedomPct - a.freedomPct)
+              .map((r) => (
+                <PlayerReportCard key={r.id} r={r} compact />
+              ))}
+          </>
+        )}
         {/* เรียงจากคนที่ใกล้เป้าหมายที่สุด (คนบนทางด่วนอยู่บนสุด) */}
-        {[...state.players]
+        {!data?.report && [...state.players]
           .sort((a, b) => progress(b) - progress(a))
           .map((p) => (
             <PlayerCard key={p.id} p={p} active={p.id === turnPlayer.id && state.phase === "playing"} />
           ))}
         {state.phase === "playing" && (
-          <button className="btn-ghost w-full text-sm" disabled={busy} onClick={() => send({ type: "skipTurn" })}>
-            ข้ามตาของ {turnPlayer.name} (กรณีค้าง)
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button className="btn-ghost text-sm" disabled={busy} onClick={() => send({ type: "skipTurn" })}>
+              ข้ามตาของ {turnPlayer.name} (กรณีค้าง)
+            </button>
+            <button
+              className="btn-ghost text-sm"
+              disabled={busy}
+              onClick={() => {
+                if (window.confirm("จบเกมตอนนี้แล้วดูสรุปผลการเล่นของทุกคน?")) send({ type: "finish" });
+              }}
+            >
+              🏁 จบเกม · ดูสรุป
+            </button>
+          </div>
         )}
         {error && <p className="text-sm text-rose-700">{error}</p>}
         <Log state={state} />

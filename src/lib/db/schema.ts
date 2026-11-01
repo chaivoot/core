@@ -254,6 +254,27 @@ export const cashflowRooms = pgTable(
   ],
 );
 
+/** สรุปเกมกระแสเงินสดที่เล่นจบแล้ว (เก็บถาวร ห้องเกมจะถูกลบหลัง 24 ชั่วโมง) */
+export const cashflowGames = pgTable(
+  "cashflow_games",
+  {
+    id: text("id").primaryKey(),
+    roomCode: text("room_code").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    /** win = มีคนชนะ · host = host กดจบ · expired = ห้องหมดอายุระหว่างเล่น */
+    endedBy: text("ended_by").notNull(),
+    playerCount: integer("player_count").notNull(),
+    /** ผลวิเคราะห์ (GameReport) */
+    report: jsonb("report").notNull(),
+    /** เหตุการณ์ดิบ เผื่อวิเคราะห์เพิ่มภายหลัง */
+    events: jsonb("events").notNull(),
+    deckVersion: text("deck_version"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("cashflow_games_created_at_idx").on(t.createdAt)],
+);
+
 export type Product = typeof products.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type WeeklyReview = typeof weeklyReviews.$inferSelect;

@@ -370,7 +370,7 @@ describe("โหมดซื้อดีลต่อ (host ตั้งค่า
 
 describe("การ์ดแบบใหม่", () => {
   function opp() {
-    let s = started();
+    const s = started();
     s.players[0].pos = 1;
     return run(s, { type: "roll" }, me(s), [die(1)]);
   }

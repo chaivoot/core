@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { act, GameError, publicState, tick, type Action, type Actor } from "@/lib/cashflow/engine";
 import { DECK_VERSION } from "@/lib/cashflow/data";
-import { getRoom, hostCookie, isHost, updateRoom, type Room } from "@/lib/data/cashflow";
+import { analyze } from "@/lib/cashflow/analysis";
+import { archiveGame, getRoom, hostCookie, isHost, updateRoom, type Room } from "@/lib/data/cashflow";
 
 // มือถือผู้เล่นไม่ต้องล็อกอิน: จำตัวตนด้วย cookie ต่อห้อง
 const cookieName = (code: string) => `cf_${code}`;
@@ -23,6 +24,7 @@ const actionSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("endTurn") }),
   z.object({ type: z.literal("collect") }),
+  z.object({ type: z.literal("finish") }),
   z.object({ type: z.literal("chooseDream"), dream: z.number().int().min(0).max(20) }),
   z.object({ type: z.literal("setOptions"), resellDeals: z.boolean() }),
   z.object({ type: z.literal("intro"), slide: z.number().int().min(0).max(20).nullable() }),
@@ -32,14 +34,16 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("payoff"), debt: z.enum(["house", "car", "card"]) }),
 ]);
 
-const HOST_ACTIONS = new Set(["start", "skipTurn", "setOptions", "intro"]);
+const HOST_ACTIONS = new Set(["start", "skipTurn", "setOptions", "intro", "finish"]);
 
 /** ห้องที่เริ่มเล่นด้วยชุดการ์ดเก่า เล่นต่อไม่ได้ (ลำดับการ์ดในสถานะเก่าชี้ไปคนละใบ) */
 const isStale = (room: Room) => room.state.phase !== "lobby" && room.state.deckVersion !== DECK_VERSION;
 
 function view(room: Room, token: string | undefined) {
   const me = token ? (room.state.players.find((p) => p.token === token)?.id ?? null) : null;
-  return { version: room.version, me, deck: DECK_VERSION, build: process.env.APP_BUILD, stale: isStale(room), state: publicState(room.state) };
+  // จบเกมแล้ว: ส่งสรุปผลการเล่นของทุกคน (วิเคราะห์จากเหตุการณ์ที่เก็บฝั่งเซิร์ฟเวอร์)
+  const report = room.state.phase === "over" && room.state.gameId ? analyze(room.state) : null;
+  return { version: room.version, me, deck: DECK_VERSION, build: process.env.APP_BUILD, stale: isStale(room), state: publicState(room.state), report };
 }
 
 const json = (body: unknown, status = 200) =>
@@ -102,6 +106,10 @@ export async function POST(req: Request, ctx: RouteContext<"/cashflow/[code]/api
       return act(r.state, a, action, { now: Date.now(), rng: Math.random, id: () => randomUUID().slice(0, 8) });
     });
     if (!room) return json({ error: "ไม่พบห้องนี้" }, 404);
+    // เกมเพิ่งจบ: เก็บสรุปถาวร (ไม่ให้ความผิดพลาดตรงนี้ทำให้การกดของผู้เล่นล้ม)
+    if (room.state.phase === "over" && room0.state.phase !== "over") {
+      await archiveGame(room.code, room.state).catch((e) => console.error("archive cashflow game", e));
+    }
     if (input.type === "join") {
       store.set(name, token!, {
         httpOnly: true,
