@@ -60,7 +60,7 @@ export type GameReport = {
   endedAt: number | null;
   minutes: number | null;
   rolls: number;
-  endedBy: "win" | "host" | "expired";
+  endedBy: "win" | "host" | "time" | "expired";
   winner: string | null;
   players: PlayerReport[];
 };

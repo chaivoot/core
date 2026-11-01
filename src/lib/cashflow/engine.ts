@@ -124,7 +124,9 @@ export type GameState = {
   startedAt?: number;
   endedAt?: number;
   /** จบเพราะมีคนชนะ หรือ host กดจบเกม */
-  endedBy?: "win" | "host";
+  endedBy?: "win" | "host" | "time";
+  /** นับครั้งที่เปลี่ยนตา (ใช้ดูว่าเพิ่งจบตาไปหรือยัง) */
+  turnSeq?: number;
   /** คนที่ถึงตาไม่ซื้อการ์ดใบนี้ → พอทุกคนตอบครบ จบตาให้อัตโนมัติ */
   autoEnd?: boolean;
   /** ดีลใบนี้คนเปิดไม่ซื้อ และเปิดให้คนอื่นซื้อต่อ (ใครกดก่อนได้ก่อน) */
@@ -138,7 +140,17 @@ export type GameState = {
 export type GameOptions = {
   /** ดีลที่คนเปิดไม่ซื้อ ให้คนอื่นซื้อต่อได้ */
   resellDeals?: boolean;
+  /** เวลาเล่น (นาที) 0/ไม่ใส่ = ไม่จำกัด · หมดเวลาแล้วเกมจบเมื่อจบตานั้น */
+  minutes?: number;
 };
+
+export const TIME_LIMITS = [0, 30, 45, 60, 90, 120] as const;
+
+/** หมดเวลาเล่นแล้วหรือยัง */
+export function timeUp(s: Pick<GameState, "options" | "startedAt">, now: number) {
+  const m = s.options?.minutes ?? 0;
+  return m > 0 && s.startedAt !== undefined && now >= s.startedAt + m * 60_000;
+}
 
 export type LogEntry = string | { t: string; p: string };
 
@@ -200,7 +212,7 @@ export type Action =
   | { type: "collect" }
   | { type: "finish" }
   | { type: "chooseDream"; dream: number }
-  | { type: "setOptions"; resellDeals: boolean }
+  | { type: "setOptions"; resellDeals?: boolean; minutes?: number }
   | { type: "intro"; slide: number | null }
   | { type: "sellRight"; pct: number }
   | { type: "loan"; count?: number }
@@ -234,7 +246,7 @@ export function newGame(): GameState {
     log: [],
     winner: null,
     seq: 0,
-    options: { resellDeals: false },
+    options: { resellDeals: false, minutes: 60 },
     deckVersion: DECK_VERSION,
   };
 }
@@ -470,6 +482,7 @@ function startTurn(s: GameState) {
   s.rightFee = undefined;
   s.rightPct = undefined;
   s.autoEnd = false;
+  s.turnSeq = (s.turnSeq ?? 0) + 1;
   const p = current(s);
   if (p.fast && p.fast.dream < 0) s.step = "dream";
 }
@@ -797,6 +810,16 @@ function respond(s: GameState, p: Player, a: Extract<Action, { type: "respond" }
 }
 
 /** หมดเวลาตอบ (ยกเว้นคนที่ถึงตา) → ถือว่าไม่ทำอะไร */
+/** หมดเวลาแล้ว และเพิ่งเปลี่ยนตา → จบเกม (ให้คนที่กำลังเล่นอยู่เล่นจบตาก่อน) */
+function endIfTimeUp(s: GameState, turnSeqBefore: number | undefined, now: number) {
+  if (s.phase !== "playing" || s.turnSeq === turnSeqBefore || !timeUp(s, now)) return;
+  s.phase = "over";
+  s.winner = null;
+  s.endedBy = "time";
+  s.endedAt = now;
+  log(s, "⏰ หมดเวลาเล่น จบเกม ดูสรุปผลการเล่นได้เลย");
+}
+
 export function tick(state: GameState, now: number): GameState | null {
   if (state.phase !== "playing" || state.step !== "respond" || !state.deadline || now < state.deadline) return null;
   const s = structuredClone(state);
@@ -806,6 +829,7 @@ export function tick(state: GameState, now: number): GameState | null {
   }
   s.deadline = null;
   finishCard(s);
+  endIfTimeUp(s, state.turnSeq, now);
   return s;
 }
 
@@ -863,7 +887,13 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
   if (action.type === "setOptions") {
     if (!actor.host) throw new GameError("host เท่านั้นที่ตั้งค่าได้");
     if (s.phase !== "lobby") throw new GameError("ตั้งค่าได้ก่อนเริ่มเกมเท่านั้น");
-    s.options = { ...s.options, resellDeals: action.resellDeals };
+    const next = { ...s.options };
+    if (action.resellDeals !== undefined) next.resellDeals = action.resellDeals;
+    if (action.minutes !== undefined) {
+      if (!(TIME_LIMITS as readonly number[]).includes(action.minutes)) throw new GameError("เวลาเล่นไม่ถูกต้อง");
+      next.minutes = action.minutes;
+    }
+    s.options = next;
     return s;
   }
 
@@ -1043,6 +1073,7 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
   }
 
   checkWinner(s);
+  endIfTimeUp(s, state.turnSeq, ctx.now);
   if ((s.phase as GameState["phase"]) === "over" && !s.endedAt) s.endedAt = ctx.now;
   return s;
 }

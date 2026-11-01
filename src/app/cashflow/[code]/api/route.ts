@@ -26,7 +26,7 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("collect") }),
   z.object({ type: z.literal("finish") }),
   z.object({ type: z.literal("chooseDream"), dream: z.number().int().min(0).max(20) }),
-  z.object({ type: z.literal("setOptions"), resellDeals: z.boolean() }),
+  z.object({ type: z.literal("setOptions"), resellDeals: z.boolean().optional(), minutes: z.number().int().min(0).max(240).optional() }),
   z.object({ type: z.literal("intro"), slide: z.number().int().min(0).max(20).nullable() }),
   z.object({ type: z.literal("sellRight"), pct: z.number().int().min(3).max(15) }),
   z.object({ type: z.literal("loan"), count: z.number().int().min(1).max(1_000).optional() }),
@@ -56,7 +56,12 @@ export async function GET(req: Request, ctx: RouteContext<"/cashflow/[code]/api"
 
   // หมดเวลาตอบการ์ด → บันทึกว่า "ไม่ทำอะไร" (ทุกเครื่องดึงสถานะอยู่แล้ว จึงใช้จังหวะนี้)
   if (tick(room.state, Date.now())) {
+    const before = room.state.phase;
     room = (await updateRoom(code, (r) => tick(r.state, Date.now()))) ?? room;
+    // หมดเวลาตอบแล้วเกมจบ (หมดเวลาเล่น) → เก็บสรุปถาวร
+    if (room.state.phase === "over" && before !== "over") {
+      await archiveGame(room.code, room.state).catch((e) => console.error("archive cashflow game", e));
+    }
   }
 
   const since = Number(new URL(req.url).searchParams.get("v"));

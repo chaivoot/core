@@ -3,19 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { DREAMS, FAST_GOAL, MAX_PLAYERS, MIN_PLAYERS, money, colorHex } from "@/lib/cashflow/data";
-import {
-  logText,
-  monthlyCashflow,
-  passiveIncome,
-  profession,
-  totalExpenses,
-  type PublicPlayer,
-  type PublicState,
-} from "@/lib/cashflow/engine";
+import { logText, passiveIncome, TIME_LIMITS, totalExpenses, type PublicPlayer, type PublicState } from "@/lib/cashflow/engine";
 import { GameBoard } from "../board";
 import { GameSummaryHeader, PlayerReportCard } from "../report";
 import { IntroSlide, INTRO_SLIDES } from "../intro";
-import { CardView, Dice, FreedomBar, PlayerTag, Rat, cardKey, useNow, useRoom } from "../game-ui";
+import { CardView, Dice, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom } from "../game-ui";
+
+type Send = ReturnType<typeof useRoom>["send"];
 
 export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: string; qrSvg: string }) {
   const { data, error, busy, send } = useRoom(code);
@@ -118,6 +112,25 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
           <button className="btn-secondary w-full text-lg" disabled={busy} onClick={() => send({ type: "intro", slide: 0 })}>
             📖 อธิบายเป้าหมายและ ESBI ก่อนเริ่ม
           </button>
+          <div className="rounded-2xl bg-stone-50 p-3">
+            <b>เวลาเล่น</b>
+            <span className="block text-sm text-stone-500">หมดเวลาแล้วเกมจบเมื่อจบตานั้น แล้วดูสรุปผลการเล่น</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {TIME_LIMITS.map((m) => {
+                const on = (state.options?.minutes ?? 0) === m;
+                return (
+                  <button
+                    key={m}
+                    className={`${on ? "btn-primary" : "btn-secondary"} min-h-9 px-3 text-sm`}
+                    disabled={busy}
+                    onClick={() => send({ type: "setOptions", minutes: m })}
+                  >
+                    {m === 0 ? "ไม่จำกัด" : `${m} นาที`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <label className="flex items-start gap-3 rounded-2xl bg-stone-50 p-3">
             <input
               type="checkbox"
@@ -152,7 +165,9 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
   const secondsLeft = state.deadline ? Math.max(0, Math.ceil((state.deadline - now) / 1000)) : null;
 
   return (
-    <main className="grid min-h-dvh gap-4 p-4 landscape:h-dvh landscape:grid-cols-[minmax(0,calc(100dvh-2rem))_minmax(15rem,1fr)] landscape:items-start">
+    <main className="flex min-h-dvh flex-col gap-3 p-4 landscape:h-dvh">
+      <TopBar state={state} code={code} now={now} busy={busy} send={send} />
+      <div className="grid gap-4 landscape:min-h-0 landscape:flex-1 landscape:grid-cols-[minmax(0,calc(100dvh-6.5rem))_minmax(15rem,1fr)] landscape:items-start">
       {data?.stale && (
         <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-4 bg-amber-100 p-3 text-amber-900 shadow">
           <span className="font-semibold">เกมมีการอัปเดตการ์ดระหว่างเล่น ห้องนี้เล่นต่อไม่ได้</span>
@@ -162,7 +177,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
         </div>
       )}
       {/* กระดาน: ทางด่วนสี่เหลี่ยมล้อมสนามแข่งหนู */}
-      <GameBoard state={state} className="mx-auto w-full max-w-[min(100%,calc(100dvh-2rem))]">
+      <GameBoard state={state} className="mx-auto w-full max-w-[min(100%,calc(100dvh-6.5rem))]">
         {/* กลางวง */}
         <div className="absolute inset-[26.6%] flex flex-col items-center justify-center gap-[0.8cqw] overflow-hidden rounded-full bg-white p-[2%] text-center shadow-inner ring-1 ring-stone-200">
           {state.phase === "over" && !winner ? (
@@ -226,11 +241,7 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
       </GameBoard>
 
       {/* ผู้เล่นและบันทึก */}
-      <aside className="space-y-3 landscape:max-h-[calc(100dvh-2rem)] landscape:max-w-[32rem] landscape:overflow-y-auto">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">กระแสเงินสด</h1>
-          <span className="font-mono text-stone-500">ห้อง {code}</span>
-        </div>
+      <aside className="space-y-3 landscape:max-h-[calc(100dvh-6.5rem)] landscape:max-w-[32rem] landscape:overflow-y-auto">
         {/* จบเกม: สรุปผลการเล่นทุกคน (เรียงตามความคืบหน้า) */}
         {data?.report && (
           <>
@@ -248,26 +259,85 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
           .map((p) => (
             <PlayerCard key={p.id} p={p} active={p.id === turnPlayer.id && state.phase === "playing"} />
           ))}
-        {state.phase === "playing" && (
-          <div className="grid grid-cols-2 gap-2">
-            <button className="btn-ghost text-sm" disabled={busy} onClick={() => send({ type: "skipTurn" })}>
-              ข้ามตาของ {turnPlayer.name} (กรณีค้าง)
+        {error && <p className="text-sm text-rose-700">{error}</p>}
+        <Log state={state} />
+      </aside>
+      </div>
+    </main>
+  );
+}
+
+/** แถบบนจอ host: เวลาเล่น · รอบ · ตาของใคร · ปุ่มของ host */
+function TopBar({ state, code, now, busy, send }: { state: PublicState; code: string; now: number; busy: boolean; send: Send }) {
+  const clock = gameClock(state, now);
+  const turnPlayer = state.players[state.turn];
+  const round = Math.floor((state.rolls ?? 0) / Math.max(1, state.players.length)) + 1;
+  const pct = clock.limit ? Math.min(100, (clock.elapsed / clock.limit) * 100) : 0;
+  const low = clock.remaining !== null && clock.remaining <= 5 * 60_000;
+  const tone = clock.up ? "text-rose-600" : low ? "text-amber-600" : "text-stone-900";
+  const bar = clock.up ? "bg-rose-500" : low ? "bg-amber-500" : "bg-teal-600";
+  return (
+    <header className="card flex h-14 shrink-0 items-center gap-4 px-4 py-0">
+      <div className="hidden shrink-0 leading-tight sm:block">
+        <p className="font-bold">กระแสเงินสด</p>
+        <p className="font-mono text-xs text-stone-500">ห้อง {code}</p>
+      </div>
+
+      {/* เวลา */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className={`shrink-0 leading-tight ${tone}`}>
+          <p className="text-xs text-stone-500">
+            {state.phase === "over" ? "เล่นไป" : clock.up ? "หมดเวลา" : clock.remaining !== null ? "เหลือเวลา" : "เล่นมา"}
+          </p>
+          <p className="font-mono text-2xl font-bold tabular-nums">
+            ⏱ {fmtClock(state.phase !== "over" && clock.remaining !== null ? clock.remaining : clock.elapsed)}
+          </p>
+        </div>
+        {clock.limit > 0 && (
+          <div className="min-w-16 flex-1">
+            <div className="h-2 overflow-hidden rounded-full bg-stone-200">
+              <div className={`h-full rounded-full transition-all ${bar}`} style={{ width: `${pct}%` }} />
+            </div>
+            <p className="mt-0.5 truncate text-xs text-stone-500">
+              {clock.up && state.phase === "playing" ? "เกมจะจบเมื่อจบตานี้" : `เวลาเล่น ${state.options?.minutes} นาที`}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="shrink-0 text-center leading-tight">
+        <p className="text-xs text-stone-500">รอบที่</p>
+        <p className="text-xl font-bold">{round}</p>
+      </div>
+
+      {state.phase === "playing" && (
+        <>
+          <div className="flex shrink-0 items-center gap-2">
+            <Rat color={turnPlayer.color} className="w-10" />
+            <div className="leading-tight">
+              <p className="text-xs text-stone-500">ตาของ</p>
+              <p className="font-bold" style={{ color: colorHex(turnPlayer.color) }}>
+                {turnPlayer.name}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-1">
+            <button className="btn-ghost min-h-9 px-2 text-sm" disabled={busy} title="ข้ามตา (กรณีค้าง)" onClick={() => send({ type: "skipTurn" })}>
+              ⏭ ข้ามตา
             </button>
             <button
-              className="btn-ghost text-sm"
+              className="btn-ghost min-h-9 px-2 text-sm"
               disabled={busy}
               onClick={() => {
                 if (window.confirm("จบเกมตอนนี้แล้วดูสรุปผลการเล่นของทุกคน?")) send({ type: "finish" });
               }}
             >
-              🏁 จบเกม · ดูสรุป
+              🏁 จบเกม
             </button>
           </div>
-        )}
-        {error && <p className="text-sm text-rose-700">{error}</p>}
-        <Log state={state} />
-      </aside>
-    </main>
+        </>
+      )}
+    </header>
   );
 }
 
@@ -281,57 +351,24 @@ function progress(p: PublicPlayer) {
   return expenses > 0 ? Math.min(100, (passiveIncome(p) / expenses) * 100) : 100;
 }
 
+/** การ์ดผู้เล่นบนจอ host: เท่าที่จำเป็น — ชื่อ, ความคืบหน้าสู่เป้าหมาย (%) */
 function PlayerCard({ p, active }: { p: PublicPlayer; active: boolean }) {
   const ring = active ? { boxShadow: `0 0 0 3px ${colorHex(p.color)}` } : undefined;
-  if (p.fast) {
-    const f = p.fast;
-    const gained = f.income - (f.goal - FAST_GOAL);
-    const pct = Math.min(100, Math.max(0, (gained / FAST_GOAL) * 100));
-    const dream = DREAMS[f.dream];
-    return (
-      <div className="card space-y-2 bg-indigo-950 p-3 text-indigo-50 ring-indigo-900" style={ring}>
-        <div className="flex items-center justify-between gap-2">
-          <PlayerTag p={p} />
-          <span className="rounded-full bg-amber-400 px-2 py-0.5 text-xs font-bold text-indigo-950">🚀 ทางด่วน</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span>
-            เงินสด <b>{money(p.cash)}</b>
-          </span>
-          <span>
-            รายได้ต่อรอบ <b>{money(f.income)}</b>
-          </span>
-        </div>
-        <div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-indigo-800">
-            <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="mt-0.5 text-xs text-indigo-200">
-            เพิ่มรายได้แล้ว {money(gained)} / {money(FAST_GOAL)}
-            {dream && ` · ความฝัน: ${dream.icon} ${dream.name} (${money(dream.cost)})`}
-          </p>
-        </div>
-        {p.skip > 0 && <p className="text-xs text-indigo-200">พักรักษาตัว หยุดอีก {p.skip} ตา</p>}
-      </div>
-    );
-  }
-  const cf = monthlyCashflow(p);
+  const fast = !!p.fast;
+  const pct = fast ? progress(p) - 100 : progress(p);
   return (
-    <div className="card space-y-2 p-3" style={ring}>
+    <div className={`card space-y-1.5 px-3 py-2 ${fast ? "bg-indigo-950 text-indigo-50 ring-indigo-900" : ""}`} style={ring}>
       <div className="flex items-center justify-between gap-2">
         <PlayerTag p={p} />
-        <span className="text-sm text-stone-500">{profession(p).name}</span>
-      </div>
-      <div className="flex justify-between text-sm">
-        <span>
-          เงินสด <b>{money(p.cash)}</b>
-        </span>
-        <span>
-          กระแสเงินสด <b className={cf < 0 ? "text-rose-700" : ""}>{money(cf)}</b>/เดือน
+        <span className="shrink-0 text-sm">
+          {p.skip > 0 && <span className="mr-2 opacity-70">หยุด {p.skip} ตา</span>}
+          {fast && "🚀 "}
+          <b className="text-lg">{Math.floor(pct)}%</b>
         </span>
       </div>
-      <FreedomBar passive={passiveIncome(p)} expenses={totalExpenses(p)} />
-      {p.skip > 0 && <p className="text-xs text-stone-500">ตกงาน หยุดอีก {p.skip} ตา</p>}
+      <div className={`h-2.5 overflow-hidden rounded-full ${fast ? "bg-indigo-800" : "bg-stone-200"}`}>
+        <div className={`h-full rounded-full transition-all ${fast ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }
