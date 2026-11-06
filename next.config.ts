@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     return Promise.resolve([
       { source: "/cashflow", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       { source: "/cashflow/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/sme", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ]);
   },
   redirects() {
