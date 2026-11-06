@@ -4,8 +4,6 @@
   --font-sans: var(--font-thai), ui-sans-serif, system-ui, sans-serif;
   /* ลายมือ สำหรับแผ่นงบการเงินในเกมกระแสเงินสด */
   --font-hand: var(--font-itim), var(--font-thai), ui-sans-serif, sans-serif;
-  /* หัวข้อแบบเกม สำหรับหน้าจำลองแผนเปิดธุรกิจ (/sme) */
-  --font-game: var(--font-mitr), var(--font-thai), ui-sans-serif, sans-serif;
 }
 
 @theme {

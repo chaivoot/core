@@ -63,7 +63,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: "cafe-franchise",
-    name: "ร้านกาแฟแฟรนไชส์",
+    name: "ร้านกาแฟ (แฟรนไชส์)",
     icon: "🥤",
     margin: 55,
     note: "ได้แบรนด์และระบบสำเร็จรูป แลกกับค่าแฟรนไชส์และค่าธรรมเนียมรายเดือน",
@@ -200,7 +200,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: "franchise",
-    name: "ร้านอาหารแฟรนไชส์",
+    name: "ร้านอาหาร (แฟรนไชส์)",
     icon: "🏪",
     margin: 50,
     setup: [

@@ -105,118 +105,111 @@ function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: 
   );
 }
 
-/** สีประจำด่าน (เหมือนสีกองการ์ดบนกระดาน) */
-const STAGES = [
-  { band: "bg-sky-600", soft: "bg-sky-100" },
-  { band: "bg-orange-600", soft: "bg-orange-100" },
-  { band: "bg-rose-600", soft: "bg-rose-100" },
-  { band: "bg-emerald-700", soft: "bg-emerald-100" },
-  { band: "bg-amber-500", soft: "bg-amber-100" },
-  { band: "bg-violet-600", soft: "bg-violet-100" },
-];
+/** แยกชื่อร้านเป็นชื่อหลักกับคำขยาย เช่น "ร้านกาแฟ (สร้างแบรนด์เอง)" */
+function splitName(name: string) {
+  const paren = name.match(/^(.*?)\s*\((.*)\)$/);
+  if (paren) return { main: paren[1], sub: paren[2] };
+  const [main, ...rest] = name.split(" / ");
+  return { main, sub: rest.join(" / ") };
+}
 
-const BOARD_INK = "border-[#5b3a1a]";
-/** สีหัวการ์ดธุรกิจ (สลับสีเหมือนการ์ดโฉนดบนกระดาน) */
-const DEED = ["bg-amber-200", "bg-sky-200", "bg-rose-200", "bg-emerald-200", "bg-violet-200", "bg-orange-200"];
-
-/** ด่านบนกระดาน: การ์ดกระดาษ มีแถบสีหัวการ์ด และเหรียญเลขด่าน */
-function Section({ n, title, children, desc, icon }: { n: number; title: string; desc?: string; icon: string; children: React.ReactNode }) {
-  const st = STAGES[(n - 1) % STAGES.length];
+/** กล่องแผงข้อมูลแบบ dashboard */
+function Panel({ title, step, children, desc, right }: { title: string; step?: number; desc?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section id={`stage-${n}`} className={`scroll-mt-28 overflow-hidden rounded-2xl border-[3px] ${BOARD_INK} bg-[#fffaf0] shadow-[4px_5px_0_0_rgba(91,58,26,0.35)]`}>
-      <div className={`flex items-center gap-3 px-4 py-2.5 text-white ${st.band}`}>
-        <span className={`flex size-10 shrink-0 items-center justify-center rounded-full border-[3px] ${BOARD_INK} bg-[#fffaf0] font-game text-xl text-stone-900 shadow-[0_3px_0_0_rgba(0,0,0,0.25)]`}>
-          {n}
-        </span>
-        <h2 className="font-game text-xl leading-tight drop-shadow-[0_1px_0_rgba(0,0,0,0.3)]">
-          {icon} {title}
-        </h2>
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            {step !== undefined && (
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white">{step}</span>
+            )}
+            {title}
+          </h2>
+          {desc && <p className="mt-0.5 text-sm text-slate-500">{desc}</p>}
+        </div>
+        {right}
       </div>
-      <div className="space-y-3 p-4 sm:p-5">
-        {desc && <p className="text-sm text-stone-600">{desc}</p>}
-        {children}
-      </div>
+      {children}
     </section>
   );
 }
 
-/** ช่องคะแนนแบบบอร์ดเกม 0–100% มีหมากเดินตามความพร้อม */
-function ScoreTrack({ pct, icon }: { pct: number; icon: string }) {
-  const p = Math.max(0, Math.min(100, pct));
-  const cells = Array.from({ length: 10 }, (_, i) => i);
-  const colors = ["bg-rose-300", "bg-rose-200", "bg-orange-200", "bg-orange-200", "bg-amber-200", "bg-amber-200", "bg-lime-200", "bg-lime-200", "bg-emerald-200", "bg-emerald-300"];
+type Tone = "good" | "warn" | "bad" | "neutral";
+const TONE: Record<Tone, { text: string; bar: string; chip: string }> = {
+  good: { text: "text-emerald-700", bar: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+  warn: { text: "text-amber-700", bar: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-200" },
+  bad: { text: "text-rose-700", bar: "bg-rose-500", chip: "bg-rose-50 text-rose-700 ring-rose-200" },
+  neutral: { text: "text-slate-900", bar: "bg-slate-400", chip: "bg-slate-50 text-slate-600 ring-slate-200" },
+};
+
+/** การ์ดตัวเลขหลัก (KPI) */
+function Kpi({ label, value, sub, tone = "neutral", pct }: { label: string; value: string; sub?: React.ReactNode; tone?: Tone; pct?: number }) {
   return (
-    <div className="relative pt-5">
-      <div className={`grid grid-cols-10 overflow-hidden rounded-lg border-[3px] ${BOARD_INK}`}>
-        {cells.map((i) => (
-          <div key={i} className={`h-5 border-r-2 border-[#5b3a1a]/40 last:border-r-0 ${colors[i]} ${p >= (i + 1) * 10 ? "" : "opacity-45"}`} />
-        ))}
-      </div>
-      {/* หมาก */}
-      <span
-        className={`absolute top-0 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border-[3px] ${BOARD_INK} bg-white text-base shadow-[0_3px_0_0_rgba(0,0,0,0.3)] transition-all duration-700`}
-        style={{ left: `${Math.min(97, Math.max(3, p))}%` }}
-      >
-        {icon}
-      </span>
-      <span className="absolute top-0 right-0 -translate-y-1 text-base">🏁</span>
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">{label}</p>
+      <p className={`mt-1 text-2xl font-bold tabular-nums sm:text-3xl ${TONE[tone].text}`}>{value}</p>
+      {pct !== undefined && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className={`h-full rounded-full transition-all duration-500 ${TONE[tone].bar}`} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+        </div>
+      )}
+      {sub && <div className="mt-1.5 text-xs text-slate-500">{sub}</div>}
     </div>
   );
 }
 
-/** เหรียญรางวัล 1–3 เหรียญตามความพร้อม */
-function Stars({ n }: { n: number }) {
+/** แถบสัดส่วนเงินที่ต้องใช้ แยกตามแหล่ง/ประเภท */
+function Breakdown({ parts, total }: { parts: { label: string; value: number; color: string }[]; total: number }) {
+  const shown = parts.filter((p) => p.value > 0);
   return (
-    <span className="flex gap-1" aria-label={`${n} เหรียญ`}>
-      {[1, 2, 3].map((i) => (
-        <span
-          key={i}
-          className={`flex size-10 items-center justify-center rounded-full border-[3px] text-xl shadow-[0_3px_0_0_rgba(0,0,0,0.25)] ${
-            i <= n ? `${BOARD_INK} bg-amber-300` : "border-stone-300 bg-stone-100 opacity-50 grayscale"
-          }`}
-        >
-          ⭐
-        </span>
-      ))}
-    </span>
+    <div>
+      <div className="flex h-3 overflow-hidden rounded-full bg-slate-100">
+        {shown.map((p) => (
+          <div key={p.label} className={p.color} style={{ width: `${(p.value / Math.max(1, total)) * 100}%` }} title={p.label} />
+        ))}
+      </div>
+      <ul className="mt-3 space-y-1.5 text-sm">
+        {shown.map((p) => (
+          <li key={p.label} className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-slate-600">
+              <span className={`size-2.5 rounded-sm ${p.color}`} />
+              {p.label}
+            </span>
+            <span className="tabular-nums text-slate-900">
+              {money(p.value)} <span className="text-xs text-slate-400">({Math.round((p.value / Math.max(1, total)) * 100)}%)</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-/** ทางเดินบนกระดาน: 6 ด่าน + เส้นชัย (กดเพื่อเลื่อนไปที่ด่าน) */
-function BoardPath({ icon }: { icon: string }) {
-  const steps = [
-    { n: 1, label: "เลือกร้าน", emoji: "🗺️" },
-    { n: 2, label: "ลงทุน", emoji: "🧱" },
-    { n: 3, label: "รายเดือน", emoji: "🔥" },
-    { n: 4, label: "สำรอง", emoji: "🛡️" },
-    { n: 5, label: "เก็บเงิน", emoji: "💰" },
-    { n: 6, label: "เป้าหมาย", emoji: "🎯" },
-  ];
+/** กราฟแท่งโอกาสรอดของธุรกิจใหม่ */
+function SurvivalChart() {
   return (
-    <nav aria-label="ด่านทั้งหมด" className="relative">
-      <div className="absolute inset-x-6 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[repeating-linear-gradient(90deg,#5b3a1a_0_10px,transparent_10px_18px)] opacity-40" />
-      <ol className="relative grid grid-cols-7 gap-1.5">
-        {steps.map((st, i) => (
-          <li key={st.n}>
-            <a
-              href={`#stage-${st.n}`}
-              className={`flex aspect-square flex-col items-center justify-center rounded-xl border-[3px] ${BOARD_INK} ${STAGES[i].band} text-white shadow-[0_3px_0_0_rgba(91,58,26,0.4)] transition hover:-translate-y-0.5`}
-            >
-              <span className="text-lg leading-none sm:text-2xl">{i === 0 ? icon : st.emoji}</span>
-              <span className="mt-0.5 hidden text-[10px] font-bold sm:block">{st.label}</span>
-            </a>
-          </li>
-        ))}
-        <li>
-          <a
-            href="#result"
-            className={`flex aspect-square flex-col items-center justify-center rounded-xl border-[3px] ${BOARD_INK} bg-[repeating-conic-gradient(#1c1917_0_25%,#fff_0_50%)] bg-[length:14px_14px] shadow-[0_3px_0_0_rgba(91,58,26,0.4)]`}
-          >
-            <span className="rounded-md bg-white/90 px-1 text-lg leading-none sm:text-2xl">🏆</span>
-          </a>
-        </li>
-      </ol>
-    </nav>
+    <div className="flex h-40 items-end gap-3">
+      {SURVIVAL.map((x) => (
+        <div key={x.year} className="flex flex-1 flex-col items-center gap-1">
+          <span className="text-xs font-semibold tabular-nums text-slate-700">{x.pct}%</span>
+          <div className="flex h-28 w-full items-end overflow-hidden rounded-md bg-rose-50">
+            <div className="w-full rounded-md bg-gradient-to-t from-teal-600 to-teal-400" style={{ height: `${x.pct}%` }} />
+          </div>
+          <span className="text-xs text-slate-500">ปีที่ {x.year}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Slider({ value, min, max, onChange, label, unit }: { value: number; min: number; max: number; onChange: (n: number) => void; label: string; unit: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1 accent-teal-700" aria-label={label} />
+      <span className="w-24 shrink-0 text-right text-lg font-bold tabular-nums">
+        {value} {unit}
+      </span>
+    </div>
   );
 }
 
@@ -236,8 +229,8 @@ function Chart({ series, target, ready }: { series: { year: number; saved: numbe
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="กราฟเงินเก็บเทียบกับเงินที่ต้องมี">
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} stroke="#e7e5e4" />
-            <text x={pad.l - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill="#78716c">
+            <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} stroke="#e2e8f0" />
+            <text x={pad.l - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill="#64748b">
               {short(t)}
             </text>
           </g>
@@ -245,7 +238,7 @@ function Chart({ series, target, ready }: { series: { year: number; saved: numbe
         {series
           .filter((s) => s.year % (maxX > 20 ? 5 : 2) === 0)
           .map((s) => (
-            <text key={s.year} x={x(s.year)} y={H - 8} textAnchor="middle" fontSize="11" fill="#78716c">
+            <text key={s.year} x={x(s.year)} y={H - 8} textAnchor="middle" fontSize="11" fill="#64748b">
               {s.year === 0 ? "วันนี้" : `ปี ${s.year}`}
             </text>
           ))}
@@ -253,16 +246,17 @@ function Chart({ series, target, ready }: { series: { year: number; saved: numbe
         <text x={x(target) + 4} y={pad.t + 12} fontSize="11" fill="#0f766e">
           เป้าหมาย
         </text>
-        <path d={path("need")} fill="none" stroke="#e11d48" strokeWidth="2.5" />
+        <path d={path("need")} fill="none" stroke="#e11d48" strokeWidth="2" strokeDasharray="6 4" />
+        <path d={`${path("saved")}L${x(maxX)},${y(0)}L${x(0)},${y(0)}Z`} fill="#0d9488" opacity="0.08" />
         <path d={path("saved")} fill="none" stroke="#0d9488" strokeWidth="2.5" />
         {ready !== null && ready <= maxX && <circle cx={x(ready)} cy={y(series[Math.min(series.length - 1, Math.round(ready))].saved)} r="5" fill="#0d9488" />}
       </svg>
-      <figcaption className="mt-1 flex flex-wrap gap-4 text-xs text-stone-600">
+      <figcaption className="mt-1 flex flex-wrap gap-4 text-xs text-slate-600">
         <span className="flex items-center gap-1">
           <span className="inline-block h-0.5 w-5 bg-teal-600" /> เงินเก็บสะสม
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-5 bg-rose-600" /> เงินที่ต้องเก็บเอง (แพงขึ้นตามเงินเฟ้อ)
+          <span className="inline-block h-0 w-5 border-t-2 border-dashed border-rose-600" /> เงินที่ต้องเก็บเอง (แพงขึ้นตามเงินเฟ้อ)
         </span>
       </figcaption>
     </figure>
@@ -300,298 +294,222 @@ export function SmeSimulator() {
   const template = TEMPLATES.find((t) => t.id === s.templateId);
   const late = r.yearsToReady === null ? null : r.yearsToReady - s.targetYears;
 
-  const stars = r.readyPct >= 100 ? 3 : r.readyPct >= 70 ? 2 : 1;
+  const readyTone: Tone = r.readyPct >= 100 ? "good" : r.readyPct >= 70 ? "warn" : "bad";
+  const timeTone: Tone = late === null ? "bad" : late <= 0 ? "good" : late <= 3 ? "warn" : "bad";
+  const runwayTone: Tone = s.runwayMonths >= 12 ? "good" : s.runwayMonths >= 6 ? "warn" : "bad";
+  const yearsText = r.yearsToReady === null ? "40+ ปี" : `${years(Math.ceil(r.yearsToReady * 2) / 2)} ปี`;
 
-  return (
-    <div
-      className="min-h-dvh bg-[#9a6a3c] px-2 py-3 sm:px-4 sm:py-6"
-      style={{
-        // โต๊ะไม้: ลายเสี้ยนไม้บาง ๆ
-        backgroundImage:
-          "repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 38px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 17px)",
-      }}
-    >
-      {/* แถบคะแนนติดด้านบน: หมากเดินบนช่องคะแนน */}
-      <div className={`sticky top-2 z-30 mx-auto max-w-3xl rounded-2xl border-[3px] ${BOARD_INK} bg-[#fffaf0]/95 px-3 pt-1 pb-2 shadow-[3px_4px_0_0_rgba(0,0,0,0.25)] backdrop-blur`}>
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline justify-between text-xs font-semibold text-stone-600">
-              <span>ช่องคะแนน · พร้อมเปิดร้านในปีที่ {s.targetYears}</span>
-              <span className="font-game text-lg text-stone-900">{Math.floor(r.readyPct)}%</span>
-            </div>
-            <ScoreTrack pct={r.readyPct} icon={template?.icon ?? "🏪"} />
-          </div>
-          <div className={`shrink-0 rounded-xl border-[3px] ${BOARD_INK} bg-amber-300 px-2 py-1 text-center leading-tight shadow-[0_3px_0_0_rgba(0,0,0,0.25)]`}>
-            <p className="text-[10px] font-bold">⏳ เก็บครบ</p>
-            <p className="font-game">{r.yearsToReady === null ? "40+" : years(Math.ceil(r.yearsToReady * 2) / 2)} ปี</p>
-          </div>
-        </div>
+  const results = (
+    <div className="space-y-4">
+      {/* KPI หลัก */}
+      <div className="grid grid-cols-2 gap-3">
+        <Kpi
+          label="ต้องมีเงินทั้งหมด"
+          value={short(r.needToday)}
+          sub={
+            <>
+              ต้องเก็บเอง {money(r.ownNeedToday)}
+              {s.inflation > 0 && <> · ปีที่ {s.targetYears}: {money(r.needAtTarget)}</>}
+            </>
+          }
+        />
+        <Kpi label={`พร้อมในปีที่ ${s.targetYears}`} value={`${Math.floor(r.readyPct)}%`} tone={readyTone} pct={r.readyPct} sub={`มี ${money(r.savedAtTarget)}`} />
+        <Kpi
+          label="เก็บเงินครบใน"
+          value={yearsText}
+          tone={timeTone}
+          sub={late === null ? "ยังไม่พอภายใน 40 ปี" : late <= 0 ? "✓ ทันตามเป้า" : `ช้ากว่าเป้า ${years(Math.ceil(late * 2) / 2)} ปี`}
+        />
+        <Kpi label="ยอดขายคุ้มทุน/วัน" value={money(r.breakEvenSales / 26)} sub={`${money(r.breakEvenSales)}/เดือน (เปิด 26 วัน)`} />
       </div>
 
-    {/* กระดาน */}
-    <main className={`mx-auto mt-4 max-w-3xl space-y-5 rounded-[2rem] border-[6px] ${BOARD_INK} bg-[#f5e9cf] p-3 pb-10 shadow-[6px_8px_0_0_rgba(0,0,0,0.3)] sm:p-6`}>
-      <header className={`space-y-3 rounded-2xl border-[3px] border-dashed ${BOARD_INK} bg-[#fffaf0] p-4 text-center`}>
-        <p className="mx-auto w-fit -rotate-2 rounded-md border-[3px] border-[#5b3a1a] bg-rose-600 px-3 py-0.5 text-xs font-bold tracking-wide text-white shadow-[0_3px_0_0_rgba(0,0,0,0.25)]">
-          🎲 บอร์ดเกมวางแผนชีวิต
-        </p>
-        <h1 className="font-game text-3xl text-[#5b3a1a] sm:text-4xl">เส้นทางสู่ธุรกิจของตัวเอง</h1>
-        <p className="text-stone-700">เดินผ่าน 6 ช่อง แล้วดูว่าต้องมีเงินเท่าไหร่ เก็บกี่ปีถึงพอ และต้องเจอการ์ดเหตุการณ์อะไรหลังเปิดร้าน</p>
-        <BoardPath icon={template?.icon ?? "🗺️"} />
-      </header>
-
-      <Section n={1} icon="🗺️" title="เลือกร้านในฝัน" desc="เลือกแบบที่ใกล้เคียง ตัวเลขทุกช่องเป็นค่าประมาณตั้งต้น แก้ให้ตรงกับแผนของคุณได้">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {TEMPLATES.map((t) => (
-            <button
-              key={t.id}
-              className={`relative flex flex-col overflow-hidden rounded-xl border-[3px] text-center text-sm transition ${
-                s.templateId === t.id
-                  ? `-translate-y-1 ${BOARD_INK} bg-white font-semibold shadow-[3px_5px_0_0_rgba(91,58,26,0.45)] ring-4 ring-amber-300`
-                  : "border-[#5b3a1a]/70 bg-white shadow-[2px_3px_0_0_rgba(91,58,26,0.25)] hover:-translate-y-0.5"
-              }`}
-              onClick={() => setS((x) => fromTemplate(t, x))}
-            >
-              <span className={`flex h-12 items-center justify-center text-3xl ${DEED[TEMPLATES.indexOf(t) % DEED.length]}`}>{t.icon}</span>
-              <span className="flex min-h-12 items-center justify-center px-2 py-1.5 leading-snug">{t.name}</span>
-              {s.templateId === t.id && <span className="absolute top-1 right-1 text-lg">📍</span>}
-            </button>
-          ))}
+      {r.readyPct < 100 && (
+        <div className={`rounded-xl px-4 py-3 text-sm ring-1 ${TONE.warn.chip}`}>
+          ต้องเก็บเดือนละ <b className="tabular-nums">{money(r.savePerMonthNeeded)}</b> ถึงจะทันเริ่มในปีที่ {s.targetYears} (ตอนนี้เก็บ {money(s.savePerMonth)})
         </div>
-        {template?.note && <p className="text-sm text-stone-500">{template.note}</p>}
-      </Section>
+      )}
 
-      <Section n={2} icon="🧱" title="เงินลงทุนเริ่มต้น" desc="จ่ายครั้งเดียวก่อนเปิด: ตกแต่ง อุปกรณ์ มัดจำ ใบอนุญาต ของล็อตแรก">
-        <label className={`flex items-start gap-3 rounded-xl border-[3px] border-dashed ${BOARD_INK} bg-amber-100 p-3`}>
-          <input type="checkbox" className="mt-1 size-5 accent-[#5b3a1a]" checked={s.ownSpace} onChange={(e) => set("ownSpace", e.target.checked)} />
-          <span>
-            <b>มีที่ดิน / ตึก / บ้านของตัวเองหรือครอบครัวใช้ทำร้านได้</b>
-            <span className="block text-sm text-stone-600">ไม่ต้องจ่ายค่าเช่าและเงินมัดจำ</span>
-          </span>
-        </label>
-        <CostList items={s.setup} ownSpace={s.ownSpace} onChange={(xs) => set("setup", xs)} />
-        <p className="text-right font-semibold">รวม {money(r.setupTotal)}</p>
-      </Section>
-
-      <Section n={3} icon="🔥" title="ค่าใช้จ่ายรายเดือน" desc="จ่ายทุกเดือนไม่ว่าจะขายได้หรือไม่ (ไม่รวมต้นทุนสินค้า ซึ่งคิดผ่านกำไรขั้นต้น)">
-        <CostList items={s.monthly} ownSpace={s.ownSpace} onChange={(xs) => set("monthly", xs)} />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <MoneyInput label="เงินใช้จ่ายส่วนตัวของคุณต่อเดือน" value={s.ownerPay} onChange={(n) => set("ownerPay", n)} />
-          <NumberField label="กำไรขั้นต้น (หลังหักต้นทุนสินค้า)" suffix="%" value={s.margin} onChange={(n) => set("margin", n)} min={1} max={95} />
-        </div>
-        <p className="text-right font-semibold">ค่าใช้จ่ายต่อเดือนช่วงตั้งตัว (ธุรกิจ + ตัวคุณ) {money(r.monthlyBurn)}</p>
-      </Section>
-
-      <Section n={4} icon="🛡️" title="เงินหมุนเวียนสำรอง" desc="ช่วงแรกยอดขายยังไม่เข้าที่ ต้องมีเงินจ่ายค่าใช้จ่ายรายเดือนไว้ก่อน แนะนำ 6–12 เดือน">
-        <div className="flex items-center gap-3">
-          <input
-            type="range"
-            min={3}
-            max={18}
-            value={s.runwayMonths}
-            onChange={(e) => set("runwayMonths", Number(e.target.value))}
-            className="flex-1 accent-[#5b3a1a]"
-            aria-label="จำนวนเดือน"
-          />
-          <span className="w-20 text-right text-lg font-bold">{s.runwayMonths} เดือน</span>
-        </div>
-        <p className={`text-sm ${s.runwayMonths < 6 ? "text-rose-700" : s.runwayMonths >= 12 ? "text-emerald-700" : "text-stone-600"}`}>
-          {s.runwayMonths < 6
-            ? "⚠ น้อยกว่า 6 เดือน เสี่ยงเงินหมดก่อนธุรกิจตั้งตัวได้"
-            : s.runwayMonths >= 12
-              ? "✓ สำรอง 12 เดือนขึ้นไป รับมือช่วงยอดขายยังไม่เข้าที่ได้ดี"
-              : "พอใช้ได้ ถ้าไหวลองเผื่อถึง 12 เดือน"}{" "}
-          · รวม {money(r.runwayTotal)}
-        </p>
-      </Section>
-
-      <Section n={5} icon="💰" title="แหล่งเงินและการเก็บเงิน">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <MoneyInput label="เงินเก็บที่มีตอนนี้" value={s.savingsNow} onChange={(n) => set("savingsNow", n)} />
-          <MoneyInput label="เก็บได้ต่อเดือน" value={s.savePerMonth} onChange={(n) => set("savePerMonth", n)} />
-          <NumberField label="เก็บได้เพิ่มขึ้นปีละ (เงินเดือนขึ้น)" suffix="%/ปี" value={s.saveGrowth} onChange={(n) => set("saveGrowth", n)} max={20} step={0.5} />
-          <NumberField label="ผลตอบแทนเงินเก็บ" suffix="%/ปี" value={s.returnRate} onChange={(n) => set("returnRate", n)} max={15} step={0.5} />
-          <NumberField label="ค่าเปิดร้านแพงขึ้น (เงินเฟ้อ)" suffix="%/ปี" value={s.inflation} onChange={(n) => set("inflation", n)} max={10} step={0.5} />
-        </div>
-        <div className="grid gap-3 border-t border-stone-100 pt-3 sm:grid-cols-2">
-          <MoneyInput label="👨‍👩‍👧 พ่อแม่ / ครอบครัวช่วย" value={s.family} onChange={(n) => set("family", n)} />
-          <MoneyInput label="🏦 กู้ธนาคาร / สินเชื่อ SME" value={s.loan} onChange={(n) => set("loan", n)} />
-        </div>
-        {s.loan > 0 && <p className="text-xs text-stone-500">เงินกู้ต้องผ่อนคืนพร้อมดอกเบี้ย ตั้งแต่เดือนแรกที่ยังไม่มีกำไร — ใส่ค่าผ่อนในค่าใช้จ่ายรายเดือนด้วย</p>}
-      </Section>
-
-      <Section n={6} icon="🎯" title="อยากเริ่มในอีกกี่ปี">
-        <div className="flex items-center gap-3">
-          <input
-            type="range"
-            min={1}
-            max={20}
-            value={s.targetYears}
-            onChange={(e) => set("targetYears", Number(e.target.value))}
-            className="flex-1 accent-[#5b3a1a]"
-            aria-label="จำนวนปี"
-          />
-          <span className="w-16 text-right text-lg font-bold">{s.targetYears} ปี</span>
-        </div>
-      </Section>
-
-      {/* ---------- ผลลัพธ์ ---------- */}
-      <section id="result" className={`scroll-mt-28 space-y-4 rounded-2xl border-[4px] ${BOARD_INK} bg-[#fffaf0] p-4 shadow-[5px_6px_0_0_rgba(91,58,26,0.4)] sm:p-5`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-xs font-bold tracking-widest text-[#5b3a1a]/70 uppercase">ใบสรุปคะแนน</p>
-            <h2 className="font-game text-2xl text-[#5b3a1a]">🏆 ถึงเส้นชัยหรือยัง?</h2>
-          </div>
-          <Stars n={stars} />
-        </div>
-
-        <div className="space-y-1 rounded-xl border-2 border-[#5b3a1a]/40 bg-[repeating-linear-gradient(0deg,#fffaf0_0_27px,#e9dcc0_27px_28px)] p-4">
-          <Row label="เงินลงทุนเริ่มต้น" value={money(r.setupTotal)} />
-          <Row label={`เงินหมุนเวียน ${s.runwayMonths} เดือน`} value={money(r.runwayTotal)} />
-          <Row label="ต้องมีเงินทั้งหมด (ราคาวันนี้)" value={money(r.needToday)} strong />
-          {s.family > 0 && <Row label="หักพ่อแม่ / ครอบครัวช่วย" value={`−${money(s.family)}`} />}
-          {s.loan > 0 && <Row label="หักเงินกู้" value={`−${money(s.loan)}`} />}
-          <Row label="ต้องเก็บเอง (ราคาวันนี้)" value={money(r.ownNeedToday)} strong />
-          {s.inflation > 0 && (
-            <Row label={`อีก ${s.targetYears} ปี ต้องเก็บเอง (ค่าเปิดร้านแพงขึ้น ${s.inflation}%/ปี)`} value={money(r.needAtTarget)} strong />
-          )}
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className={`rounded-xl border-[3px] ${BOARD_INK} p-4 shadow-[0_4px_0_0_rgba(91,58,26,0.3)] ${r.readyPct >= 100 ? "bg-emerald-100" : r.readyPct >= 70 ? "bg-amber-100" : "bg-rose-100"}`}>
-            <p className="text-sm text-stone-600">ถึงปีที่ {s.targetYears} คุณจะพร้อม</p>
-            <p className="font-game text-5xl">{Math.floor(r.readyPct)}%</p>
-            <div className="mt-1">
-              <ScoreTrack pct={r.readyPct} icon={template?.icon ?? "🏪"} />
-            </div>
-            <p className="mt-1 text-sm text-stone-600">
-              มีเงิน {money(r.savedAtTarget)} จาก {money(r.needAtTarget)}
-            </p>
-          </div>
-          <div className={`rounded-xl border-[3px] ${BOARD_INK} bg-sky-100 p-4 shadow-[0_4px_0_0_rgba(91,58,26,0.3)]`}>
-            <p className="text-sm text-stone-600">⏳ เก็บเงินได้พอในอีก</p>
-            <p className="font-game text-5xl">{r.yearsToReady === null ? "40+ ปี" : `${years(Math.ceil(r.yearsToReady * 2) / 2)} ปี`}</p>
-            <p className="mt-1 text-sm">
-              {late === null ? (
-                <span className="text-rose-700">ด้วยแผนนี้ยังเก็บไม่พอภายใน 40 ปี</span>
-              ) : late <= 0 ? (
-                <span className="text-emerald-700">✓ ทันตามเป้า{late < -0.5 ? ` เร็วกว่าเป้า ${years(Math.floor(-late * 2) / 2)} ปี` : ""}</span>
-              ) : (
-                <span className="text-rose-700">ช้ากว่าเป้า {years(Math.ceil(late * 2) / 2)} ปี</span>
-              )}
-            </p>
-            {r.readyPct < 100 && (
-              <p className="mt-1 text-sm text-stone-600">
-                ถ้าอยากทันใน {s.targetYears} ปี ต้องเก็บเดือนละ <b>{money(r.savePerMonthNeeded)}</b>
-              </p>
-            )}
-          </div>
-        </div>
-
+      <Panel title="เงินเก็บสะสม vs เงินที่ต้องมี" desc="เส้นประ = เงินที่ต้องเก็บเอง (แพงขึ้นตามเงินเฟ้อ)">
         <Chart series={r.series} target={s.targetYears} ready={r.yearsToReady} />
+      </Panel>
 
-        <div className={`rounded-xl border-[3px] ${BOARD_INK} bg-violet-100 p-4 shadow-[0_4px_0_0_rgba(91,58,26,0.3)]`}>
-          <p className="font-game text-lg">🎯 เป้ายอดขายเพื่อคุ้มทุน</p>
-          <p className="mt-1 text-sm text-stone-700">
-            ต้องขายได้เดือนละ <b>{money(r.breakEvenSales)}</b> (≈ วันละ <b>{money(r.breakEvenSales / 26)}</b> ถ้าเปิด 26 วัน) ถึงจะพอจ่ายค่าใช้จ่ายทุกอย่างรวมเงินเดือนตัวเอง
-          </p>
-          <p className="mt-1 text-xs text-stone-500">
-            = ค่าใช้จ่ายต่อเดือน {money(r.monthlyBurn)} ÷ กำไรขั้นต้น {s.margin}% · ยังไม่รวมการคืนทุนเงินลงทุนเริ่มต้น
-          </p>
-        </div>
-      </section>
-
-      <section
-        className={`space-y-4 rounded-2xl border-[4px] ${BOARD_INK} bg-[#7f1d1d] p-4 text-stone-100 shadow-[5px_6px_0_0_rgba(0,0,0,0.35)] sm:p-5`}
-        style={{ backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 10px, transparent 10px 20px)" }}
-      >
-        <div className="flex items-center gap-3">
-          <span className="flex size-14 shrink-0 rotate-6 items-center justify-center rounded-lg border-[3px] border-amber-300 bg-[#450a0a] font-game text-3xl text-amber-300 shadow-[0_3px_0_0_rgba(0,0,0,0.4)]">
-            ?
-          </span>
-          <div>
-            <p className="text-xs font-bold tracking-widest text-amber-300 uppercase">การ์ดเหตุการณ์</p>
-            <h2 className="font-game text-2xl">10 ปีแรกหลังเปิดร้าน</h2>
-          </div>
-        </div>
-        <p className="text-sm text-stone-300">เปิดร้านได้แล้วยังไม่จบเกม สถิติบอกว่าธุรกิจใหม่ปิดตัวมากกว่าที่คนส่วนใหญ่คิด</p>
-        <div className="space-y-2">
-          {SURVIVAL.map((x) => (
-            <div key={x.year} className="flex items-center gap-3 text-sm">
-              <span className="w-16 shrink-0 text-amber-100">ปีที่ {x.year}</span>
-              <div className="h-6 flex-1 overflow-hidden rounded-md border-2 border-amber-200/60 bg-[#450a0a]">
-                <div className="flex h-full items-center justify-end rounded-sm bg-emerald-500 pr-2 text-xs font-semibold text-white" style={{ width: `${x.pct}%` }}>
-                  ~{x.pct}%
-                </div>
-              </div>
-            </div>
-          ))}
-          <p className="text-xs text-amber-100/80">สัดส่วนธุรกิจที่ยังเปิดอยู่ (ประมาณ) · ราวครึ่งหนึ่งปิดก่อนครบ 5 ปี และเหลือราว 1 ใน 3 เมื่อครบ 10 ปี</p>
-        </div>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-amber-50/90">
-          <li>ร้านอาหาร/เครื่องดื่ม และก่อสร้าง เป็นกลุ่มที่ปิดกิจการมากที่สุดในไทยช่วงปี 2566–67</li>
-          <li>SME ไทยส่วนใหญ่มีสายป่าน (เงินหมุนเวียน) เหลือไม่เกิน 6 เดือน — เงินหมุนเวียนจึงสำคัญพอ ๆ กับเงินลงทุน</li>
-          <li>ความเสี่ยงปิดกิจการของ SME ไทยเฉลี่ยราว 7% ต่อปี และสูงขึ้นในช่วงเศรษฐกิจไม่ดี</li>
-        </ul>
-
-        <div className={`rounded-xl border-[3px] ${BOARD_INK} bg-[#fffaf0] p-4 text-stone-900`}>
-          <p className="font-game text-lg">
-            🃏 การ์ดช่วยรอด {okCount}/{factors.length} ใบ
-          </p>
-          <p className="text-sm text-stone-600">สะสมให้ครบ ช่วยให้รอดได้มากกว่าค่าเฉลี่ย (ติ๊กข้อที่ทำแล้ว)</p>
-          <ul className="mt-2 space-y-2">
-            {factors.map((f) => {
-              const auto = f.key === "runway" || f.key === "debt";
-              return (
-                <li key={f.key}>
-                  <label className={`flex items-start gap-3 rounded-lg border-[3px] p-2 transition ${f.ok ? "border-emerald-600 bg-emerald-50 shadow-[0_3px_0_0_rgba(5,150,105,0.35)]" : "border-dashed border-[#5b3a1a]/40"}`}>
-                    <input
-                      type="checkbox"
-                      className="mt-1 size-5"
-                      checked={f.ok}
-                      disabled={auto}
-                      onChange={(e) => set("checks", { ...s.checks, [f.key]: e.target.checked })}
-                    />
-                    <span>
-                      <span className={f.ok ? "font-medium text-emerald-800" : "font-medium"}>
-                        {f.ok ? "🃏 " : "🔒 "}
-                        {f.label}
-                      </span>
-                      <span className="block text-xs text-stone-500">
-                        {f.hint}
-                        {auto && " (คำนวณจากแผน)"}
-                      </span>
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-3 text-sm text-stone-700">
-            {okCount >= 5
-              ? "เตรียมตัวดีมาก โอกาสรอดของคุณน่าจะดีกว่าค่าเฉลี่ยของธุรกิจเกิดใหม่"
-              : okCount >= 3
-                ? "เตรียมไว้พอสมควร ข้อที่ยังไม่ได้ทำคือการบ้านก่อนลงเงินจริง"
-                : "ยังเสี่ยงสูง ลองทำข้อที่ยังไม่ได้ติ๊กก่อน — ใช้เวลาระหว่างเก็บเงินฝึกและทดลองได้"}
-          </p>
-        </div>
-
-        <p className="text-xs text-amber-100/70">
-          แหล่งข้อมูล: สำนักงานสถิติแรงงานสหรัฐ (BLS) ข้อมูลการอยู่รอดของสถานประกอบการเกิดใหม่ · ศูนย์วิจัยกสิกรไทย · สำนักงานส่งเสริมวิสาหกิจขนาดกลางและขนาดย่อม (สสว.) ·
-          ตัวเลขเป็นค่าประมาณเพื่อวางแผน ไม่ใช่คำแนะนำการลงทุน
-        </p>
-      </section>
-
-      <p className="text-center text-xs text-stone-600">ข้อมูลที่กรอกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ได้ส่งไปที่ไหน</p>
-    </main>
+      <Panel title="เงินที่ต้องใช้ มาจากไหน ไปไหน">
+        <p className="mb-2 text-xs font-medium text-slate-500 uppercase">ใช้ไปกับ</p>
+        <Breakdown
+          total={r.needToday}
+          parts={[
+            { label: "เงินลงทุนเริ่มต้น", value: r.setupTotal, color: "bg-indigo-500" },
+            { label: `เงินหมุนเวียน ${s.runwayMonths} เดือน`, value: r.runwayTotal, color: "bg-sky-400" },
+          ]}
+        />
+        <p className="mt-4 mb-2 text-xs font-medium text-slate-500 uppercase">มาจาก</p>
+        <Breakdown
+          total={r.needToday}
+          parts={[
+            { label: "เงินเก็บของตัวเอง", value: r.ownNeedToday, color: "bg-teal-500" },
+            { label: "พ่อแม่ / ครอบครัว", value: Math.min(s.family, r.needToday), color: "bg-amber-400" },
+            { label: "เงินกู้", value: Math.min(s.loan, Math.max(0, r.needToday - s.family)), color: "bg-rose-400" },
+          ]}
+        />
+      </Panel>
     </div>
   );
-}
 
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className={`flex justify-between gap-3 ${strong ? "border-t border-stone-200 pt-1 font-bold" : "text-sm text-stone-700"}`}>
-      <span>{label}</span>
-      <span className="shrink-0 tabular-nums">{value}</span>
+    <div className="min-h-dvh bg-slate-50">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+          <div>
+            <p className="text-xs font-medium tracking-wide text-teal-700 uppercase">SME Planner</p>
+            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">แผนการเงินเปิดธุรกิจของตัวเอง</h1>
+            <p className="text-sm text-slate-500">ต้องมีเงินเท่าไหร่ เก็บกี่ปีถึงพอ และโอกาสรอดของธุรกิจใหม่</p>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-sm font-medium ring-1 ${TONE[readyTone].chip}`}>
+            {template?.icon} {template ? splitName(template.name).main : ""} · พร้อม {Math.floor(r.readyPct)}%
+          </span>
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-6xl gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
+        {/* มือถือ: ผลลัพธ์ขึ้นก่อน · จอใหญ่: ผลลัพธ์อยู่ขวา ติดจอ */}
+        <div className="lg:sticky lg:top-4 lg:order-2">{results}</div>
+
+        <div className="space-y-4 lg:order-1">
+          <Panel step={1} title="ธุรกิจที่อยากทำ" desc="เลือกแบบที่ใกล้เคียง ตัวเลขเป็นค่าประมาณตั้งต้น แก้ได้ทุกช่อง">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {TEMPLATES.map((t) => {
+                const on = s.templateId === t.id;
+                const n = splitName(t.name);
+                return (
+                  <button
+                    key={t.id}
+                    className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
+                      on ? "border-teal-600 bg-teal-50 ring-2 ring-teal-600/30" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                    onClick={() => setS((x) => fromTemplate(t, x))}
+                    aria-pressed={on}
+                  >
+                    <span className="text-2xl">{t.icon}</span>
+                    <span className="min-w-0">
+                      <span className={`block text-base leading-tight font-semibold ${on ? "text-teal-800" : "text-slate-900"}`}>{n.main}</span>
+                      {n.sub && <span className="block text-xs leading-tight text-slate-500">{n.sub}</span>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {template?.note && <p className="mt-2 text-sm text-slate-500">{template.note}</p>}
+          </Panel>
+
+          <Panel step={2} title="เงินลงทุนเริ่มต้น" desc="จ่ายครั้งเดียวก่อนเปิด" right={<span className="shrink-0 font-semibold tabular-nums">{money(r.setupTotal)}</span>}>
+            <label className="mb-3 flex items-start gap-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
+              <input type="checkbox" className="mt-1 size-5 accent-teal-700" checked={s.ownSpace} onChange={(e) => set("ownSpace", e.target.checked)} />
+              <span>
+                <b className="text-slate-900">มีที่ดิน / ตึก / บ้านของตัวเองหรือครอบครัว</b>
+                <span className="block text-sm text-slate-500">ไม่ต้องจ่ายค่าเช่าและเงินมัดจำ</span>
+              </span>
+            </label>
+            <CostList items={s.setup} ownSpace={s.ownSpace} onChange={(xs) => set("setup", xs)} />
+          </Panel>
+
+          <Panel step={3} title="ค่าใช้จ่ายรายเดือน" desc="จ่ายทุกเดือนไม่ว่าจะขายได้หรือไม่" right={<span className="shrink-0 font-semibold tabular-nums">{money(r.monthlyBurn)}/ด.</span>}>
+            <CostList items={s.monthly} ownSpace={s.ownSpace} onChange={(xs) => set("monthly", xs)} />
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <MoneyInput label="เงินใช้จ่ายส่วนตัวต่อเดือน" value={s.ownerPay} onChange={(n) => set("ownerPay", n)} />
+              <NumberField label="กำไรขั้นต้น (หลังหักต้นทุนสินค้า)" suffix="%" value={s.margin} onChange={(n) => set("margin", n)} min={1} max={95} />
+            </div>
+          </Panel>
+
+          <Panel
+            step={4}
+            title="เงินหมุนเวียนสำรอง"
+            desc="แนะนำ 6–12 เดือน"
+            right={<span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${TONE[runwayTone].chip}`}>{s.runwayMonths < 6 ? "เสี่ยง" : s.runwayMonths >= 12 ? "ดีมาก" : "พอใช้"}</span>}
+          >
+            <Slider value={s.runwayMonths} min={3} max={18} onChange={(n) => set("runwayMonths", n)} label="จำนวนเดือน" unit="เดือน" />
+            <p className="mt-1 text-sm text-slate-500">รวม {money(r.runwayTotal)} · SME ไทยส่วนใหญ่มีสายป่านไม่ถึง 6 เดือน</p>
+          </Panel>
+
+          <Panel step={5} title="แหล่งเงินและการเก็บเงิน">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MoneyInput label="เงินเก็บที่มีตอนนี้" value={s.savingsNow} onChange={(n) => set("savingsNow", n)} />
+              <MoneyInput label="เก็บได้ต่อเดือน" value={s.savePerMonth} onChange={(n) => set("savePerMonth", n)} />
+              <NumberField label="เก็บเพิ่มขึ้นปีละ" suffix="%/ปี" value={s.saveGrowth} onChange={(n) => set("saveGrowth", n)} max={20} step={0.5} />
+              <NumberField label="ผลตอบแทนเงินเก็บ" suffix="%/ปี" value={s.returnRate} onChange={(n) => set("returnRate", n)} max={15} step={0.5} />
+              <NumberField label="ค่าเปิดร้านแพงขึ้น (เงินเฟ้อ)" suffix="%/ปี" value={s.inflation} onChange={(n) => set("inflation", n)} max={10} step={0.5} />
+            </div>
+            <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+              <MoneyInput label="พ่อแม่ / ครอบครัวช่วย" value={s.family} onChange={(n) => set("family", n)} />
+              <MoneyInput label="กู้ธนาคาร / สินเชื่อ SME" value={s.loan} onChange={(n) => set("loan", n)} />
+            </div>
+            {s.loan > 0 && <p className="mt-2 text-xs text-slate-500">เงินกู้ต้องผ่อนตั้งแต่เดือนแรก — ใส่ค่าผ่อนในค่าใช้จ่ายรายเดือนด้วย</p>}
+          </Panel>
+
+          <Panel step={6} title="อยากเริ่มในอีกกี่ปี">
+            <Slider value={s.targetYears} min={1} max={20} onChange={(n) => set("targetYears", n)} label="จำนวนปี" unit="ปี" />
+          </Panel>
+        </div>
+
+        {/* ความเสี่ยง: เต็มความกว้าง */}
+        <div className="grid gap-4 lg:order-3 lg:col-span-2 lg:grid-cols-2">
+          <Panel title="โอกาสรอดของธุรกิจใหม่" desc="สัดส่วนธุรกิจที่ยังเปิดอยู่หลังเปิดกิจการ (ประมาณ)">
+            <SurvivalChart />
+            <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-600">
+              <li>ราวครึ่งหนึ่งปิดก่อนครบ 5 ปี และเหลือราว 1 ใน 3 เมื่อครบ 10 ปี</li>
+              <li>ร้านอาหาร/เครื่องดื่ม และก่อสร้าง ปิดกิจการมากที่สุดในไทยช่วงปี 2566–67</li>
+              <li>ความเสี่ยงปิดกิจการของ SME ไทยเฉลี่ยราว 7% ต่อปี</li>
+            </ul>
+          </Panel>
+
+          <Panel
+            title="ความพร้อมก่อนลงเงิน"
+            desc="ปัจจัยที่ช่วยให้รอดได้มากกว่าค่าเฉลี่ย"
+            right={
+              <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-semibold ring-1 ${TONE[okCount >= 5 ? "good" : okCount >= 3 ? "warn" : "bad"].chip}`}>
+                {okCount}/{factors.length}
+              </span>
+            }
+          >
+            <ul className="divide-y divide-slate-100">
+              {factors.map((f) => {
+                const auto = f.key === "runway" || f.key === "debt";
+                return (
+                  <li key={f.key} className="py-2">
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 size-5 accent-teal-700"
+                        checked={f.ok}
+                        disabled={auto}
+                        onChange={(e) => set("checks", { ...s.checks, [f.key]: e.target.checked })}
+                      />
+                      <span className="min-w-0">
+                        <span className={`font-medium ${f.ok ? "text-emerald-700" : "text-slate-900"}`}>{f.label}</span>
+                        <span className="block text-xs text-slate-500">
+                          {f.hint}
+                          {auto && " (คำนวณจากแผน)"}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-2 text-sm text-slate-700">
+              {okCount >= 5
+                ? "เตรียมตัวดีมาก โอกาสรอดน่าจะดีกว่าค่าเฉลี่ยของธุรกิจเกิดใหม่"
+                : okCount >= 3
+                  ? "เตรียมไว้พอสมควร ข้อที่ยังไม่ได้ทำคือการบ้านก่อนลงเงินจริง"
+                  : "ยังเสี่ยงสูง ใช้เวลาระหว่างเก็บเงินฝึกและทดลองข้อที่ยังไม่ได้ทำ"}
+            </p>
+          </Panel>
+
+          <p className="text-xs text-slate-400 lg:col-span-2">
+            แหล่งข้อมูล: สำนักงานสถิติแรงงานสหรัฐ (BLS) ข้อมูลการอยู่รอดของสถานประกอบการเกิดใหม่ · ศูนย์วิจัยกสิกรไทย · สสว. · ตัวเลขเป็นค่าประมาณเพื่อวางแผน ไม่ใช่คำแนะนำการลงทุน ·
+            ข้อมูลที่กรอกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น
+          </p>
+        </div>
+      </main>
     </div>
   );
 }
