@@ -105,55 +105,118 @@ function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: 
   );
 }
 
-const STAGE_COLORS = ["bg-sky-500", "bg-violet-500", "bg-amber-500", "bg-rose-500", "bg-emerald-500", "bg-indigo-500"];
+/** สีประจำด่าน (เหมือนสีกองการ์ดบนกระดาน) */
+const STAGES = [
+  { band: "bg-sky-600", soft: "bg-sky-100" },
+  { band: "bg-orange-600", soft: "bg-orange-100" },
+  { band: "bg-rose-600", soft: "bg-rose-100" },
+  { band: "bg-emerald-700", soft: "bg-emerald-100" },
+  { band: "bg-amber-500", soft: "bg-amber-100" },
+  { band: "bg-violet-600", soft: "bg-violet-100" },
+];
 
-/** การ์ดแต่ละ "ด่าน" สไตล์เกม: ขอบหนา เงาด้านล่าง ป้ายเลขด่าน */
+const BOARD_INK = "border-[#5b3a1a]";
+/** สีหัวการ์ดธุรกิจ (สลับสีเหมือนการ์ดโฉนดบนกระดาน) */
+const DEED = ["bg-amber-200", "bg-sky-200", "bg-rose-200", "bg-emerald-200", "bg-violet-200", "bg-orange-200"];
+
+/** ด่านบนกระดาน: การ์ดกระดาษ มีแถบสีหัวการ์ด และเหรียญเลขด่าน */
 function Section({ n, title, children, desc, icon }: { n: number; title: string; desc?: string; icon: string; children: React.ReactNode }) {
+  const st = STAGES[(n - 1) % STAGES.length];
   return (
-    <section className="space-y-3 rounded-3xl border-2 border-stone-800/80 border-b-[6px] bg-white p-4 shadow-[0_6px_0_0_rgba(0,0,0,0.06)] sm:p-5">
-      <div className="flex items-start gap-3">
-        <span className={`flex size-12 shrink-0 -rotate-3 flex-col items-center justify-center rounded-2xl border-2 border-stone-800/80 border-b-4 text-white ${STAGE_COLORS[(n - 1) % STAGE_COLORS.length]}`}>
-          <span className="text-[10px] leading-none font-bold tracking-wide uppercase">ด่าน</span>
-          <span className="font-game text-xl leading-none">{n}</span>
+    <section id={`stage-${n}`} className={`scroll-mt-28 overflow-hidden rounded-2xl border-[3px] ${BOARD_INK} bg-[#fffaf0] shadow-[4px_5px_0_0_rgba(91,58,26,0.35)]`}>
+      <div className={`flex items-center gap-3 px-4 py-2.5 text-white ${st.band}`}>
+        <span className={`flex size-10 shrink-0 items-center justify-center rounded-full border-[3px] ${BOARD_INK} bg-[#fffaf0] font-game text-xl text-stone-900 shadow-[0_3px_0_0_rgba(0,0,0,0.25)]`}>
+          {n}
         </span>
-        <div className="min-w-0">
-          <h2 className="font-game text-xl leading-tight">
-            {icon} {title}
-          </h2>
-          {desc && <p className="mt-1 text-sm text-stone-500">{desc}</p>}
-        </div>
+        <h2 className="font-game text-xl leading-tight drop-shadow-[0_1px_0_rgba(0,0,0,0.3)]">
+          {icon} {title}
+        </h2>
       </div>
-      {children}
+      <div className="space-y-3 p-4 sm:p-5">
+        {desc && <p className="text-sm text-stone-600">{desc}</p>}
+        {children}
+      </div>
     </section>
   );
 }
 
-/** แถบพลังแบบเกม (ลายทาง เลื่อนได้) */
-function PowerBar({ pct, tone }: { pct: number; tone: "good" | "mid" | "bad" }) {
-  const color = tone === "good" ? "bg-emerald-400" : tone === "mid" ? "bg-amber-400" : "bg-rose-400";
+/** ช่องคะแนนแบบบอร์ดเกม 0–100% มีหมากเดินตามความพร้อม */
+function ScoreTrack({ pct, icon }: { pct: number; icon: string }) {
+  const p = Math.max(0, Math.min(100, pct));
+  const cells = Array.from({ length: 10 }, (_, i) => i);
+  const colors = ["bg-rose-300", "bg-rose-200", "bg-orange-200", "bg-orange-200", "bg-amber-200", "bg-amber-200", "bg-lime-200", "bg-lime-200", "bg-emerald-200", "bg-emerald-300"];
   return (
-    <div className="h-4 overflow-hidden rounded-full border-2 border-stone-800/80 bg-stone-100">
-      <div
-        className={`h-full rounded-full transition-all duration-500 ${color}`}
-        style={{
-          width: `${Math.max(3, Math.min(100, pct))}%`,
-          backgroundImage: "repeating-linear-gradient(-45deg, rgba(255,255,255,.35) 0 6px, transparent 6px 12px)",
-        }}
-      />
+    <div className="relative pt-5">
+      <div className={`grid grid-cols-10 overflow-hidden rounded-lg border-[3px] ${BOARD_INK}`}>
+        {cells.map((i) => (
+          <div key={i} className={`h-5 border-r-2 border-[#5b3a1a]/40 last:border-r-0 ${colors[i]} ${p >= (i + 1) * 10 ? "" : "opacity-45"}`} />
+        ))}
+      </div>
+      {/* หมาก */}
+      <span
+        className={`absolute top-0 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border-[3px] ${BOARD_INK} bg-white text-base shadow-[0_3px_0_0_rgba(0,0,0,0.3)] transition-all duration-700`}
+        style={{ left: `${Math.min(97, Math.max(3, p))}%` }}
+      >
+        {icon}
+      </span>
+      <span className="absolute top-0 right-0 -translate-y-1 text-base">🏁</span>
     </div>
   );
 }
 
-/** ดาว 1–3 ดวงตามความพร้อม */
+/** เหรียญรางวัล 1–3 เหรียญตามความพร้อม */
 function Stars({ n }: { n: number }) {
   return (
-    <span className="text-3xl tracking-tight" aria-label={`${n} ดาว`}>
+    <span className="flex gap-1" aria-label={`${n} เหรียญ`}>
       {[1, 2, 3].map((i) => (
-        <span key={i} className={i <= n ? "drop-shadow-[0_2px_0_rgba(0,0,0,0.25)]" : "opacity-25 grayscale"}>
+        <span
+          key={i}
+          className={`flex size-10 items-center justify-center rounded-full border-[3px] text-xl shadow-[0_3px_0_0_rgba(0,0,0,0.25)] ${
+            i <= n ? `${BOARD_INK} bg-amber-300` : "border-stone-300 bg-stone-100 opacity-50 grayscale"
+          }`}
+        >
           ⭐
         </span>
       ))}
     </span>
+  );
+}
+
+/** ทางเดินบนกระดาน: 6 ด่าน + เส้นชัย (กดเพื่อเลื่อนไปที่ด่าน) */
+function BoardPath({ icon }: { icon: string }) {
+  const steps = [
+    { n: 1, label: "เลือกร้าน", emoji: "🗺️" },
+    { n: 2, label: "ลงทุน", emoji: "🧱" },
+    { n: 3, label: "รายเดือน", emoji: "🔥" },
+    { n: 4, label: "สำรอง", emoji: "🛡️" },
+    { n: 5, label: "เก็บเงิน", emoji: "💰" },
+    { n: 6, label: "เป้าหมาย", emoji: "🎯" },
+  ];
+  return (
+    <nav aria-label="ด่านทั้งหมด" className="relative">
+      <div className="absolute inset-x-6 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[repeating-linear-gradient(90deg,#5b3a1a_0_10px,transparent_10px_18px)] opacity-40" />
+      <ol className="relative grid grid-cols-7 gap-1.5">
+        {steps.map((st, i) => (
+          <li key={st.n}>
+            <a
+              href={`#stage-${st.n}`}
+              className={`flex aspect-square flex-col items-center justify-center rounded-xl border-[3px] ${BOARD_INK} ${STAGES[i].band} text-white shadow-[0_3px_0_0_rgba(91,58,26,0.4)] transition hover:-translate-y-0.5`}
+            >
+              <span className="text-lg leading-none sm:text-2xl">{i === 0 ? icon : st.emoji}</span>
+              <span className="mt-0.5 hidden text-[10px] font-bold sm:block">{st.label}</span>
+            </a>
+          </li>
+        ))}
+        <li>
+          <a
+            href="#result"
+            className={`flex aspect-square flex-col items-center justify-center rounded-xl border-[3px] ${BOARD_INK} bg-[repeating-conic-gradient(#1c1917_0_25%,#fff_0_50%)] bg-[length:14px_14px] shadow-[0_3px_0_0_rgba(91,58,26,0.4)]`}
+          >
+            <span className="rounded-md bg-white/90 px-1 text-lg leading-none sm:text-2xl">🏆</span>
+          </a>
+        </li>
+      </ol>
+    </nav>
   );
 }
 
@@ -237,41 +300,43 @@ export function SmeSimulator() {
   const template = TEMPLATES.find((t) => t.id === s.templateId);
   const late = r.yearsToReady === null ? null : r.yearsToReady - s.targetYears;
 
-  const tone = r.readyPct >= 100 ? "good" : r.readyPct >= 70 ? "mid" : "bad";
   const stars = r.readyPct >= 100 ? 3 : r.readyPct >= 70 ? 2 : 1;
 
   return (
-    <div className="min-h-dvh bg-[linear-gradient(180deg,#bae6fd_0%,#e0f2fe_30%,#fef3c7_100%)]">
-      {/* HUD: ติดด้านบนตลอด เหมือนแถบพลังในเกม */}
-      <div className="sticky top-0 z-30 border-b-2 border-stone-800/80 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-2">
-          <span className="text-2xl">{template?.icon ?? "🏪"}</span>
+    <div
+      className="min-h-dvh bg-[#9a6a3c] px-2 py-3 sm:px-4 sm:py-6"
+      style={{
+        // โต๊ะไม้: ลายเสี้ยนไม้บาง ๆ
+        backgroundImage:
+          "repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 38px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 17px)",
+      }}
+    >
+      {/* แถบคะแนนติดด้านบน: หมากเดินบนช่องคะแนน */}
+      <div className={`sticky top-2 z-30 mx-auto max-w-3xl rounded-2xl border-[3px] ${BOARD_INK} bg-[#fffaf0]/95 px-3 pt-1 pb-2 shadow-[3px_4px_0_0_rgba(0,0,0,0.25)] backdrop-blur`}>
+        <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between text-xs font-semibold text-stone-600">
-              <span>พร้อมเปิดร้านในปีที่ {s.targetYears}</span>
-              <span className="font-game text-base text-stone-900">{Math.floor(r.readyPct)}%</span>
+              <span>ช่องคะแนน · พร้อมเปิดร้านในปีที่ {s.targetYears}</span>
+              <span className="font-game text-lg text-stone-900">{Math.floor(r.readyPct)}%</span>
             </div>
-            <PowerBar pct={r.readyPct} tone={tone} />
+            <ScoreTrack pct={r.readyPct} icon={template?.icon ?? "🏪"} />
           </div>
-          <div className="hidden shrink-0 text-center leading-tight sm:block">
-            <p className="text-[10px] font-semibold text-stone-500">⏳ เก็บครบใน</p>
+          <div className={`shrink-0 rounded-xl border-[3px] ${BOARD_INK} bg-amber-300 px-2 py-1 text-center leading-tight shadow-[0_3px_0_0_rgba(0,0,0,0.25)]`}>
+            <p className="text-[10px] font-bold">⏳ เก็บครบ</p>
             <p className="font-game">{r.yearsToReady === null ? "40+" : years(Math.ceil(r.yearsToReady * 2) / 2)} ปี</p>
-          </div>
-          <div className="shrink-0 rounded-xl border-2 border-stone-800/80 border-b-4 bg-amber-300 px-2 py-0.5 text-center leading-tight">
-            <p className="text-[10px] font-semibold">🏅 พร้อม</p>
-            <p className="font-game">
-              {okCount}/{factors.length}
-            </p>
           </div>
         </div>
       </div>
 
-    <main className="mx-auto max-w-3xl space-y-5 p-4 pb-16 sm:p-6">
-      <header className="space-y-2 py-4 text-center">
-        <p className="inline-block animate-bounce text-5xl">🏪</p>
-        <p className="mx-auto w-fit rounded-full border-2 border-stone-800/80 bg-amber-300 px-3 py-0.5 text-xs font-bold tracking-wide">🎮 ภารกิจ: เปิดธุรกิจของตัวเอง</p>
-        <h1 className="font-game text-3xl text-stone-900 drop-shadow-[0_3px_0_rgba(255,255,255,0.9)] sm:text-4xl">จำลองแผนเปิดธุรกิจ</h1>
-        <p className="text-stone-700">ผ่าน 6 ด่าน แล้วดูว่าต้องมีเงินเท่าไหร่ เก็บกี่ปีถึงพอ และต้องเจอบอสอะไรหลังเปิดร้าน</p>
+    {/* กระดาน */}
+    <main className={`mx-auto mt-4 max-w-3xl space-y-5 rounded-[2rem] border-[6px] ${BOARD_INK} bg-[#f5e9cf] p-3 pb-10 shadow-[6px_8px_0_0_rgba(0,0,0,0.3)] sm:p-6`}>
+      <header className={`space-y-3 rounded-2xl border-[3px] border-dashed ${BOARD_INK} bg-[#fffaf0] p-4 text-center`}>
+        <p className="mx-auto w-fit -rotate-2 rounded-md border-[3px] border-[#5b3a1a] bg-rose-600 px-3 py-0.5 text-xs font-bold tracking-wide text-white shadow-[0_3px_0_0_rgba(0,0,0,0.25)]">
+          🎲 บอร์ดเกมวางแผนชีวิต
+        </p>
+        <h1 className="font-game text-3xl text-[#5b3a1a] sm:text-4xl">เส้นทางสู่ธุรกิจของตัวเอง</h1>
+        <p className="text-stone-700">เดินผ่าน 6 ช่อง แล้วดูว่าต้องมีเงินเท่าไหร่ เก็บกี่ปีถึงพอ และต้องเจอการ์ดเหตุการณ์อะไรหลังเปิดร้าน</p>
+        <BoardPath icon={template?.icon ?? "🗺️"} />
       </header>
 
       <Section n={1} icon="🗺️" title="เลือกร้านในฝัน" desc="เลือกแบบที่ใกล้เคียง ตัวเลขทุกช่องเป็นค่าประมาณตั้งต้น แก้ให้ตรงกับแผนของคุณได้">
@@ -279,15 +344,16 @@ export function SmeSimulator() {
           {TEMPLATES.map((t) => (
             <button
               key={t.id}
-              className={`flex flex-col items-center gap-1 rounded-2xl border-2 p-3 text-center text-sm transition active:translate-y-1 active:border-b-2 ${
+              className={`relative flex flex-col overflow-hidden rounded-xl border-[3px] text-center text-sm transition ${
                 s.templateId === t.id
-                  ? "translate-y-0.5 border-stone-800 border-b-2 bg-teal-500 font-semibold text-white"
-                  : "border-stone-800/70 border-b-[5px] bg-white hover:-translate-y-0.5 hover:bg-sky-50"
+                  ? `-translate-y-1 ${BOARD_INK} bg-white font-semibold shadow-[3px_5px_0_0_rgba(91,58,26,0.45)] ring-4 ring-amber-300`
+                  : "border-[#5b3a1a]/70 bg-white shadow-[2px_3px_0_0_rgba(91,58,26,0.25)] hover:-translate-y-0.5"
               }`}
               onClick={() => setS((x) => fromTemplate(t, x))}
             >
-              <span className="text-3xl">{t.icon}</span>
-              {t.name}
+              <span className={`flex h-12 items-center justify-center text-3xl ${DEED[TEMPLATES.indexOf(t) % DEED.length]}`}>{t.icon}</span>
+              <span className="flex min-h-12 items-center justify-center px-2 py-1.5 leading-snug">{t.name}</span>
+              {s.templateId === t.id && <span className="absolute top-1 right-1 text-lg">📍</span>}
             </button>
           ))}
         </div>
@@ -295,8 +361,8 @@ export function SmeSimulator() {
       </Section>
 
       <Section n={2} icon="🧱" title="เงินลงทุนเริ่มต้น" desc="จ่ายครั้งเดียวก่อนเปิด: ตกแต่ง อุปกรณ์ มัดจำ ใบอนุญาต ของล็อตแรก">
-        <label className="flex items-start gap-3 rounded-2xl bg-amber-50 p-3">
-          <input type="checkbox" className="mt-1 size-5" checked={s.ownSpace} onChange={(e) => set("ownSpace", e.target.checked)} />
+        <label className={`flex items-start gap-3 rounded-xl border-[3px] border-dashed ${BOARD_INK} bg-amber-100 p-3`}>
+          <input type="checkbox" className="mt-1 size-5 accent-[#5b3a1a]" checked={s.ownSpace} onChange={(e) => set("ownSpace", e.target.checked)} />
           <span>
             <b>มีที่ดิน / ตึก / บ้านของตัวเองหรือครอบครัวใช้ทำร้านได้</b>
             <span className="block text-sm text-stone-600">ไม่ต้องจ่ายค่าเช่าและเงินมัดจำ</span>
@@ -315,7 +381,7 @@ export function SmeSimulator() {
         <p className="text-right font-semibold">ค่าใช้จ่ายต่อเดือนช่วงตั้งตัว (ธุรกิจ + ตัวคุณ) {money(r.monthlyBurn)}</p>
       </Section>
 
-      <Section n={4} icon="🛡️" title="เกราะเงินหมุนเวียน" desc="ช่วงแรกยอดขายยังไม่เข้าที่ ต้องมีเงินจ่ายค่าใช้จ่ายรายเดือนไว้ก่อน แนะนำ 6–12 เดือน">
+      <Section n={4} icon="🛡️" title="เงินหมุนเวียนสำรอง" desc="ช่วงแรกยอดขายยังไม่เข้าที่ ต้องมีเงินจ่ายค่าใช้จ่ายรายเดือนไว้ก่อน แนะนำ 6–12 เดือน">
         <div className="flex items-center gap-3">
           <input
             type="range"
@@ -323,7 +389,7 @@ export function SmeSimulator() {
             max={18}
             value={s.runwayMonths}
             onChange={(e) => set("runwayMonths", Number(e.target.value))}
-            className="flex-1 accent-teal-700"
+            className="flex-1 accent-[#5b3a1a]"
             aria-label="จำนวนเดือน"
           />
           <span className="w-20 text-right text-lg font-bold">{s.runwayMonths} เดือน</span>
@@ -361,7 +427,7 @@ export function SmeSimulator() {
             max={20}
             value={s.targetYears}
             onChange={(e) => set("targetYears", Number(e.target.value))}
-            className="flex-1 accent-teal-700"
+            className="flex-1 accent-[#5b3a1a]"
             aria-label="จำนวนปี"
           />
           <span className="w-16 text-right text-lg font-bold">{s.targetYears} ปี</span>
@@ -369,13 +435,16 @@ export function SmeSimulator() {
       </Section>
 
       {/* ---------- ผลลัพธ์ ---------- */}
-      <section className="space-y-4 rounded-3xl border-2 border-stone-800 border-b-[8px] bg-white p-4 sm:p-5">
+      <section id="result" className={`scroll-mt-28 space-y-4 rounded-2xl border-[4px] ${BOARD_INK} bg-[#fffaf0] p-4 shadow-[5px_6px_0_0_rgba(91,58,26,0.4)] sm:p-5`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-game text-2xl">🏆 ผลภารกิจ</h2>
+          <div>
+            <p className="text-xs font-bold tracking-widest text-[#5b3a1a]/70 uppercase">ใบสรุปคะแนน</p>
+            <h2 className="font-game text-2xl text-[#5b3a1a]">🏆 ถึงเส้นชัยหรือยัง?</h2>
+          </div>
           <Stars n={stars} />
         </div>
 
-        <div className="space-y-1 rounded-2xl border-2 border-dashed border-stone-300 bg-amber-50 p-4">
+        <div className="space-y-1 rounded-xl border-2 border-[#5b3a1a]/40 bg-[repeating-linear-gradient(0deg,#fffaf0_0_27px,#e9dcc0_27px_28px)] p-4">
           <Row label="เงินลงทุนเริ่มต้น" value={money(r.setupTotal)} />
           <Row label={`เงินหมุนเวียน ${s.runwayMonths} เดือน`} value={money(r.runwayTotal)} />
           <Row label="ต้องมีเงินทั้งหมด (ราคาวันนี้)" value={money(r.needToday)} strong />
@@ -388,17 +457,17 @@ export function SmeSimulator() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className={`rounded-2xl border-2 border-stone-800/70 border-b-4 p-4 ${r.readyPct >= 100 ? "bg-emerald-100" : r.readyPct >= 70 ? "bg-amber-100" : "bg-rose-100"}`}>
+          <div className={`rounded-xl border-[3px] ${BOARD_INK} p-4 shadow-[0_4px_0_0_rgba(91,58,26,0.3)] ${r.readyPct >= 100 ? "bg-emerald-100" : r.readyPct >= 70 ? "bg-amber-100" : "bg-rose-100"}`}>
             <p className="text-sm text-stone-600">ถึงปีที่ {s.targetYears} คุณจะพร้อม</p>
             <p className="font-game text-5xl">{Math.floor(r.readyPct)}%</p>
-            <div className="mt-2">
-              <PowerBar pct={r.readyPct} tone={tone} />
+            <div className="mt-1">
+              <ScoreTrack pct={r.readyPct} icon={template?.icon ?? "🏪"} />
             </div>
             <p className="mt-1 text-sm text-stone-600">
               มีเงิน {money(r.savedAtTarget)} จาก {money(r.needAtTarget)}
             </p>
           </div>
-          <div className="rounded-2xl border-2 border-stone-800/70 border-b-4 bg-sky-100 p-4">
+          <div className={`rounded-xl border-[3px] ${BOARD_INK} bg-sky-100 p-4 shadow-[0_4px_0_0_rgba(91,58,26,0.3)]`}>
             <p className="text-sm text-stone-600">⏳ เก็บเงินได้พอในอีก</p>
             <p className="font-game text-5xl">{r.yearsToReady === null ? "40+ ปี" : `${years(Math.ceil(r.yearsToReady * 2) / 2)} ปี`}</p>
             <p className="mt-1 text-sm">
@@ -420,7 +489,7 @@ export function SmeSimulator() {
 
         <Chart series={r.series} target={s.targetYears} ready={r.yearsToReady} />
 
-        <div className="rounded-2xl border-2 border-stone-800/70 border-b-4 bg-violet-100 p-4">
+        <div className={`rounded-xl border-[3px] ${BOARD_INK} bg-violet-100 p-4 shadow-[0_4px_0_0_rgba(91,58,26,0.3)]`}>
           <p className="font-game text-lg">🎯 เป้ายอดขายเพื่อคุ้มทุน</p>
           <p className="mt-1 text-sm text-stone-700">
             ต้องขายได้เดือนละ <b>{money(r.breakEvenSales)}</b> (≈ วันละ <b>{money(r.breakEvenSales / 26)}</b> ถ้าเปิด 26 วัน) ถึงจะพอจ่ายค่าใช้จ่ายทุกอย่างรวมเงินเดือนตัวเอง
@@ -431,45 +500,50 @@ export function SmeSimulator() {
         </div>
       </section>
 
-      <section className="space-y-4 rounded-3xl border-2 border-stone-800 border-b-[8px] bg-stone-900 p-4 text-stone-100 sm:p-5">
+      <section
+        className={`space-y-4 rounded-2xl border-[4px] ${BOARD_INK} bg-[#7f1d1d] p-4 text-stone-100 shadow-[5px_6px_0_0_rgba(0,0,0,0.35)] sm:p-5`}
+        style={{ backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 10px, transparent 10px 20px)" }}
+      >
         <div className="flex items-center gap-3">
-          <span className="text-5xl">👾</span>
+          <span className="flex size-14 shrink-0 rotate-6 items-center justify-center rounded-lg border-[3px] border-amber-300 bg-[#450a0a] font-game text-3xl text-amber-300 shadow-[0_3px_0_0_rgba(0,0,0,0.4)]">
+            ?
+          </span>
           <div>
-            <p className="text-xs font-bold tracking-widest text-rose-400 uppercase">บอสด่านสุดท้าย</p>
-            <h2 className="font-game text-2xl">10 ปีแรกของธุรกิจ</h2>
+            <p className="text-xs font-bold tracking-widest text-amber-300 uppercase">การ์ดเหตุการณ์</p>
+            <h2 className="font-game text-2xl">10 ปีแรกหลังเปิดร้าน</h2>
           </div>
         </div>
         <p className="text-sm text-stone-300">เปิดร้านได้แล้วยังไม่จบเกม สถิติบอกว่าธุรกิจใหม่ปิดตัวมากกว่าที่คนส่วนใหญ่คิด</p>
         <div className="space-y-2">
           {SURVIVAL.map((x) => (
             <div key={x.year} className="flex items-center gap-3 text-sm">
-              <span className="w-16 shrink-0 text-stone-300">ปีที่ {x.year}</span>
-              <div className="h-6 flex-1 overflow-hidden rounded-full border-2 border-stone-600 bg-rose-900/60">
-                <div className="flex h-full items-center justify-end rounded-full bg-emerald-500 pr-2 text-xs font-semibold text-white" style={{ width: `${x.pct}%` }}>
+              <span className="w-16 shrink-0 text-amber-100">ปีที่ {x.year}</span>
+              <div className="h-6 flex-1 overflow-hidden rounded-md border-2 border-amber-200/60 bg-[#450a0a]">
+                <div className="flex h-full items-center justify-end rounded-sm bg-emerald-500 pr-2 text-xs font-semibold text-white" style={{ width: `${x.pct}%` }}>
                   ~{x.pct}%
                 </div>
               </div>
             </div>
           ))}
-          <p className="text-xs text-stone-400">❤️ สัดส่วนธุรกิจที่ยังเปิดอยู่ (ประมาณ) · ราวครึ่งหนึ่งปิดก่อนครบ 5 ปี และเหลือราว 1 ใน 3 เมื่อครบ 10 ปี</p>
+          <p className="text-xs text-amber-100/80">สัดส่วนธุรกิจที่ยังเปิดอยู่ (ประมาณ) · ราวครึ่งหนึ่งปิดก่อนครบ 5 ปี และเหลือราว 1 ใน 3 เมื่อครบ 10 ปี</p>
         </div>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-stone-300">
+        <ul className="list-disc space-y-1 pl-5 text-sm text-amber-50/90">
           <li>ร้านอาหาร/เครื่องดื่ม และก่อสร้าง เป็นกลุ่มที่ปิดกิจการมากที่สุดในไทยช่วงปี 2566–67</li>
           <li>SME ไทยส่วนใหญ่มีสายป่าน (เงินหมุนเวียน) เหลือไม่เกิน 6 เดือน — เงินหมุนเวียนจึงสำคัญพอ ๆ กับเงินลงทุน</li>
           <li>ความเสี่ยงปิดกิจการของ SME ไทยเฉลี่ยราว 7% ต่อปี และสูงขึ้นในช่วงเศรษฐกิจไม่ดี</li>
         </ul>
 
-        <div className="rounded-2xl border-2 border-stone-800 border-b-4 bg-white p-4 text-stone-900">
+        <div className={`rounded-xl border-[3px] ${BOARD_INK} bg-[#fffaf0] p-4 text-stone-900`}>
           <p className="font-game text-lg">
-            🏅 อาวุธสู้บอส {okCount}/{factors.length}
+            🃏 การ์ดช่วยรอด {okCount}/{factors.length} ใบ
           </p>
-          <p className="text-sm text-stone-600">ปลดล็อกให้ครบ ช่วยให้รอดได้มากกว่าค่าเฉลี่ย (ติ๊กข้อที่ทำแล้ว)</p>
+          <p className="text-sm text-stone-600">สะสมให้ครบ ช่วยให้รอดได้มากกว่าค่าเฉลี่ย (ติ๊กข้อที่ทำแล้ว)</p>
           <ul className="mt-2 space-y-2">
             {factors.map((f) => {
               const auto = f.key === "runway" || f.key === "debt";
               return (
                 <li key={f.key}>
-                  <label className={`flex items-start gap-3 rounded-xl border-2 p-2 transition ${f.ok ? "border-emerald-500 bg-emerald-50" : "border-dashed border-stone-300"}`}>
+                  <label className={`flex items-start gap-3 rounded-lg border-[3px] p-2 transition ${f.ok ? "border-emerald-600 bg-emerald-50 shadow-[0_3px_0_0_rgba(5,150,105,0.35)]" : "border-dashed border-[#5b3a1a]/40"}`}>
                     <input
                       type="checkbox"
                       className="mt-1 size-5"
@@ -479,7 +553,7 @@ export function SmeSimulator() {
                     />
                     <span>
                       <span className={f.ok ? "font-medium text-emerald-800" : "font-medium"}>
-                        {f.ok ? "🏅 " : "🔒 "}
+                        {f.ok ? "🃏 " : "🔒 "}
                         {f.label}
                       </span>
                       <span className="block text-xs text-stone-500">
@@ -501,13 +575,13 @@ export function SmeSimulator() {
           </p>
         </div>
 
-        <p className="text-xs text-stone-500">
+        <p className="text-xs text-amber-100/70">
           แหล่งข้อมูล: สำนักงานสถิติแรงงานสหรัฐ (BLS) ข้อมูลการอยู่รอดของสถานประกอบการเกิดใหม่ · ศูนย์วิจัยกสิกรไทย · สำนักงานส่งเสริมวิสาหกิจขนาดกลางและขนาดย่อม (สสว.) ·
           ตัวเลขเป็นค่าประมาณเพื่อวางแผน ไม่ใช่คำแนะนำการลงทุน
         </p>
       </section>
 
-      <p className="text-center text-xs text-stone-500">ข้อมูลที่กรอกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ได้ส่งไปที่ไหน</p>
+      <p className="text-center text-xs text-stone-600">ข้อมูลที่กรอกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ได้ส่งไปที่ไหน</p>
     </main>
     </div>
   );
