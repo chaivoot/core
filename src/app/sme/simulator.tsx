@@ -389,8 +389,9 @@ export function SmeSimulator() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
-        {/* มือถือ: ผลลัพธ์ขึ้นก่อน · จอใหญ่: ผลลัพธ์อยู่ขวา ติดจอ */}
+      <main className="mx-auto max-w-6xl space-y-4 p-4">
+        {/* มือถือ: ผลลัพธ์ขึ้นก่อน · จอใหญ่: ผลลัพธ์อยู่ขวา ติดจอเฉพาะในแถวนี้ (ไม่ทับส่วนความเสี่ยง) */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
         <div className="lg:sticky lg:top-4 lg:order-2">{results}</div>
 
         <div className="space-y-4 lg:order-1">
@@ -476,9 +477,10 @@ export function SmeSimulator() {
             <Slider value={s.targetYears} min={1} max={20} onChange={(n) => set("targetYears", n)} label="จำนวนปี" unit="ปี" />
           </Panel>
         </div>
+        </div>
 
         {/* ความเสี่ยง: เต็มความกว้าง */}
-        <div className="grid gap-4 lg:order-3 lg:col-span-2 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Panel title="โอกาสรอดของธุรกิจใหม่" desc="สัดส่วนธุรกิจที่ยังเปิดอยู่หลังเปิดกิจการ (ประมาณ)">
             <SurvivalChart />
             <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-600">
