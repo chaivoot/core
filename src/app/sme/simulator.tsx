@@ -42,7 +42,7 @@ function MoneyInput({ value, onChange, label, suffix, big }: { value: number; on
       {label && <span className="label">{label}</span>}
       <span className="relative block">
         <input
-          className={`input pr-12 text-right tabular-nums ${big ? "min-h-14 border-teal-600 text-2xl font-bold text-teal-900" : ""}`}
+          className={`input pr-12 text-right tabular-nums ${big ? "min-h-14 border-sky-600 text-2xl font-bold text-sky-900" : ""}`}
           inputMode="numeric"
           value={value ? thb.format(value) : ""}
           placeholder="0"
@@ -92,7 +92,7 @@ function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: 
             );
           })}
         </ul>
-        <button className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-teal-700 hover:bg-teal-50" onClick={() => setEditing(true)}>
+        <button className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-sky-700 hover:bg-sky-50" onClick={() => setEditing(true)}>
           ✎ แก้ไขตัวเลข / เพิ่มรายการ
         </button>
       </div>
@@ -120,10 +120,10 @@ function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: 
       })}
       {ownSpace && items.some((x) => x.tag) && <p className="text-xs text-stone-500">รายการจาง = ไม่นับ เพราะมีที่/ตึกของตัวเองแล้ว</p>}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button className="btn-ghost min-h-10 px-2 text-sm text-teal-700" onClick={() => onChange([...items, { label: "รายการใหม่", amount: 0 }])}>
+        <button className="btn-ghost min-h-10 px-2 text-sm text-sky-700" onClick={() => onChange([...items, { label: "รายการใหม่", amount: 0 }])}>
           + เพิ่มรายการ
         </button>
-        <button className="min-h-10 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800" onClick={() => setEditing(false)}>
+        <button className="min-h-10 rounded-lg bg-sky-700 px-4 text-sm font-semibold text-white hover:bg-sky-800" onClick={() => setEditing(false)}>
           ✓ เสร็จ
         </button>
       </div>
@@ -147,7 +147,7 @@ function Panel({ title, step, children, desc, right }: { title: string; step?: n
         <div className="min-w-0">
           <h2 className="flex items-center gap-2.5 text-base font-semibold text-slate-900 sm:text-lg">
             {step !== undefined && (
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-teal-600 text-sm font-bold text-white shadow-sm shadow-teal-600/30">{step}</span>
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sky-600 text-sm font-bold text-white shadow-sm shadow-sky-600/30">{step}</span>
             )}
             {title}
           </h2>
@@ -236,7 +236,7 @@ function Ring({ pct, tone }: { pct: number; tone: Tone }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-2xl font-bold tabular-nums sm:text-3xl">{Math.floor(pct)}%</span>
-        <span className="text-[11px] text-teal-100/80">พร้อม</span>
+        <span className="text-[11px] text-sky-100/80">พร้อม</span>
       </div>
     </div>
   );
@@ -251,7 +251,7 @@ function SurvivalChart() {
           <span className="text-xs font-semibold tabular-nums text-slate-700">{x.pct}%</span>
           <div className="flex h-28 w-full items-end overflow-hidden rounded-md bg-slate-100">
             <div
-              className={`w-full rounded-md bg-gradient-to-t ${x.pct >= 60 ? "from-teal-600 to-teal-400" : x.pct >= 45 ? "from-amber-500 to-amber-300" : "from-rose-500 to-rose-300"}`}
+              className={`w-full rounded-md bg-gradient-to-t ${x.pct >= 60 ? "from-sky-600 to-sky-400" : x.pct >= 45 ? "from-amber-500 to-amber-300" : "from-rose-500 to-rose-300"}`}
               style={{ height: `${x.pct}%` }}
             />
           </div>
@@ -265,7 +265,7 @@ function SurvivalChart() {
 function Slider({ value, min, max, onChange, label, unit }: { value: number; min: number; max: number; onChange: (n: number) => void; label: string; unit: string }) {
   return (
     <div className="flex items-center gap-3">
-      <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1 accent-teal-700" aria-label={label} />
+      <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1 accent-sky-700" aria-label={label} />
       <span className="w-24 shrink-0 text-right text-lg font-bold tabular-nums">
         {value} {unit}
       </span>
@@ -302,18 +302,18 @@ function Chart({ series, target, ready }: { series: { year: number; saved: numbe
               {s.year === 0 ? "วันนี้" : `ปี ${s.year}`}
             </text>
           ))}
-        <line x1={x(target)} x2={x(target)} y1={pad.t} y2={H - pad.b} stroke="#0f766e" strokeDasharray="4 4" />
-        <text x={x(target) + 4} y={pad.t + 12} fontSize="11" fill="#0f766e">
+        <line x1={x(target)} x2={x(target)} y1={pad.t} y2={H - pad.b} stroke="#0369a1" strokeDasharray="4 4" />
+        <text x={x(target) + 4} y={pad.t + 12} fontSize="11" fill="#0369a1">
           เป้าหมาย
         </text>
         <path d={path("need")} fill="none" stroke="#e11d48" strokeWidth="2" strokeDasharray="6 4" />
-        <path d={`${path("saved")}L${x(maxX)},${y(0)}L${x(0)},${y(0)}Z`} fill="#0d9488" opacity="0.08" />
-        <path d={path("saved")} fill="none" stroke="#0d9488" strokeWidth="2.5" />
-        {ready !== null && ready <= maxX && <circle cx={x(ready)} cy={y(series[Math.min(series.length - 1, Math.round(ready))].saved)} r="5" fill="#0d9488" />}
+        <path d={`${path("saved")}L${x(maxX)},${y(0)}L${x(0)},${y(0)}Z`} fill="#0284c7" opacity="0.08" />
+        <path d={path("saved")} fill="none" stroke="#0284c7" strokeWidth="2.5" />
+        {ready !== null && ready <= maxX && <circle cx={x(ready)} cy={y(series[Math.min(series.length - 1, Math.round(ready))].saved)} r="5" fill="#0284c7" />}
       </svg>
       <figcaption className="mt-1 flex flex-wrap gap-4 text-xs text-slate-600">
         <span className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-5 bg-teal-600" /> เงินเก็บสะสม
+          <span className="inline-block h-0.5 w-5 bg-sky-600" /> เงินเก็บสะสม
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block h-0 w-5 border-t-2 border-dashed border-rose-600" /> เงินที่ต้องเก็บเอง
@@ -380,13 +380,13 @@ export function SmeSimulator() {
   const results = (
     <div className="space-y-4">
       {/* ตัวเลขหลัก: เงินที่ต้องมี + ความพร้อม */}
-      <div ref={heroRef} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-700 via-teal-800 to-slate-900 p-5 text-white shadow-lg shadow-teal-900/20 sm:p-6">
-        <div className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-teal-400/20 blur-2xl" />
+      <div ref={heroRef} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-700 via-sky-800 to-slate-900 p-5 text-white shadow-lg shadow-sky-900/20 sm:p-6">
+        <div className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-sky-400/20 blur-2xl" />
         <div className="relative flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-teal-100">ต้องมีเงินทั้งหมด</p>
+            <p className="text-sm font-medium text-sky-100">ต้องมีเงินทั้งหมด</p>
             <p className="mt-1 text-[2rem] leading-none font-bold tabular-nums min-[400px]:text-4xl sm:text-5xl">{money(r.needToday)}</p>
-            <p className="mt-2 text-sm text-teal-100/80">
+            <p className="mt-2 text-sm text-sky-100/80">
               ลงทุน {short(r.setupTotal)} + สำรอง {s.runwayMonths} เดือน {short(r.runwayTotal)}
             </p>
           </div>
@@ -394,11 +394,11 @@ export function SmeSimulator() {
         </div>
         <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-sm">
           <div>
-            <p className="text-teal-100/80">ต้องเก็บเอง</p>
+            <p className="text-sky-100/80">ต้องเก็บเอง</p>
             <p className="text-lg font-bold tabular-nums">{money(r.ownNeedToday)}</p>
           </div>
           <div>
-            <p className="text-teal-100/80">ถึงปีที่ {s.targetYears} จะมี</p>
+            <p className="text-sky-100/80">ถึงปีที่ {s.targetYears} จะมี</p>
             <p className="text-lg font-bold tabular-nums">{money(r.savedAtTarget)}</p>
           </div>
         </div>
@@ -432,14 +432,14 @@ export function SmeSimulator() {
           total={r.needToday}
           parts={[
             { label: "เงินลงทุนเริ่มต้น", value: r.setupTotal, color: "bg-indigo-500" },
-            { label: `เงินหมุนเวียน ${s.runwayMonths} เดือน`, value: r.runwayTotal, color: "bg-sky-400" },
+            { label: `เงินหมุนเวียน ${s.runwayMonths} เดือน`, value: r.runwayTotal, color: "bg-violet-400" },
           ]}
         />
         <p className="mt-4 mb-2 text-xs font-medium text-slate-500 uppercase">มาจาก</p>
         <Breakdown
           total={r.needToday}
           parts={[
-            { label: "เงินเก็บของตัวเอง", value: r.ownNeedToday, color: "bg-teal-500" },
+            { label: "เงินเก็บของตัวเอง", value: r.ownNeedToday, color: "bg-sky-500" },
             { label: "พ่อแม่ / ครอบครัว", value: Math.min(s.family, r.needToday), color: "bg-amber-400" },
             { label: "เงินกู้", value: Math.min(s.loan, Math.max(0, r.needToday - s.family)), color: "bg-rose-400" },
           ]}
@@ -450,10 +450,10 @@ export function SmeSimulator() {
 
   return (
     <div className="min-h-dvh bg-slate-50">
-      <header className="bg-gradient-to-br from-slate-900 via-slate-900 to-teal-900 text-white">
+      <header className="bg-gradient-to-br from-slate-900 via-slate-900 to-sky-900 text-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-3 px-4 pt-6 pb-5 sm:pt-8">
           <div>
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-teal-200 ring-1 ring-white/15">📊 SME Planner</p>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-sky-200 ring-1 ring-white/15">📊 SME Planner</p>
             <h1 className="mt-2 text-2xl font-bold sm:text-3xl">แผนการเงินเปิดธุรกิจของตัวเอง</h1>
             <p className="mt-1 text-sm text-slate-300">เลือกธุรกิจ ใส่เงินเก็บ แล้วดูว่าอีกกี่ปีถึงพร้อม — ตัวเลขอัปเดตทันที</p>
           </div>
@@ -478,7 +478,7 @@ export function SmeSimulator() {
                   <button
                     key={t.id}
                     className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
-                      on ? "border-teal-600 bg-teal-50 ring-2 ring-teal-600/30" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                      on ? "border-sky-600 bg-sky-50 ring-2 ring-sky-600/30" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                     }`}
                     onClick={() => {
                       if (!picking) return setPicking(true);
@@ -490,10 +490,10 @@ export function SmeSimulator() {
                   >
                     <span className="text-2xl">{t.icon}</span>
                     <span className="min-w-0 flex-1">
-                      <span className={`block text-base leading-tight font-semibold ${on ? "text-teal-800" : "text-slate-900"}`}>{n.main}</span>
+                      <span className={`block text-base leading-tight font-semibold ${on ? "text-sky-800" : "text-slate-900"}`}>{n.main}</span>
                       {n.sub && <span className="block text-xs leading-tight text-slate-500">{n.sub}</span>}
                     </span>
-                    {!picking && <span className="shrink-0 text-sm font-medium text-teal-700">เปลี่ยน ▾</span>}
+                    {!picking && <span className="shrink-0 text-sm font-medium text-sky-700">เปลี่ยน ▾</span>}
                   </button>
                 );
               })}
@@ -503,7 +503,7 @@ export function SmeSimulator() {
 
           <Panel step={2} title="เงินลงทุนเริ่มต้น" desc="จ่ายครั้งเดียวก่อนเปิด" right={<span className="shrink-0 font-semibold tabular-nums">{money(r.setupTotal)}</span>}>
             <label className="mb-3 flex items-start gap-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
-              <input type="checkbox" className="mt-1 size-5 accent-teal-700" checked={s.ownSpace} onChange={(e) => set("ownSpace", e.target.checked)} />
+              <input type="checkbox" className="mt-1 size-5 accent-sky-700" checked={s.ownSpace} onChange={(e) => set("ownSpace", e.target.checked)} />
               <span>
                 <b className="text-slate-900">มีที่ดิน / ตึก / บ้านของตัวเองหรือครอบครัว</b>
                 <span className="block text-sm text-slate-500">ไม่ต้องจ่ายค่าเช่าและเงินมัดจำ</span>
@@ -532,8 +532,8 @@ export function SmeSimulator() {
 
           <Panel step={5} title="แหล่งเงินและการเก็บเงิน">
             {/* เงินเก็บ: ไฮไลต์ เพราะเป็นตัวกำหนดว่าจะใช้เวลากี่ปี */}
-            <div className="space-y-3 rounded-xl bg-teal-50 p-4 ring-2 ring-teal-600/30">
-              <p className="flex items-center gap-2 text-sm font-semibold text-teal-800">💰 เงินเก็บของคุณ</p>
+            <div className="space-y-3 rounded-xl bg-sky-50 p-4 ring-2 ring-sky-600/30">
+              <p className="flex items-center gap-2 text-sm font-semibold text-sky-800">💰 เงินเก็บของคุณ</p>
               <MoneyInput label="เงินเก็บที่มีตอนนี้" value={s.savingsNow} onChange={(n) => set("savingsNow", n)} big />
               <div className="grid gap-3 sm:grid-cols-2">
                 <MoneyInput label="เก็บได้ต่อเดือน" value={s.savePerMonth} onChange={(n) => set("savePerMonth", n)} />
@@ -581,7 +581,7 @@ export function SmeSimulator() {
                     <label className="flex items-start gap-3">
                       <input
                         type="checkbox"
-                        className="mt-1 size-5 accent-teal-700"
+                        className="mt-1 size-5 accent-sky-700"
                         checked={f.ok}
                         disabled={auto}
                         onChange={(e) => set("checks", { ...s.checks, [f.key]: e.target.checked })}
