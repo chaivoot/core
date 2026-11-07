@@ -122,6 +122,27 @@ export const TEMPLATES: Template[] = [
     ],
   },
   {
+    id: "petshop",
+    name: "ร้านอาหารสัตว์ (อุปกรณ์สัตว์เลี้ยง)",
+    icon: "🐶",
+    margin: 25,
+    note: "สต็อกอาหารสัตว์ก้อนใหญ่ กำไรต่อชิ้นไม่สูง ลูกค้าประจำซื้อซ้ำทุกเดือน",
+    setup: [
+      { label: "ชั้นวาง / ตกแต่งร้าน", amount: 200_000 },
+      { label: "สต็อกอาหารและอุปกรณ์ล็อตแรก", amount: 300_000 },
+      { label: "ระบบขาย / คอมพิวเตอร์", amount: 30_000 },
+      { label: "มัดจำค่าเช่า 3 เดือน", amount: 45_000, tag: "deposit" },
+      { label: "ใบอนุญาต / จดทะเบียน", amount: 5_000 },
+      { label: "การตลาดช่วงเปิดร้าน", amount: 20_000 },
+    ],
+    monthly: [
+      { label: "ค่าเช่า", amount: 15_000, tag: "rent" },
+      { label: "พนักงาน 1 คน", amount: 13_000 },
+      { label: "ค่าน้ำ ค่าไฟ", amount: 5_000 },
+      { label: "ค่าส่ง / อื่น ๆ", amount: 5_000 },
+    ],
+  },
+  {
     id: "accounting",
     name: "สำนักงานบัญชี",
     icon: "🧾",
@@ -215,25 +236,6 @@ export const TEMPLATES: Template[] = [
       { label: "พนักงาน 2 คน", amount: 24_000 },
       { label: "ค่าธรรมเนียมแฟรนไชส์", amount: 5_000 },
       { label: "ค่าน้ำ ค่าไฟ", amount: 6_000 },
-    ],
-  },
-  {
-    id: "homestay",
-    name: "โฮมสเตย์ / ที่พักเล็ก 5 ห้อง",
-    icon: "🏡",
-    margin: 80,
-    setup: [
-      { label: "ปรับปรุง / สร้างห้องพัก", amount: 1_500_000 },
-      { label: "เฟอร์นิเจอร์ / เครื่องนอน", amount: 400_000 },
-      { label: "มัดจำค่าเช่าที่ 3 เดือน", amount: 90_000, tag: "deposit" },
-      { label: "ใบอนุญาต", amount: 20_000 },
-      { label: "การตลาดช่วงเปิด", amount: 30_000 },
-    ],
-    monthly: [
-      { label: "ค่าเช่าที่ / อาคาร", amount: 30_000, tag: "rent" },
-      { label: "พนักงานทำความสะอาด", amount: 25_000 },
-      { label: "ค่าน้ำ ค่าไฟ", amount: 15_000 },
-      { label: "ค่าคอมมิชชันเว็บจอง / ซ่อมบำรุง", amount: 10_000 },
     ],
   },
   {
