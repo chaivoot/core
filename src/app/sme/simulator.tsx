@@ -36,13 +36,13 @@ function fromTemplate(t: Template, prev?: Partial<State>): State {
 }
 
 /** ช่องตัวเลขเงินบาท (พิมพ์ได้ มีคอมมา) */
-function MoneyInput({ value, onChange, label, suffix }: { value: number; onChange: (n: number) => void; label?: string; suffix?: string }) {
+function MoneyInput({ value, onChange, label, suffix, big }: { value: number; onChange: (n: number) => void; label?: string; suffix?: string; big?: boolean }) {
   return (
     <label className="block">
       {label && <span className="label">{label}</span>}
       <span className="relative block">
         <input
-          className="input pr-12 text-right tabular-nums"
+          className={`input pr-12 text-right tabular-nums ${big ? "min-h-14 border-teal-600 text-2xl font-bold text-teal-900" : ""}`}
           inputMode="numeric"
           value={value ? thb.format(value) : ""}
           placeholder="0"
@@ -456,10 +456,14 @@ export function SmeSimulator() {
           </Panel>
 
           <Panel step={5} title="แหล่งเงินและการเก็บเงิน">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MoneyInput label="เงินเก็บที่มีตอนนี้" value={s.savingsNow} onChange={(n) => set("savingsNow", n)} />
-              <MoneyInput label="เก็บได้ต่อเดือน" value={s.savePerMonth} onChange={(n) => set("savePerMonth", n)} />
-              <NumberField label="เก็บเพิ่มขึ้นปีละ" suffix="%/ปี" value={s.saveGrowth} onChange={(n) => set("saveGrowth", n)} max={20} step={0.5} />
+            {/* เงินเก็บ: ไฮไลต์ เพราะเป็นตัวกำหนดว่าจะใช้เวลากี่ปี */}
+            <div className="space-y-3 rounded-xl bg-teal-50 p-4 ring-2 ring-teal-600/30">
+              <p className="flex items-center gap-2 text-sm font-semibold text-teal-800">💰 เงินเก็บของคุณ</p>
+              <MoneyInput label="เงินเก็บที่มีตอนนี้" value={s.savingsNow} onChange={(n) => set("savingsNow", n)} big />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <MoneyInput label="เก็บได้ต่อเดือน" value={s.savePerMonth} onChange={(n) => set("savePerMonth", n)} />
+                <NumberField label="เก็บเพิ่มขึ้นปีละ" suffix="%/ปี" value={s.saveGrowth} onChange={(n) => set("saveGrowth", n)} max={20} step={0.5} />
+              </div>
             </div>
             <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
               <MoneyInput label="พ่อแม่ / ครอบครัวช่วย" value={s.family} onChange={(n) => set("family", n)} />
