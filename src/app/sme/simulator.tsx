@@ -27,8 +27,9 @@ function fromTemplate(t: Template, prev?: Partial<State>): State {
     savingsNow: prev?.savingsNow ?? 50_000,
     savePerMonth: prev?.savePerMonth ?? 5_000,
     saveGrowth: prev?.saveGrowth ?? 3,
-    returnRate: prev?.returnRate ?? 3,
-    inflation: prev?.inflation ?? 3,
+    // ไม่คิดผลตอบแทนเงินเก็บและเงินเฟ้อ (ให้ตัวเลขเข้าใจง่าย ใช้ราคาวันนี้)
+    returnRate: 0,
+    inflation: 0,
     targetYears: prev?.targetYears ?? 10,
     checks: prev?.checks ?? {},
   };
@@ -256,7 +257,7 @@ function Chart({ series, target, ready }: { series: { year: number; saved: numbe
           <span className="inline-block h-0.5 w-5 bg-teal-600" /> เงินเก็บสะสม
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-0 w-5 border-t-2 border-dashed border-rose-600" /> เงินที่ต้องเก็บเอง (แพงขึ้นตามเงินเฟ้อ)
+          <span className="inline-block h-0 w-5 border-t-2 border-dashed border-rose-600" /> เงินที่ต้องเก็บเอง
         </span>
       </figcaption>
     </figure>
@@ -272,7 +273,7 @@ export function SmeSimulator() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่านค่าที่บันทึกไว้ครั้งเดียวตอนเปิดหน้า
-      if (raw) setS({ ...fromTemplate(TEMPLATES[0]), ...JSON.parse(raw) });
+      if (raw) setS({ ...fromTemplate(TEMPLATES[0]), ...JSON.parse(raw), returnRate: 0, inflation: 0 });
     } catch {
       // ไม่มีที่เก็บ ก็เริ่มใหม่
     }
@@ -293,6 +294,8 @@ export function SmeSimulator() {
   const okCount = factors.filter((f) => f.ok).length;
   const template = TEMPLATES.find((t) => t.id === s.templateId);
   const late = r.yearsToReady === null ? null : r.yearsToReady - s.targetYears;
+  /** กำลังเลือกธุรกิจอยู่ (แสดงทุกตัวเลือก) · เลือกแล้วเหลือแค่ใบที่เลือก แตะซ้ำเพื่อเปลี่ยน */
+  const [picking, setPicking] = useState(true);
 
   const readyTone: Tone = r.readyPct >= 100 ? "good" : r.readyPct >= 70 ? "warn" : "bad";
   const timeTone: Tone = late === null ? "bad" : late <= 0 ? "good" : late <= 3 ? "warn" : "bad";
@@ -302,17 +305,31 @@ export function SmeSimulator() {
   const results = (
     <div className="space-y-4">
       {/* KPI หลัก */}
-      <div className="grid grid-cols-2 gap-3">
-        <Kpi
-          label="ต้องมีเงินทั้งหมด"
-          value={short(r.needToday)}
-          sub={
-            <>
-              ต้องเก็บเอง {money(r.ownNeedToday)}
-              {s.inflation > 0 && <> · ปีที่ {s.targetYears}: {money(r.needAtTarget)}</>}
-            </>
-          }
-        />
+      {/* ตัวเลขหลัก: เงินที่ต้องมี */}
+      <div className="rounded-2xl bg-gradient-to-br from-teal-800 to-slate-900 p-5 text-white shadow-md">
+        <p className="text-sm font-medium tracking-wide text-teal-100 uppercase">ต้องมีเงินทั้งหมด (ราคาวันนี้)</p>
+        <p className="mt-1 text-4xl font-bold tabular-nums sm:text-5xl">{money(r.needToday)}</p>
+        <div className="mt-4 grid gap-3 border-t border-white/15 pt-3 text-sm sm:grid-cols-3">
+          <div>
+            <p className="text-teal-100/80">เงินลงทุน + เงินหมุนเวียน</p>
+            <p className="font-semibold tabular-nums">
+              {money(r.setupTotal)} + {money(r.runwayTotal)}
+            </p>
+          </div>
+          <div>
+            <p className="text-teal-100/80">ต้องเก็บเอง</p>
+            <p className="text-lg font-bold tabular-nums">{money(r.ownNeedToday)}</p>
+          </div>
+          {s.inflation > 0 && (
+            <div>
+              <p className="text-teal-100/80">ถึงปีที่ {s.targetYears} ต้องเก็บเอง</p>
+              <p className="text-lg font-bold tabular-nums text-amber-300">{money(r.needAtTarget)}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Kpi label={`พร้อมในปีที่ ${s.targetYears}`} value={`${Math.floor(r.readyPct)}%`} tone={readyTone} pct={r.readyPct} sub={`มี ${money(r.savedAtTarget)}`} />
         <Kpi
           label="เก็บเงินครบใน"
@@ -320,7 +337,9 @@ export function SmeSimulator() {
           tone={timeTone}
           sub={late === null ? "ยังไม่พอภายใน 40 ปี" : late <= 0 ? "✓ ทันตามเป้า" : `ช้ากว่าเป้า ${years(Math.ceil(late * 2) / 2)} ปี`}
         />
-        <Kpi label="ยอดขายคุ้มทุน/วัน" value={money(r.breakEvenSales / 26)} sub={`${money(r.breakEvenSales)}/เดือน (เปิด 26 วัน)`} />
+        <div className="col-span-2 sm:col-span-1">
+          <Kpi label="ยอดขายคุ้มทุน/วัน" value={money(r.breakEvenSales / 26)} sub={`${money(r.breakEvenSales)}/เดือน (เปิด 26 วัน)`} />
+        </div>
       </div>
 
       {r.readyPct < 100 && (
@@ -329,7 +348,7 @@ export function SmeSimulator() {
         </div>
       )}
 
-      <Panel title="เงินเก็บสะสม vs เงินที่ต้องมี" desc="เส้นประ = เงินที่ต้องเก็บเอง (แพงขึ้นตามเงินเฟ้อ)">
+      <Panel title="เงินเก็บสะสม vs เงินที่ต้องมี" desc="เส้นประ = เงินที่ต้องเก็บเอง">
         <Chart series={r.series} target={s.targetYears} ready={r.yearsToReady} />
       </Panel>
 
@@ -376,8 +395,8 @@ export function SmeSimulator() {
 
         <div className="space-y-4 lg:order-1">
           <Panel step={1} title="ธุรกิจที่อยากทำ" desc="เลือกแบบที่ใกล้เคียง ตัวเลขเป็นค่าประมาณตั้งต้น แก้ได้ทุกช่อง">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {TEMPLATES.map((t) => {
+            <div className={picking ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "grid"}>
+              {TEMPLATES.filter((t) => picking || t.id === s.templateId).map((t) => {
                 const on = s.templateId === t.id;
                 const n = splitName(t.name);
                 return (
@@ -386,14 +405,20 @@ export function SmeSimulator() {
                     className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
                       on ? "border-teal-600 bg-teal-50 ring-2 ring-teal-600/30" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                     }`}
-                    onClick={() => setS((x) => fromTemplate(t, x))}
+                    onClick={() => {
+                      if (!picking) return setPicking(true);
+                      if (!on) setS((x) => fromTemplate(t, x));
+                      setPicking(false);
+                    }}
                     aria-pressed={on}
+                    aria-expanded={!picking ? false : undefined}
                   >
                     <span className="text-2xl">{t.icon}</span>
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className={`block text-base leading-tight font-semibold ${on ? "text-teal-800" : "text-slate-900"}`}>{n.main}</span>
                       {n.sub && <span className="block text-xs leading-tight text-slate-500">{n.sub}</span>}
                     </span>
+                    {!picking && <span className="shrink-0 text-sm font-medium text-teal-700">เปลี่ยน ▾</span>}
                   </button>
                 );
               })}
@@ -435,8 +460,6 @@ export function SmeSimulator() {
               <MoneyInput label="เงินเก็บที่มีตอนนี้" value={s.savingsNow} onChange={(n) => set("savingsNow", n)} />
               <MoneyInput label="เก็บได้ต่อเดือน" value={s.savePerMonth} onChange={(n) => set("savePerMonth", n)} />
               <NumberField label="เก็บเพิ่มขึ้นปีละ" suffix="%/ปี" value={s.saveGrowth} onChange={(n) => set("saveGrowth", n)} max={20} step={0.5} />
-              <NumberField label="ผลตอบแทนเงินเก็บ" suffix="%/ปี" value={s.returnRate} onChange={(n) => set("returnRate", n)} max={15} step={0.5} />
-              <NumberField label="ค่าเปิดร้านแพงขึ้น (เงินเฟ้อ)" suffix="%/ปี" value={s.inflation} onChange={(n) => set("inflation", n)} max={10} step={0.5} />
             </div>
             <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
               <MoneyInput label="พ่อแม่ / ครอบครัวช่วย" value={s.family} onChange={(n) => set("family", n)} />
