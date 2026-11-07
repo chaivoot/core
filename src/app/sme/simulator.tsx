@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { plan, readiness, SURVIVAL, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
@@ -77,6 +77,26 @@ function NumberField({ value, onChange, label, suffix, min = 0, max = 100, step 
 
 /** รายการค่าใช้จ่ายแก้ไขได้ (ชื่อ + จำนวนเงิน เพิ่ม/ลบได้) */
 function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: (xs: CostItem[]) => void; ownSpace: boolean }) {
+  const [editing, setEditing] = useState(false);
+  if (!editing)
+    return (
+      <div>
+        <ul className="divide-y divide-slate-100 rounded-xl bg-slate-50/70 px-3 ring-1 ring-slate-200/70">
+          {items.map((it, i) => {
+            const off = ownSpace && (it.tag === "rent" || it.tag === "deposit");
+            return (
+              <li key={i} className={`flex items-center justify-between gap-3 py-2 text-sm ${off ? "text-slate-400 line-through" : "text-slate-700"}`}>
+                <span className="min-w-0 truncate">{it.label}</span>
+                <span className="shrink-0 font-medium tabular-nums">{money(it.amount)}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <button className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-teal-700 hover:bg-teal-50" onClick={() => setEditing(true)}>
+          ✎ แก้ไขตัวเลข / เพิ่มรายการ
+        </button>
+      </div>
+    );
   return (
     <div className="space-y-2">
       {items.map((it, i) => {
@@ -99,9 +119,14 @@ function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: 
         );
       })}
       {ownSpace && items.some((x) => x.tag) && <p className="text-xs text-stone-500">รายการจาง = ไม่นับ เพราะมีที่/ตึกของตัวเองแล้ว</p>}
-      <button className="btn-ghost min-h-9 px-2 text-sm text-teal-700" onClick={() => onChange([...items, { label: "รายการใหม่", amount: 0 }])}>
-        + เพิ่มรายการ
-      </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button className="btn-ghost min-h-10 px-2 text-sm text-teal-700" onClick={() => onChange([...items, { label: "รายการใหม่", amount: 0 }])}>
+          + เพิ่มรายการ
+        </button>
+        <button className="min-h-10 rounded-lg bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800" onClick={() => setEditing(false)}>
+          ✓ เสร็จ
+        </button>
+      </div>
     </div>
   );
 }
@@ -117,12 +142,12 @@ function splitName(name: string) {
 /** กล่องแผงข้อมูลแบบ dashboard */
 function Panel({ title, step, children, desc, right }: { title: string; step?: number; desc?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)] sm:p-5">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+          <h2 className="flex items-center gap-2.5 text-base font-semibold text-slate-900 sm:text-lg">
             {step !== undefined && (
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white">{step}</span>
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-teal-600 text-sm font-bold text-white shadow-sm shadow-teal-600/30">{step}</span>
             )}
             {title}
           </h2>
@@ -147,8 +172,8 @@ const TONE: Record<Tone, { text: string; bar: string; chip: string }> = {
 function Kpi({ label, value, sub, tone = "neutral", pct }: { label: string; value: string; sub?: React.ReactNode; tone?: Tone; pct?: number }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">{label}</p>
-      <p className={`mt-1 text-2xl font-bold tabular-nums sm:text-3xl ${TONE[tone].text}`}>{value}</p>
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className={`mt-1 text-xl font-bold tabular-nums sm:text-2xl ${TONE[tone].text}`}>{value}</p>
       {pct !== undefined && (
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
           <div className={`h-full rounded-full transition-all duration-500 ${TONE[tone].bar}`} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
@@ -186,6 +211,37 @@ function Breakdown({ parts, total }: { parts: { label: string; value: number; co
   );
 }
 
+/** วงแหวนความพร้อม (%) */
+function Ring({ pct, tone }: { pct: number; tone: Tone }) {
+  const R = 40;
+  const C = 2 * Math.PI * R;
+  const v = Math.min(100, Math.max(0, pct));
+  const color = tone === "good" ? "#34d399" : tone === "warn" ? "#fbbf24" : "#fb7185";
+  return (
+    <div className="relative size-28 shrink-0 sm:size-32">
+      <svg viewBox="0 0 100 100" className="size-full -rotate-90">
+        <circle cx="50" cy="50" r={R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="10" />
+        <circle
+          cx="50"
+          cy="50"
+          r={R}
+          fill="none"
+          stroke={color}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={C}
+          strokeDashoffset={C * (1 - v / 100)}
+          className="transition-[stroke-dashoffset] duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold tabular-nums sm:text-3xl">{Math.floor(pct)}%</span>
+        <span className="text-[11px] text-teal-100/80">พร้อม</span>
+      </div>
+    </div>
+  );
+}
+
 /** กราฟแท่งโอกาสรอดของธุรกิจใหม่ */
 function SurvivalChart() {
   return (
@@ -193,8 +249,11 @@ function SurvivalChart() {
       {SURVIVAL.map((x) => (
         <div key={x.year} className="flex flex-1 flex-col items-center gap-1">
           <span className="text-xs font-semibold tabular-nums text-slate-700">{x.pct}%</span>
-          <div className="flex h-28 w-full items-end overflow-hidden rounded-md bg-rose-50">
-            <div className="w-full rounded-md bg-gradient-to-t from-teal-600 to-teal-400" style={{ height: `${x.pct}%` }} />
+          <div className="flex h-28 w-full items-end overflow-hidden rounded-md bg-slate-100">
+            <div
+              className={`w-full rounded-md bg-gradient-to-t ${x.pct >= 60 ? "from-teal-600 to-teal-400" : x.pct >= 45 ? "from-amber-500 to-amber-300" : "from-rose-500 to-rose-300"}`}
+              style={{ height: `${x.pct}%` }}
+            />
           </div>
           <span className="text-xs text-slate-500">ปีที่ {x.year}</span>
         </div>
@@ -296,6 +355,22 @@ export function SmeSimulator() {
   const late = r.yearsToReady === null ? null : r.yearsToReady - s.targetYears;
   /** กำลังเลือกธุรกิจอยู่ (แสดงทุกตัวเลือก) · เลือกแล้วเหลือแค่ใบที่เลือก แตะซ้ำเพื่อเปลี่ยน */
   const [picking, setPicking] = useState(true);
+  /** มือถือ: แสดงแถบสรุปด้านล่างเมื่อเลื่อนพ้นการ์ดผลลัพธ์ จะได้เห็นตัวเลขเปลี่ยนขณะกรอก */
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [heroOut, setHeroOut] = useState(false);
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setHeroOut(!e.isIntersecting && e.boundingClientRect.top < 0));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const reset = () => {
+    if (!confirm("ล้างข้อมูลที่กรอกทั้งหมด แล้วเริ่มใหม่?")) return;
+    setS(fromTemplate(TEMPLATES[0]));
+    setPicking(true);
+    scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const readyTone: Tone = r.readyPct >= 100 ? "good" : r.readyPct >= 70 ? "warn" : "bad";
   const timeTone: Tone = late === null ? "bad" : late <= 0 ? "good" : late <= 3 ? "warn" : "bad";
@@ -304,49 +379,48 @@ export function SmeSimulator() {
 
   const results = (
     <div className="space-y-4">
-      {/* KPI หลัก */}
-      {/* ตัวเลขหลัก: เงินที่ต้องมี */}
-      <div className="rounded-2xl bg-gradient-to-br from-teal-800 to-slate-900 p-5 text-white shadow-md">
-        <p className="text-sm font-medium tracking-wide text-teal-100 uppercase">ต้องมีเงินทั้งหมด (ราคาวันนี้)</p>
-        <p className="mt-1 text-4xl font-bold tabular-nums sm:text-5xl">{money(r.needToday)}</p>
-        <div className="mt-4 grid gap-3 border-t border-white/15 pt-3 text-sm sm:grid-cols-3">
-          <div>
-            <p className="text-teal-100/80">เงินลงทุน + เงินหมุนเวียน</p>
-            <p className="font-semibold tabular-nums">
-              {money(r.setupTotal)} + {money(r.runwayTotal)}
+      {/* ตัวเลขหลัก: เงินที่ต้องมี + ความพร้อม */}
+      <div ref={heroRef} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-700 via-teal-800 to-slate-900 p-5 text-white shadow-lg shadow-teal-900/20 sm:p-6">
+        <div className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-teal-400/20 blur-2xl" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-teal-100">ต้องมีเงินทั้งหมด</p>
+            <p className="mt-1 text-[2rem] leading-none font-bold tabular-nums min-[400px]:text-4xl sm:text-5xl">{money(r.needToday)}</p>
+            <p className="mt-2 text-sm text-teal-100/80">
+              ลงทุน {short(r.setupTotal)} + สำรอง {s.runwayMonths} เดือน {short(r.runwayTotal)}
             </p>
           </div>
+          <Ring pct={r.readyPct} tone={readyTone} />
+        </div>
+        <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-sm">
           <div>
             <p className="text-teal-100/80">ต้องเก็บเอง</p>
             <p className="text-lg font-bold tabular-nums">{money(r.ownNeedToday)}</p>
           </div>
-          {s.inflation > 0 && (
-            <div>
-              <p className="text-teal-100/80">ถึงปีที่ {s.targetYears} ต้องเก็บเอง</p>
-              <p className="text-lg font-bold tabular-nums text-amber-300">{money(r.needAtTarget)}</p>
-            </div>
-          )}
+          <div>
+            <p className="text-teal-100/80">ถึงปีที่ {s.targetYears} จะมี</p>
+            <p className="text-lg font-bold tabular-nums">{money(r.savedAtTarget)}</p>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Kpi label={`พร้อมในปีที่ ${s.targetYears}`} value={`${Math.floor(r.readyPct)}%`} tone={readyTone} pct={r.readyPct} sub={`มี ${money(r.savedAtTarget)}`} />
         <Kpi
           label="เก็บเงินครบใน"
           value={yearsText}
           tone={timeTone}
           sub={late === null ? "ยังไม่พอภายใน 40 ปี" : late <= 0 ? "✓ ทันตามเป้า" : `ช้ากว่าเป้า ${years(Math.ceil(late * 2) / 2)} ปี`}
         />
+        <Kpi
+          label="ต้องเก็บเดือนละ"
+          value={r.readyPct >= 100 ? "✓ พอแล้ว" : money(r.savePerMonthNeeded)}
+          tone={r.readyPct >= 100 ? "good" : "warn"}
+          sub={r.readyPct >= 100 ? `เก็บ ${money(s.savePerMonth)} ก็ทัน` : `ให้ทันปีที่ ${s.targetYears} (ตอนนี้ ${money(s.savePerMonth)})`}
+        />
         <div className="col-span-2 sm:col-span-1">
           <Kpi label="ยอดขายคุ้มทุน/วัน" value={money(r.breakEvenSales / 26)} sub={`${money(r.breakEvenSales)}/เดือน (เปิด 26 วัน)`} />
         </div>
       </div>
-
-      {r.readyPct < 100 && (
-        <div className={`rounded-xl px-4 py-3 text-sm ring-1 ${TONE.warn.chip}`}>
-          ต้องเก็บเดือนละ <b className="tabular-nums">{money(r.savePerMonthNeeded)}</b> ถึงจะทันเริ่มในปีที่ {s.targetYears} (ตอนนี้เก็บ {money(s.savePerMonth)})
-        </div>
-      )}
 
       <Panel title="เงินเก็บสะสม vs เงินที่ต้องมี" desc="เส้นประ = เงินที่ต้องเก็บเอง">
         <Chart series={r.series} target={s.targetYears} ready={r.yearsToReady} />
@@ -376,22 +450,22 @@ export function SmeSimulator() {
 
   return (
     <div className="min-h-dvh bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+      <header className="bg-gradient-to-br from-slate-900 via-slate-900 to-teal-900 text-white">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-3 px-4 pt-6 pb-5 sm:pt-8">
           <div>
-            <p className="text-xs font-medium tracking-wide text-teal-700 uppercase">SME Planner</p>
-            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">แผนการเงินเปิดธุรกิจของตัวเอง</h1>
-            <p className="text-sm text-slate-500">ต้องมีเงินเท่าไหร่ เก็บกี่ปีถึงพอ และโอกาสรอดของธุรกิจใหม่</p>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-teal-200 ring-1 ring-white/15">📊 SME Planner</p>
+            <h1 className="mt-2 text-2xl font-bold sm:text-3xl">แผนการเงินเปิดธุรกิจของตัวเอง</h1>
+            <p className="mt-1 text-sm text-slate-300">เลือกธุรกิจ ใส่เงินเก็บ แล้วดูว่าอีกกี่ปีถึงพร้อม — ตัวเลขอัปเดตทันที</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-sm font-medium ring-1 ${TONE[readyTone].chip}`}>
-            {template?.icon} {template ? splitName(template.name).main : ""} · พร้อม {Math.floor(r.readyPct)}%
-          </span>
+          <button onClick={reset} className="min-h-10 rounded-lg px-3 text-sm text-slate-300 ring-1 ring-white/20 hover:bg-white/10 hover:text-white">
+            ↺ เริ่มใหม่
+          </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-4 p-4">
+      <main className="mx-auto max-w-6xl space-y-4 p-4 pb-24 lg:pb-8">
         {/* มือถือ: ผลลัพธ์ขึ้นก่อน · จอใหญ่: ผลลัพธ์อยู่ขวา ติดจอเฉพาะในแถวนี้ (ไม่ทับส่วนความเสี่ยง) */}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
         <div className="lg:sticky lg:top-4 lg:order-2">{results}</div>
 
         <div className="space-y-4 lg:order-1">
@@ -539,6 +613,34 @@ export function SmeSimulator() {
           </p>
         </div>
       </main>
+
+      {/* แถบสรุปด้านล่าง (มือถือ) */}
+      <div
+        className={`fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-slate-900/95 text-white backdrop-blur transition-transform duration-300 lg:hidden ${heroOut ? "translate-y-0" : "translate-y-full"}`}
+        aria-hidden={!heroOut}
+      >
+        <button
+          className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] text-left"
+          onClick={() => heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          tabIndex={heroOut ? 0 : -1}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] text-slate-400">ต้องมีทั้งหมด</span>
+            <span className="block text-lg leading-tight font-bold tabular-nums">{money(r.needToday)}</span>
+          </span>
+          <span className="text-right">
+            <span className="block text-[11px] text-slate-400">พร้อม</span>
+            <span className={`block text-lg leading-tight font-bold tabular-nums ${readyTone === "good" ? "text-emerald-400" : readyTone === "warn" ? "text-amber-300" : "text-rose-300"}`}>
+              {Math.floor(r.readyPct)}%
+            </span>
+          </span>
+          <span className="text-right">
+            <span className="block text-[11px] text-slate-400">เก็บครบใน</span>
+            <span className="block text-lg leading-tight font-bold tabular-nums">{yearsText}</span>
+          </span>
+          <span className="text-slate-400">▴</span>
+        </button>
+      </div>
     </div>
   );
 }
