@@ -251,7 +251,7 @@ function SurvivalChart() {
           <span className="text-xs font-semibold tabular-nums text-slate-700">{x.pct}%</span>
           <div className="flex h-28 w-full items-end overflow-hidden rounded-md bg-slate-100">
             <div
-              className={`w-full rounded-md bg-gradient-to-t ${x.pct >= 60 ? "from-sky-600 to-sky-400" : x.pct >= 45 ? "from-amber-500 to-amber-300" : "from-rose-500 to-rose-300"}`}
+              className={`w-full rounded-md bg-gradient-to-t ${x.pct >= 60 ? "from-emerald-600 to-emerald-400" : x.pct >= 45 ? "from-amber-500 to-amber-300" : "from-rose-500 to-rose-300"}`}
               style={{ height: `${x.pct}%` }}
             />
           </div>
