@@ -26,7 +26,7 @@ function fromTemplate(t: Template, prev?: Partial<State>): State {
     loan: prev?.loan ?? 0,
     savingsNow: prev?.savingsNow ?? 50_000,
     savePerMonth: prev?.savePerMonth ?? 5_000,
-    saveGrowth: prev?.saveGrowth ?? 3,
+    saveGrowth: prev?.saveGrowth ?? 5,
     // ไม่คิดผลตอบแทนเงินเก็บและเงินเฟ้อ (ให้ตัวเลขเข้าใจง่าย ใช้ราคาวันนี้)
     returnRate: 0,
     inflation: 0,
