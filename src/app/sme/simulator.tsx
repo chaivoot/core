@@ -92,7 +92,7 @@ function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: 
             );
           })}
         </ul>
-        <button className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-sky-700 hover:bg-sky-50" onClick={() => setEditing(true)}>
+        <button className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-sky-600 bg-white px-4 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-50 active:bg-sky-100" onClick={() => setEditing(true)}>
           ✎ แก้ไขตัวเลข / เพิ่มรายการ
         </button>
       </div>
