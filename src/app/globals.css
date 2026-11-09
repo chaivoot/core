@@ -4,6 +4,9 @@
   --font-sans: var(--font-thai), ui-sans-serif, system-ui, sans-serif;
   /* ลายมือ สำหรับแผ่นงบการเงินในเกมกระแสเงินสด */
   --font-hand: var(--font-itim), var(--font-thai), ui-sans-serif, sans-serif;
+  /* หน้า /sme: Prompt (หัวข้อ/ตัวเลขเด่น) + Anuphan (เนื้อหา) จาก Cadson Demak */
+  --font-display: var(--font-prompt), var(--font-thai), ui-sans-serif, sans-serif;
+  --font-body: var(--font-anuphan), var(--font-thai), ui-sans-serif, sans-serif;
 }
 
 @theme {
