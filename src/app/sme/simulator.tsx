@@ -145,7 +145,7 @@ function Panel({ title, step, children, desc, right }: { title: string; step?: n
     <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)] sm:p-5">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2.5 text-base font-semibold text-slate-900 sm:text-lg">
+          <h2 className="flex items-center gap-2.5 font-display text-base font-semibold text-slate-900 sm:text-lg">
             {step !== undefined && (
               <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sky-600 text-sm font-bold text-white shadow-sm shadow-sky-600/30">{step}</span>
             )}
@@ -173,7 +173,7 @@ function Kpi({ label, value, sub, tone = "neutral", pct }: { label: string; valu
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className={`mt-1 text-xl font-bold tabular-nums sm:text-2xl ${TONE[tone].text}`}>{value}</p>
+      <p className={`mt-1 font-display text-xl font-bold tabular-nums sm:text-2xl ${TONE[tone].text}`}>{value}</p>
       {pct !== undefined && (
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
           <div className={`h-full rounded-full transition-all duration-500 ${TONE[tone].bar}`} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
@@ -235,7 +235,7 @@ function Ring({ pct, tone }: { pct: number; tone: Tone }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold tabular-nums sm:text-3xl">{Math.floor(pct)}%</span>
+        <span className="font-display text-2xl font-bold tabular-nums sm:text-3xl">{Math.floor(pct)}%</span>
         <span className="text-[11px] text-sky-100/80">พร้อม</span>
       </div>
     </div>
@@ -385,7 +385,7 @@ export function SmeSimulator() {
         <div className="relative flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-sky-100">ต้องมีเงินทั้งหมด</p>
-            <p className="mt-1 text-[2rem] leading-none font-bold tabular-nums min-[400px]:text-4xl sm:text-5xl">{money(r.needToday)}</p>
+            <p className="mt-1 text-[2rem] leading-none font-display font-bold tabular-nums min-[400px]:text-4xl sm:text-5xl">{money(r.needToday)}</p>
             <p className="mt-2 text-sm text-sky-100/80">
               ลงทุน {short(r.setupTotal)} + สำรอง {s.runwayMonths} เดือน {short(r.runwayTotal)}
             </p>
@@ -454,7 +454,7 @@ export function SmeSimulator() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-3 px-4 pt-6 pb-5 sm:pt-8">
           <div>
             <p className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-sky-200 ring-1 ring-white/15">📊 SME Planner</p>
-            <h1 className="mt-2 text-2xl font-bold sm:text-3xl">แผนการเงินเปิดธุรกิจของตัวเอง</h1>
+            <h1 className="mt-2 font-display text-2xl font-bold sm:text-3xl">แผนการเงินเปิดธุรกิจของตัวเอง</h1>
             <p className="mt-1 text-sm text-slate-300">เลือกธุรกิจ ใส่เงินเก็บ แล้วดูว่าอีกกี่ปีถึงพร้อม — ตัวเลขอัปเดตทันที</p>
           </div>
           <button onClick={reset} className="min-h-10 rounded-lg px-3 text-sm text-slate-300 ring-1 ring-white/20 hover:bg-white/10 hover:text-white">
