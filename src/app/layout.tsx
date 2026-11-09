@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans_Thai } from "next/font/google";
+import { Anuphan, Prompt } from "next/font/google";
 import "./globals.css";
 
-const thai = IBM_Plex_Sans_Thai({
-  variable: "--font-thai",
-  subsets: ["thai", "latin"],
-  weight: ["400", "500", "600", "700"],
-});
+// ฟอนต์ทั้งเว็บ (Cadson Demak): Anuphan = เนื้อหา · Prompt = หัวข้อและตัวเลขเด่น
+const anuphan = Anuphan({ variable: "--font-anuphan", subsets: ["thai", "latin"] });
+const prompt = Prompt({ variable: "--font-prompt", subsets: ["thai", "latin"], weight: ["500", "600", "700"] });
 
 export const metadata: Metadata = {
   title: "3S1M",
@@ -21,7 +19,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="th" className={`${thai.variable} h-full antialiased`}>
+    <html lang="th" className={`${anuphan.variable} ${prompt.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">{children}</body>
     </html>
   );
