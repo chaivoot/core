@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { plan, readiness, SURVIVAL, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
+import { AUTO_INFLATION, plan, readiness, SURVIVAL, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const money = (n: number) => (Number.isFinite(n) ? `฿${thb.format(Math.round(n))}` : "—");
@@ -9,7 +9,7 @@ const short = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toLocaleString("th-TH", { maximumFractionDigits: 1 })} ล้าน` : `${Math.round(n / 1000).toLocaleString("th-TH")}k`;
 const years = (y: number) => (Number.isInteger(y) ? `${y}` : y.toLocaleString("th-TH", { maximumFractionDigits: 1 }));
 
-type State = PlanInput & { templateId: string; checks: Partial<Record<ReadinessKey, boolean>> };
+type State = PlanInput & { templateId: string; age: number; checks: Partial<Record<ReadinessKey, boolean>> };
 
 const STORAGE_KEY = "sme-plan-v1";
 
@@ -27,9 +27,10 @@ function fromTemplate(t: Template, prev?: Partial<State>): State {
     savingsNow: prev?.savingsNow ?? 50_000,
     savePerMonth: prev?.savePerMonth ?? 5_000,
     saveGrowth: prev?.saveGrowth ?? 5,
-    // ไม่คิดผลตอบแทนเงินเก็บและเงินเฟ้อ (ให้ตัวเลขเข้าใจง่าย ใช้ราคาวันนี้)
+    age: prev?.age ?? 30,
+    // ไม่คิดผลตอบแทนเงินเก็บ · เงินเฟ้อคิดให้อัตโนมัติ (ไม่ต้องกรอก)
     returnRate: 0,
-    inflation: 0,
+    inflation: AUTO_INFLATION,
     targetYears: prev?.targetYears ?? 10,
     checks: prev?.checks ?? {},
   };
@@ -66,7 +67,8 @@ function NumberField({ value, onChange, label, suffix, min = 0, max = 100, step 
           min={min}
           max={max}
           step={step}
-          value={value}
+          value={value || ""}
+          placeholder="0"
           onChange={(e) => onChange(Math.min(max, Math.max(min, Number(e.target.value) || 0)))}
         />
         <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-stone-400">{suffix}</span>
@@ -332,7 +334,7 @@ export function SmeSimulator() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่านค่าที่บันทึกไว้ครั้งเดียวตอนเปิดหน้า
-      if (raw) setS({ ...fromTemplate(TEMPLATES[0]), ...JSON.parse(raw), returnRate: 0, inflation: 0 });
+      if (raw) setS({ ...fromTemplate(TEMPLATES[0]), ...JSON.parse(raw), returnRate: 0, inflation: AUTO_INFLATION });
     } catch {
       // ไม่มีที่เก็บ ก็เริ่มใหม่
     }
@@ -376,6 +378,10 @@ export function SmeSimulator() {
   const timeTone: Tone = late === null ? "bad" : late <= 0 ? "good" : late <= 3 ? "warn" : "bad";
   const runwayTone: Tone = s.runwayMonths >= 12 ? "good" : s.runwayMonths >= 6 ? "warn" : "bad";
   const yearsText = r.yearsToReady === null ? "40+ ปี" : `${years(Math.ceil(r.yearsToReady * 2) / 2)} ปี`;
+  /** อายุตอนเปิดธุรกิจได้จริง (ตามแผน) และอายุที่ตั้งเป้าไว้ */
+  const readyAge = r.yearsToReady === null ? null : Math.floor(s.age + r.yearsToReady);
+  const targetAge = s.age + s.targetYears;
+  const bizName = template ? splitName(template.name).main : "ธุรกิจ";
 
   const results = (
     <div className="space-y-4">
@@ -394,14 +400,28 @@ export function SmeSimulator() {
         </div>
         <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-sm">
           <div>
-            <p className="text-sky-100/80">ต้องเก็บเอง</p>
-            <p className="text-lg font-bold tabular-nums">{money(r.ownNeedToday)}</p>
+            <p className="text-sky-100/80">ปีที่ {s.targetYears} ต้องเก็บเอง</p>
+            <p className="text-lg font-bold tabular-nums">{money(r.needAtTarget)}</p>
           </div>
           <div>
             <p className="text-sky-100/80">ถึงปีที่ {s.targetYears} จะมี</p>
             <p className="text-lg font-bold tabular-nums">{money(r.savedAtTarget)}</p>
           </div>
         </div>
+        <p className="relative mt-2 text-xs text-sky-100/70">ราคาวันนี้ · ปีต่อ ๆ ไปคิดเงินเฟ้อให้อัตโนมัติ {AUTO_INFLATION}%/ปี</p>
+      </div>
+
+      {/* สรุป: เปิดธุรกิจได้ตอนอายุเท่าไหร่ */}
+      <div className={`rounded-2xl p-4 ring-1 sm:p-5 ${TONE[timeTone].chip}`}>
+        <p className="text-sm">ถ้าเก็บเงินตามแผนนี้ คุณจะเปิด{bizName}ได้ตอน</p>
+        <p className="mt-0.5 font-display text-3xl font-bold tabular-nums sm:text-4xl">{readyAge === null ? "เกินอายุ " + (s.age + 40) : `อายุ ${readyAge} ปี`}</p>
+        <p className="mt-1 text-sm">
+          {late === null
+            ? `เก็บ 40 ปีก็ยังไม่พอ ต้องเก็บเดือนละ ${money(r.savePerMonthNeeded)} ถึงจะเปิดได้ตอนอายุ ${targetAge}`
+            : late <= 0
+              ? `✓ ทันเป้าที่ตั้งไว้ (อายุ ${targetAge}) · อีก ${yearsText}`
+              : `ช้ากว่าเป้า (อายุ ${targetAge}) ${years(Math.ceil(late * 2) / 2)} ปี · ถ้าอยากทัน ต้องเก็บเดือนละ ${money(r.savePerMonthNeeded)}`}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -422,7 +442,7 @@ export function SmeSimulator() {
         </div>
       </div>
 
-      <Panel title="เงินเก็บสะสม vs เงินที่ต้องมี" desc="เส้นประ = เงินที่ต้องเก็บเอง">
+      <Panel title="เงินเก็บสะสม vs เงินที่ต้องมี" desc={`เส้นประ = เงินที่ต้องเก็บเอง (แพงขึ้นตามเงินเฟ้อ ${AUTO_INFLATION}%/ปี)`}>
         <Chart series={r.series} target={s.targetYears} ready={r.yearsToReady} />
       </Panel>
 
@@ -547,8 +567,14 @@ export function SmeSimulator() {
             {s.loan > 0 && <p className="mt-2 text-xs text-slate-500">เงินกู้ต้องผ่อนตั้งแต่เดือนแรก — ใส่ค่าผ่อนในค่าใช้จ่ายรายเดือนด้วย</p>}
           </Panel>
 
-          <Panel step={6} title="อยากเริ่มในอีกกี่ปี">
-            <Slider value={s.targetYears} min={1} max={20} onChange={(n) => set("targetYears", n)} label="จำนวนปี" unit="ปี" />
+          <Panel step={6} title="อายุและเป้าหมาย" desc={`อยากเปิดธุรกิจตอนอายุ ${targetAge}`}>
+            <div className="grid gap-4 sm:grid-cols-[10rem_1fr] sm:items-end">
+              <NumberField label="อายุตอนนี้" suffix="ปี" value={s.age} onChange={(n) => set("age", n)} min={0} max={90} />
+              <div>
+                <span className="label">อยากเริ่มในอีกกี่ปี</span>
+                <Slider value={s.targetYears} min={1} max={20} onChange={(n) => set("targetYears", n)} label="จำนวนปี" unit="ปี" />
+              </div>
+            </div>
           </Panel>
         </div>
         </div>
@@ -635,8 +661,8 @@ export function SmeSimulator() {
             </span>
           </span>
           <span className="text-right">
-            <span className="block text-[11px] text-slate-400">เก็บครบใน</span>
-            <span className="block text-lg leading-tight font-bold tabular-nums">{yearsText}</span>
+            <span className="block text-[11px] text-slate-400">เปิดได้ตอนอายุ</span>
+            <span className="block text-lg leading-tight font-bold tabular-nums">{readyAge ?? `${s.age + 40}+`}</span>
           </span>
           <span className="text-slate-400">▴</span>
         </button>
