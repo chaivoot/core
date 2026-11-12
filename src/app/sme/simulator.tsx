@@ -36,97 +36,139 @@ function fromTemplate(t: Template, prev?: Partial<State>): State {
   };
 }
 
-/** ช่องตัวเลขเงินบาท (พิมพ์ได้ มีคอมมา) */
-function MoneyInput({ value, onChange, label, suffix, big }: { value: number; onChange: (n: number) => void; label?: string; suffix?: string; big?: boolean }) {
+/** เลือกข้อความทั้งช่องตอนแตะ จะได้พิมพ์ทับได้เลย (มือถือไม่ต้องลบทีละตัว) */
+const selectAll = (e: React.FocusEvent<HTMLInputElement>) => e.currentTarget.select();
+
+/** ปุ่มตัวเลือกด่วน */
+function Chips<T extends number>({ options, value, onPick, format }: { options: T[]; value: number; onPick: (v: T) => void; format: (v: T) => string }) {
   return (
-    <label className="block">
-      {label && <span className="label">{label}</span>}
-      <span className="relative block">
-        <input
-          className={`input pr-12 text-right tabular-nums ${big ? "min-h-14 border-sky-600 text-2xl font-bold text-sky-900" : ""}`}
-          inputMode="numeric"
-          value={value ? thb.format(value) : ""}
-          placeholder="0"
-          onChange={(e) => onChange(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
-        />
-        <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-stone-400">{suffix ?? "บาท"}</span>
-      </span>
-    </label>
+    <div className="mt-2 flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onPick(o)}
+          className={`min-h-10 rounded-full px-3.5 text-sm font-medium ring-1 transition active:scale-95 ${
+            value === o ? "bg-sky-600 text-white ring-sky-600" : "bg-white text-slate-700 ring-slate-300 hover:bg-sky-50"
+          }`}
+        >
+          {format(o)}
+        </button>
+      ))}
+    </div>
   );
 }
 
-function NumberField({ value, onChange, label, suffix, min = 0, max = 100, step = 1 }: { value: number; onChange: (n: number) => void; label: string; suffix: string; min?: number; max?: number; step?: number }) {
+/** ช่องเงินบาท (พิมพ์ได้ มีคอมมา) + ปุ่มจำนวนเงินด่วน */
+function MoneyInput({ value, onChange, label, hint, big, quick }: { value: number; onChange: (n: number) => void; label?: string; hint?: string; big?: boolean; quick?: number[] }) {
   return (
-    <label className="block">
+    <div>
+      <label className="block">
+        {label && <span className="label">{label}</span>}
+        <span className="relative block">
+          <input
+            className={`input pr-12 text-right tabular-nums ${big ? "min-h-14 border-sky-600 font-display text-2xl font-bold text-sky-900" : "min-h-12 text-lg"}`}
+            inputMode="numeric"
+            enterKeyHint="done"
+            value={value ? thb.format(value) : ""}
+            placeholder="0"
+            onFocus={selectAll}
+            onChange={(e) => onChange(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
+          />
+          <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-slate-400">บาท</span>
+        </span>
+      </label>
+      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {quick && <Chips options={quick} value={value} onPick={onChange} format={(v) => (v ? short(v) : "0")} />}
+    </div>
+  );
+}
+
+/** ตัวเลขจำนวนเต็ม ปุ่ม − / + ใหญ่ กดง่ายบนมือถือ (พิมพ์เองได้ด้วย) */
+function Stepper({ value, onChange, label, unit, min, max, step = 1, quick }: { value: number; onChange: (n: number) => void; label: string; unit: string; min: number; max: number; step?: number; quick?: number[] }) {
+  const clamp = (n: number) => Math.min(max, Math.max(min, n));
+  const btn = "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-2xl font-bold text-sky-700 ring-1 ring-sky-200 transition active:scale-95 active:bg-sky-100 disabled:opacity-40";
+  return (
+    <div>
       <span className="label">{label}</span>
-      <span className="relative block">
-        <input
-          className="input pr-14 text-right tabular-nums"
-          type="number"
-          inputMode="decimal"
-          min={min}
-          max={max}
-          step={step}
-          value={value || ""}
-          placeholder="0"
-          onChange={(e) => onChange(Math.min(max, Math.max(min, Number(e.target.value) || 0)))}
-        />
-        <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-stone-400">{suffix}</span>
-      </span>
-    </label>
-  );
-}
-
-/** รายการค่าใช้จ่ายแก้ไขได้ (ชื่อ + จำนวนเงิน เพิ่ม/ลบได้) */
-function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: (xs: CostItem[]) => void; ownSpace: boolean }) {
-  const [editing, setEditing] = useState(false);
-  if (!editing)
-    return (
-      <div>
-        <ul className="divide-y divide-slate-100 rounded-xl bg-slate-50/70 px-3 ring-1 ring-slate-200/70">
-          {items.map((it, i) => {
-            const off = ownSpace && (it.tag === "rent" || it.tag === "deposit");
-            return (
-              <li key={i} className={`flex items-center justify-between gap-3 py-2 text-sm ${off ? "text-slate-400 line-through" : "text-slate-700"}`}>
-                <span className="min-w-0 truncate">{it.label}</span>
-                <span className="shrink-0 font-medium tabular-nums">{money(it.amount)}</span>
-              </li>
-            );
-          })}
-        </ul>
-        <button className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-sky-600 bg-white px-4 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-50 active:bg-sky-100" onClick={() => setEditing(true)}>
-          ✎ แก้ไขตัวเลข / เพิ่มรายการ
+      <div className="flex items-center gap-3">
+        <button type="button" className={btn} onClick={() => onChange(clamp(value - step))} disabled={value <= min} aria-label={`ลด${label}`}>
+          −
+        </button>
+        <label className="relative min-w-0 flex-1">
+          <input
+            className="input min-h-14 pr-14 text-center font-display text-2xl font-bold tabular-nums text-slate-900"
+            inputMode="numeric"
+            enterKeyHint="done"
+            aria-label={label}
+            value={value || ""}
+            placeholder="0"
+            onFocus={selectAll}
+            onChange={(e) => onChange(Math.min(max, Number(e.target.value.replace(/[^\d]/g, "")) || 0))}
+            onBlur={() => onChange(clamp(value))}
+          />
+          <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-sm text-slate-400">{unit}</span>
+        </label>
+        <button type="button" className={btn} onClick={() => onChange(clamp(value + step))} disabled={value >= max} aria-label={`เพิ่ม${label}`}>
+          +
         </button>
       </div>
-    );
+      {quick && <Chips options={quick} value={value} onPick={onChange} format={(v) => `${v} ${unit}`} />}
+    </div>
+  );
+}
+
+/** รายการค่าใช้จ่าย: แก้ตัวเลขได้ทันที · โหมดจัดรายการ = แก้ชื่อ เพิ่ม ลบ */
+function CostList({ items, onChange, ownSpace }: { items: CostItem[]; onChange: (xs: CostItem[]) => void; ownSpace: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const update = (i: number, patch: Partial<CostItem>) => onChange(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   return (
-    <div className="space-y-2">
-      {items.map((it, i) => {
-        const off = ownSpace && (it.tag === "rent" || it.tag === "deposit");
-        return (
-          <div key={i} className={`flex items-center gap-2 ${off ? "opacity-40" : ""}`}>
-            <input
-              className="input min-w-0 flex-1"
-              value={it.label}
-              aria-label="รายการ"
-              onChange={(e) => onChange(items.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
-            />
-            <div className="w-36 shrink-0">
-              <MoneyInput value={it.amount} onChange={(n) => onChange(items.map((x, j) => (j === i ? { ...x, amount: n } : x)))} />
-            </div>
-            <button className="btn-ghost min-h-11 shrink-0 px-2 text-stone-400" aria-label="ลบรายการ" onClick={() => onChange(items.filter((_, j) => j !== i))}>
-              ✕
-            </button>
-          </div>
-        );
-      })}
-      {ownSpace && items.some((x) => x.tag) && <p className="text-xs text-stone-500">รายการจาง = ไม่นับ เพราะมีที่/ตึกของตัวเองแล้ว</p>}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <button className="btn-ghost min-h-10 px-2 text-sm text-sky-700" onClick={() => onChange([...items, { label: "รายการใหม่", amount: 0 }])}>
-          + เพิ่มรายการ
-        </button>
-        <button className="min-h-10 rounded-lg bg-sky-700 px-4 text-sm font-semibold text-white hover:bg-sky-800" onClick={() => setEditing(false)}>
-          ✓ เสร็จ
+    <div>
+      <ul className="space-y-2">
+        {items.map((it, i) => {
+          const off = ownSpace && (it.tag === "rent" || it.tag === "deposit");
+          return (
+            <li key={i} className={`rounded-xl bg-slate-50 p-2.5 ring-1 ring-slate-200 ${off ? "opacity-50" : ""}`}>
+              {editing ? (
+                <div className="mb-2 flex items-center gap-2">
+                  <input className="input min-h-11 min-w-0 flex-1" value={it.label} aria-label="ชื่อรายการ" onChange={(e) => update(i, { label: e.target.value })} />
+                  <button className="flex size-11 shrink-0 items-center justify-center rounded-xl text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50" aria-label="ลบรายการ" onClick={() => onChange(items.filter((_, j) => j !== i))}>
+                    🗑
+                  </button>
+                </div>
+              ) : null}
+              <div className="flex items-center gap-3">
+                {!editing && <span className={`min-w-0 flex-1 text-sm text-slate-700 ${off ? "line-through" : ""}`}>{it.label}</span>}
+                <label className={`relative block ${editing ? "flex-1" : "w-40 shrink-0"}`}>
+                  <input
+                    className="input min-h-12 pr-11 text-right text-lg tabular-nums"
+                    inputMode="numeric"
+                    enterKeyHint="next"
+                    aria-label={it.label}
+                    value={it.amount ? thb.format(it.amount) : ""}
+                    placeholder="0"
+                    onFocus={selectAll}
+                    onChange={(e) => update(i, { amount: Number(e.target.value.replace(/[^\d]/g, "")) || 0 })}
+                  />
+                  <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-slate-400">บาท</span>
+                </label>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {ownSpace && items.some((x) => x.tag) && <p className="mt-2 text-xs text-slate-500">รายการจาง = ไม่นับ เพราะมีที่/ตึกของตัวเองแล้ว</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {editing && (
+          <button className="min-h-11 rounded-xl border border-dashed border-sky-500 px-4 text-sm font-semibold text-sky-700 hover:bg-sky-50" onClick={() => onChange([...items, { label: "รายการใหม่", amount: 0 }])}>
+            + เพิ่มรายการ
+          </button>
+        )}
+        <button
+          className={`min-h-11 rounded-xl px-4 text-sm font-semibold ${editing ? "bg-sky-700 text-white hover:bg-sky-800" : "border border-sky-600 bg-white text-sky-700 hover:bg-sky-50"}`}
+          onClick={() => setEditing((v) => !v)}
+        >
+          {editing ? "✓ เสร็จ" : "✎ แก้ชื่อ / เพิ่ม / ลบรายการ"}
         </button>
       </div>
     </div>
@@ -264,17 +306,6 @@ function SurvivalChart() {
   );
 }
 
-function Slider({ value, min, max, onChange, label, unit }: { value: number; min: number; max: number; onChange: (n: number) => void; label: string; unit: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1 accent-sky-700" aria-label={label} />
-      <span className="w-24 shrink-0 text-right text-lg font-bold tabular-nums">
-        {value} {unit}
-      </span>
-    </div>
-  );
-}
-
 /** กราฟเส้น: เงินเก็บสะสม vs เงินที่ต้องมี ในแต่ละปี */
 function Chart({ series, target, ready }: { series: { year: number; saved: number; need: number }[]; target: number; ready: number | null }) {
   const W = 640;
@@ -325,16 +356,91 @@ function Chart({ series, target, ready }: { series: { year: number; saved: numbe
   );
 }
 
+/**
+ * บันทึกหน้าผลลัพธ์เป็น PDF (A4) — ถ่ายภาพหน้าจอด้วยเบราว์เซอร์เอง ภาษาไทยและฟอนต์จึงตรงกับที่เห็น
+ * ตัดหน้าตรงรอยต่อระหว่างการ์ด ไม่ให้การ์ดขาดกลาง · โหลดไลบรารีเฉพาะตอนกดเท่านั้น
+ */
+async function downloadPdf(el: HTMLElement, filename: string) {
+  const [{ toJpeg }, { jsPDF }] = await Promise.all([import("html-to-image"), import("jspdf")]);
+  const W = 760;
+  const prev = el.style.cssText;
+  // ซ่อนปุ่มต่าง ๆ ก่อนวัดตำแหน่ง (ไม่ให้ตำแหน่งตัดหน้าเพี้ยน)
+  const hidden = [...el.querySelectorAll<HTMLElement>("[data-no-pdf]")];
+  hidden.forEach((n) => (n.style.display = "none"));
+  el.style.width = `${W}px`;
+  el.style.padding = "24px";
+  el.style.background = "#f8fafc";
+  try {
+    const H = el.scrollHeight;
+    const top0 = el.getBoundingClientRect().top;
+    const blocks = [...el.children].map((c) => {
+      const b = c.getBoundingClientRect();
+      return { top: b.top - top0, bottom: b.bottom - top0 };
+    });
+    const img = await toJpeg(el, { quality: 0.92, pixelRatio: 2, width: W, height: H, backgroundColor: "#f8fafc" });
+
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = 210;
+    const pageH = 297;
+    const mm = pageW / W; // mm ต่อ px
+    const pageHpx = pageH / mm;
+    // หาจุดตัดหน้า: ก่อนการ์ดที่จะล้นหน้า
+    const cuts = [0];
+    for (const b of blocks) {
+      const start = cuts[cuts.length - 1];
+      if (b.bottom - start > pageHpx && b.top > start) cuts.push(b.top - 12);
+    }
+    cuts.push(H);
+    for (let i = 0; i < cuts.length - 1; i++) {
+      // การ์ดที่ยาวกว่าหนึ่งหน้า: แบ่งต่อเป็นหลายหน้า
+      for (let y = cuts[i]; y < cuts[i + 1]; y += pageHpx) {
+        if (i > 0 || y > 0) pdf.addPage();
+        const end = Math.min(cuts[i + 1], y + pageHpx);
+        pdf.addImage(img, "JPEG", 0, -y * mm, pageW, H * mm);
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, (end - y) * mm, pageW, pageH, "F");
+      }
+    }
+    // ดาวน์โหลดผ่านลิงก์เอง ให้ได้ชื่อไฟล์ตามที่ตั้ง
+    const url = URL.createObjectURL(pdf.output("blob"));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  } finally {
+    el.style.cssText = prev;
+    hidden.forEach((n) => (n.style.display = ""));
+  }
+}
+
+const STEPS = [
+  { icon: "🏪", short: "ธุรกิจ", title: "อยากทำธุรกิจอะไร", desc: "เลือกแบบที่ใกล้เคียงที่สุด ตัวเลขตั้งต้นแก้ได้ทุกช่องในขั้นต่อไป" },
+  { icon: "🛠️", short: "ลงทุน", title: "เงินลงทุนเริ่มต้น", desc: "จ่ายครั้งเดียวก่อนเปิดร้าน แตะตัวเลขเพื่อแก้ได้เลย" },
+  { icon: "📅", short: "รายเดือน", title: "ค่าใช้จ่ายรายเดือน", desc: "จ่ายทุกเดือน ไม่ว่าจะขายได้หรือไม่" },
+  { icon: "🛟", short: "สำรอง", title: "เงินหมุนเวียนสำรอง", desc: "เงินจ่ายค่าใช้จ่ายรายเดือนช่วงที่ร้านยังไม่มีกำไร" },
+  { icon: "💰", short: "เงินเก็บ", title: "เงินเก็บของคุณ", desc: "ตัวกำหนดว่าจะใช้เวลาเก็บกี่ปี" },
+  { icon: "🎯", short: "เป้าหมาย", title: "อายุและเป้าหมาย", desc: "อยากเปิดร้านภายในกี่ปี" },
+  { icon: "📊", short: "ผลลัพธ์", title: "ผลลัพธ์แผนของคุณ", desc: "" },
+] as const;
+const LAST = STEPS.length - 1;
+
 export function SmeSimulator() {
   const [s, setS] = useState<State>(() => fromTemplate(TEMPLATES[0]));
   const [loaded, setLoaded] = useState(false);
+  const [step, setStep] = useState(0);
 
-  // จำแผนที่กรอกไว้ในเบราว์เซอร์เครื่องนี้ (กลับมาแก้ต่อได้)
+  // จำแผนที่กรอกไว้ในเบราว์เซอร์เครื่องนี้ · เคยกรอกแล้ว เปิดมาเจอหน้าผลลัพธ์เลย
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่านค่าที่บันทึกไว้ครั้งเดียวตอนเปิดหน้า
-      if (raw) setS({ ...fromTemplate(TEMPLATES[0]), ...JSON.parse(raw), returnRate: 0, inflation: AUTO_INFLATION });
+      if (raw) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่านค่าที่บันทึกไว้ครั้งเดียวตอนเปิดหน้า
+        setS({ ...fromTemplate(TEMPLATES[0]), ...JSON.parse(raw), returnRate: 0, inflation: AUTO_INFLATION });
+        setStep(LAST);
+      }
     } catch {
       // ไม่มีที่เก็บ ก็เริ่มใหม่
     }
@@ -349,29 +455,35 @@ export function SmeSimulator() {
     }
   }, [s, loaded]);
 
+  const go = (n: number) => {
+    setStep(Math.min(LAST, Math.max(0, n)));
+    scrollTo({ top: 0 });
+  };
+
   const set = <K extends keyof State>(k: K, v: State[K]) => setS((x) => ({ ...x, [k]: v }));
   const r = useMemo(() => plan(s), [s]);
   const factors = readiness(r, s, s.checks);
   const okCount = factors.filter((f) => f.ok).length;
   const template = TEMPLATES.find((t) => t.id === s.templateId);
   const late = r.yearsToReady === null ? null : r.yearsToReady - s.targetYears;
-  /** กำลังเลือกธุรกิจอยู่ (แสดงทุกตัวเลือก) · เลือกแล้วเหลือแค่ใบที่เลือก แตะซ้ำเพื่อเปลี่ยน */
-  const [picking, setPicking] = useState(true);
-  /** มือถือ: แสดงแถบสรุปด้านล่างเมื่อเลื่อนพ้นการ์ดผลลัพธ์ จะได้เห็นตัวเลขเปลี่ยนขณะกรอก */
-  const heroRef = useRef<HTMLDivElement>(null);
-  const [heroOut, setHeroOut] = useState(false);
-  useEffect(() => {
-    const el = heroRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([e]) => setHeroOut(!e.isIntersecting && e.boundingClientRect.top < 0));
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+  const resultRef = useRef<HTMLDivElement>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const savePdf = async () => {
+    if (!resultRef.current || pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      // ชื่อไฟล์ภาษาอังกฤษ: บางเบราว์เซอร์ทิ้งชื่อไทยแล้วตั้งเป็น "download"
+      await downloadPdf(resultRef.current, `sme-plan-${s.templateId}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch {
+      alert("สร้าง PDF ไม่สำเร็จ ลองเปิดด้วย Chrome หรือ Safari แล้วกดอีกครั้ง");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
   const reset = () => {
     if (!confirm("ล้างข้อมูลที่กรอกทั้งหมด แล้วเริ่มใหม่?")) return;
     setS(fromTemplate(TEMPLATES[0]));
-    setPicking(true);
-    scrollTo({ top: 0, behavior: "smooth" });
+    go(0);
   };
 
   const readyTone: Tone = r.readyPct >= 100 ? "good" : r.readyPct >= 70 ? "warn" : "bad";
@@ -382,16 +494,114 @@ export function SmeSimulator() {
   const readyAge = r.yearsToReady === null ? null : Math.floor(s.age + r.yearsToReady);
   const targetAge = s.age + s.targetYears;
   const bizName = template ? splitName(template.name).main : "ธุรกิจ";
+  const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
 
-  const results = (
-    <div className="space-y-4">
-      {/* ตัวเลขหลัก: เงินที่ต้องมี + ความพร้อม */}
-      <div ref={heroRef} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-700 via-sky-800 to-slate-900 p-5 text-white shadow-lg shadow-sky-900/20 sm:p-6">
+  const pages: React.ReactNode[] = [
+    // 1 ธุรกิจ
+    <div key="biz" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      {TEMPLATES.map((t) => {
+        const on = s.templateId === t.id;
+        const n = splitName(t.name);
+        return (
+          <button
+            key={t.id}
+            className={`flex min-h-20 flex-col items-start gap-1 rounded-2xl border p-3 text-left transition active:scale-[0.98] ${
+              on ? "border-sky-600 bg-sky-50 ring-2 ring-sky-600/30" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+            }`}
+            onClick={() => {
+              if (!on) setS((x) => fromTemplate(t, x));
+              go(1);
+            }}
+            aria-pressed={on}
+          >
+            <span className="text-3xl">{t.icon}</span>
+            <span className={`text-base leading-tight font-semibold ${on ? "text-sky-800" : "text-slate-900"}`}>{n.main}</span>
+            {n.sub && <span className="text-xs leading-tight text-slate-500">{n.sub}</span>}
+          </button>
+        );
+      })}
+    </div>,
+
+    // 2 ลงทุน
+    <div key="setup" className="space-y-4">
+      <label className="flex items-start gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+        <input type="checkbox" className="mt-0.5 size-6 accent-sky-700" checked={s.ownSpace} onChange={(e) => set("ownSpace", e.target.checked)} />
+        <span>
+          <b className="text-slate-900">มีที่ดิน / ตึก / บ้านของตัวเองหรือครอบครัว</b>
+          <span className="block text-sm text-slate-500">ไม่ต้องจ่ายค่าเช่าและเงินมัดจำ</span>
+        </span>
+      </label>
+      <CostList items={s.setup} ownSpace={s.ownSpace} onChange={(xs) => set("setup", xs)} />
+      {template?.note && <p className="text-sm text-slate-500">💡 {template.note}</p>}
+    </div>,
+
+    // 3 รายเดือน
+    <div key="monthly" className="space-y-5">
+      <CostList items={s.monthly} ownSpace={s.ownSpace} onChange={(xs) => set("monthly", xs)} />
+      <MoneyInput label="เงินใช้จ่ายส่วนตัวต่อเดือน" hint="ช่วงที่ร้านยังไม่มีกำไร ต้องมีเงินกินอยู่ด้วย" value={s.ownerPay} onChange={(n) => set("ownerPay", n)} quick={[10_000, 15_000, 20_000, 30_000]} />
+      <Stepper label="กำไรขั้นต้น (หลังหักต้นทุนสินค้า)" unit="%" value={s.margin} onChange={(n) => set("margin", n)} min={1} max={95} step={5} />
+    </div>,
+
+    // 4 สำรอง
+    <div key="runway" className="space-y-4">
+      <Stepper label="สำรองไว้กี่เดือน" unit="เดือน" value={s.runwayMonths} onChange={(n) => set("runwayMonths", n)} min={1} max={24} quick={[6, 9, 12]} />
+      <div className={`rounded-2xl p-4 text-sm ring-1 ${TONE[runwayTone].chip}`}>
+        <p className="font-display text-xl font-bold tabular-nums">{money(r.runwayTotal)}</p>
+        <p>
+          {money(r.monthlyBurn)}/เดือน × {s.runwayMonths} เดือน · {s.runwayMonths < 6 ? "เสี่ยง แนะนำอย่างน้อย 6 เดือน" : s.runwayMonths >= 12 ? "ดีมาก" : "พอใช้ ถ้าได้ 12 เดือนจะดีมาก"}
+        </p>
+      </div>
+      <p className="text-sm text-slate-500">SME ไทยส่วนใหญ่มีสายป่านไม่ถึง 6 เดือน</p>
+    </div>,
+
+    // 5 เงินเก็บ
+    <div key="savings" className="space-y-5">
+      <MoneyInput label="เงินเก็บที่มีตอนนี้" value={s.savingsNow} onChange={(n) => set("savingsNow", n)} big quick={[0, 50_000, 100_000, 300_000, 500_000]} />
+      <MoneyInput label="เก็บได้ต่อเดือน" value={s.savePerMonth} onChange={(n) => set("savePerMonth", n)} quick={[3_000, 5_000, 10_000, 20_000]} />
+      <Stepper label="เก็บเพิ่มขึ้นปีละ (เงินเดือนขึ้น)" unit="%" value={s.saveGrowth} onChange={(n) => set("saveGrowth", n)} min={0} max={20} quick={[0, 3, 5, 10]} />
+      <div className="space-y-4 border-t border-slate-200 pt-4">
+        <p className="text-sm font-semibold text-slate-700">เงินจากที่อื่น (ถ้ามี)</p>
+        <MoneyInput label="พ่อแม่ / ครอบครัวช่วย" value={s.family} onChange={(n) => set("family", n)} />
+        <MoneyInput label="กู้ธนาคาร / สินเชื่อ SME" value={s.loan} onChange={(n) => set("loan", n)} hint={s.loan > 0 ? "เงินกู้ต้องผ่อนตั้งแต่เดือนแรก — ใส่ค่าผ่อนในค่าใช้จ่ายรายเดือนด้วย" : undefined} />
+      </div>
+    </div>,
+
+    // 6 เป้าหมาย
+    <div key="goal" className="space-y-5">
+      <Stepper label="อายุตอนนี้" unit="ปี" value={s.age} onChange={(n) => set("age", n)} min={15} max={80} />
+      <Stepper label="อยากเปิดร้านในอีกกี่ปี" unit="ปี" value={s.targetYears} onChange={(n) => set("targetYears", n)} min={1} max={30} quick={[3, 5, 10, 15]} />
+      <p className="rounded-2xl bg-sky-50 p-4 text-sky-900 ring-1 ring-sky-200">
+        🎯 เป้าหมาย: เปิด{bizName}ตอน <b className="font-display text-xl">อายุ {targetAge}</b>
+      </p>
+    </div>,
+
+    // 7 ผลลัพธ์
+    <div key="result" ref={resultRef} className="space-y-4">
+      <div data-no-pdf="1" className="flex flex-wrap items-center gap-2">
+        <button onClick={savePdf} disabled={pdfBusy} className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60">
+          {pdfBusy ? "กำลังสร้าง PDF…" : "⬇ ดาวน์โหลดเป็น PDF"}
+        </button>
+      </div>
+      {/* หัวรายงาน (ติดไปใน PDF ด้วย) */}
+      <div className="flex items-end justify-between gap-3 border-b border-slate-200 pb-2">
+        <div>
+          <p className="font-display text-lg font-bold text-slate-900">
+            {template?.icon} แผนเปิด{bizName}
+          </p>
+          <p className="text-xs text-slate-500">อายุ {s.age} ปี · เป้าหมายเปิดในอีก {s.targetYears} ปี (อายุ {targetAge})</p>
+        </div>
+        <p className="shrink-0 text-right text-xs text-slate-400">
+          {today}
+          <br />
+          3s1m.com/sme
+        </p>
+      </div>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-700 via-sky-800 to-slate-900 p-5 text-white shadow-lg shadow-sky-900/20 sm:p-6">
         <div className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-sky-400/20 blur-2xl" />
         <div className="relative flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-sky-100">ต้องมีเงินทั้งหมด</p>
-            <p className="mt-1 text-[2rem] leading-none font-display font-bold tabular-nums min-[400px]:text-4xl sm:text-5xl">{money(r.needToday)}</p>
+            <p className="mt-1 font-display text-[2rem] leading-none font-bold tabular-nums min-[400px]:text-4xl sm:text-5xl">{money(r.needToday)}</p>
             <p className="mt-2 text-sm text-sky-100/80">
               ลงทุน {short(r.setupTotal)} + สำรอง {s.runwayMonths} เดือน {short(r.runwayTotal)}
             </p>
@@ -411,10 +621,9 @@ export function SmeSimulator() {
         <p className="relative mt-2 text-xs text-sky-100/70">ราคาวันนี้ · ปีต่อ ๆ ไปคิดเงินเฟ้อให้อัตโนมัติ {AUTO_INFLATION}%/ปี</p>
       </div>
 
-      {/* สรุป: เปิดธุรกิจได้ตอนอายุเท่าไหร่ */}
       <div className={`rounded-2xl p-4 ring-1 sm:p-5 ${TONE[timeTone].chip}`}>
         <p className="text-sm">ถ้าเก็บเงินตามแผนนี้ คุณจะเปิด{bizName}ได้ตอน</p>
-        <p className="mt-0.5 font-display text-3xl font-bold tabular-nums sm:text-4xl">{readyAge === null ? "เกินอายุ " + (s.age + 40) : `อายุ ${readyAge} ปี`}</p>
+        <p className="mt-0.5 font-display text-3xl font-bold tabular-nums sm:text-4xl">{readyAge === null ? `อายุเกิน ${s.age + 40} ปี` : `อายุ ${readyAge} ปี`}</p>
         <p className="mt-1 text-sm">
           {late === null
             ? `เก็บ 40 ปีก็ยังไม่พอ ต้องเก็บเดือนละ ${money(r.savePerMonthNeeded)} ถึงจะเปิดได้ตอนอายุ ${targetAge}`
@@ -425,12 +634,7 @@ export function SmeSimulator() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Kpi
-          label="เก็บเงินครบใน"
-          value={yearsText}
-          tone={timeTone}
-          sub={late === null ? "ยังไม่พอภายใน 40 ปี" : late <= 0 ? "✓ ทันตามเป้า" : `ช้ากว่าเป้า ${years(Math.ceil(late * 2) / 2)} ปี`}
-        />
+        <Kpi label="เก็บเงินครบใน" value={yearsText} tone={timeTone} sub={late === null ? "ยังไม่พอภายใน 40 ปี" : late <= 0 ? "✓ ทันตามเป้า" : `ช้ากว่าเป้า ${years(Math.ceil(late * 2) / 2)} ปี`} />
         <Kpi
           label="ต้องเก็บเดือนละ"
           value={r.readyPct >= 100 ? "✓ พอแล้ว" : money(r.savePerMonthNeeded)}
@@ -447,7 +651,7 @@ export function SmeSimulator() {
       </Panel>
 
       <Panel title="เงินที่ต้องใช้ มาจากไหน ไปไหน">
-        <p className="mb-2 text-xs font-medium text-slate-500 uppercase">ใช้ไปกับ</p>
+        <p className="mb-2 text-xs font-medium text-slate-500">ใช้ไปกับ</p>
         <Breakdown
           total={r.needToday}
           parts={[
@@ -455,7 +659,7 @@ export function SmeSimulator() {
             { label: `เงินหมุนเวียน ${s.runwayMonths} เดือน`, value: r.runwayTotal, color: "bg-violet-400" },
           ]}
         />
-        <p className="mt-4 mb-2 text-xs font-medium text-slate-500 uppercase">มาจาก</p>
+        <p className="mt-4 mb-2 text-xs font-medium text-slate-500">มาจาก</p>
         <Breakdown
           total={r.needToday}
           parts={[
@@ -465,208 +669,167 @@ export function SmeSimulator() {
           ]}
         />
       </Panel>
-    </div>
-  );
 
+      <Panel title="ข้อมูลที่ใช้คำนวณ" right={<span data-no-pdf="1"><button onClick={() => go(1)} className="min-h-9 rounded-lg px-3 text-sm font-semibold text-sky-700 ring-1 ring-sky-600 hover:bg-sky-50">✎ แก้ไข</button></span>}>
+        <dl className="grid grid-cols-1 gap-x-6 text-sm sm:grid-cols-2">
+          {(
+            [
+              ["ธุรกิจ", template?.name ?? "—"],
+              ["มีที่ดิน/ตึกของตัวเอง", s.ownSpace ? "มี" : "ไม่มี (เช่า)"],
+              ["เงินลงทุนเริ่มต้น", money(r.setupTotal)],
+              ["ค่าใช้จ่ายร้าน/เดือน", money(r.monthlyBusiness)],
+              ["เงินใช้ส่วนตัว/เดือน", money(s.ownerPay)],
+              ["กำไรขั้นต้น", `${s.margin}%`],
+              ["เงินสำรอง", `${s.runwayMonths} เดือน`],
+              ["เงินเก็บตอนนี้", money(s.savingsNow)],
+              ["เก็บต่อเดือน", `${money(s.savePerMonth)} (เพิ่มปีละ ${s.saveGrowth}%)`],
+              ["ครอบครัวช่วย / เงินกู้", `${money(s.family)} / ${money(s.loan)}`],
+              ["เงินเฟ้อ (อัตโนมัติ)", `${AUTO_INFLATION}%/ปี`],
+            ] as const
+          ).map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-3 border-b border-slate-100 py-1.5">
+              <dt className="text-slate-500">{k}</dt>
+              <dd className="text-right font-medium text-slate-900 tabular-nums">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </Panel>
+
+      <Panel title="โอกาสรอดของธุรกิจใหม่" desc="สัดส่วนธุรกิจที่ยังเปิดอยู่หลังเปิดกิจการ (ประมาณ)">
+        <SurvivalChart />
+        <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-600">
+          <li>ราวครึ่งหนึ่งปิดก่อนครบ 5 ปี และเหลือราว 1 ใน 3 เมื่อครบ 10 ปี</li>
+          <li>ร้านอาหาร/เครื่องดื่ม และก่อสร้าง ปิดกิจการมากที่สุดในไทยช่วงปี 2566–67</li>
+          <li>ความเสี่ยงปิดกิจการของ SME ไทยเฉลี่ยราว 7% ต่อปี</li>
+        </ul>
+      </Panel>
+
+      <Panel
+        title="ความพร้อมก่อนลงเงิน"
+        desc="ปัจจัยที่ช่วยให้รอดได้มากกว่าค่าเฉลี่ย"
+        right={<span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-semibold ring-1 ${TONE[okCount >= 5 ? "good" : okCount >= 3 ? "warn" : "bad"].chip}`}>{okCount}/{factors.length}</span>}
+      >
+        <ul className="divide-y divide-slate-100">
+          {factors.map((f) => {
+            const auto = f.key === "runway" || f.key === "debt";
+            return (
+              <li key={f.key}>
+                <label className="flex min-h-12 items-start gap-3 py-2.5">
+                  <input type="checkbox" className="mt-0.5 size-6 accent-sky-700" checked={f.ok} disabled={auto} onChange={(e) => set("checks", { ...s.checks, [f.key]: e.target.checked })} />
+                  <span className="min-w-0">
+                    <span className={`font-medium ${f.ok ? "text-emerald-700" : "text-slate-900"}`}>{f.label}</span>
+                    <span className="block text-xs text-slate-500">
+                      {f.hint}
+                      {auto && " (คำนวณจากแผน)"}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-2 text-sm text-slate-700">
+          {okCount >= 5
+            ? "เตรียมตัวดีมาก โอกาสรอดน่าจะดีกว่าค่าเฉลี่ยของธุรกิจเกิดใหม่"
+            : okCount >= 3
+              ? "เตรียมไว้พอสมควร ข้อที่ยังไม่ได้ทำคือการบ้านก่อนลงเงินจริง"
+              : "ยังเสี่ยงสูง ใช้เวลาระหว่างเก็บเงินฝึกและทดลองข้อที่ยังไม่ได้ทำ"}
+        </p>
+      </Panel>
+
+      <p className="text-xs text-slate-400">
+        แหล่งข้อมูล: สำนักงานสถิติแรงงานสหรัฐ (BLS) ข้อมูลการอยู่รอดของสถานประกอบการเกิดใหม่ · ศูนย์วิจัยกสิกรไทย · สสว. · ตัวเลขเป็นค่าประมาณเพื่อวางแผน ไม่ใช่คำแนะนำการลงทุน ·
+        ข้อมูลที่กรอกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น
+      </p>
+    </div>,
+  ];
+
+  const cur = STEPS[step];
   return (
     <div className="min-h-dvh bg-slate-50">
       <header className="bg-gradient-to-br from-slate-900 via-slate-900 to-sky-900 text-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-3 px-4 pt-6 pb-5 sm:pt-8">
-          <div>
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-sky-200 ring-1 ring-white/15">📊 SME Planner</p>
-            <h1 className="mt-2 font-display text-2xl font-bold sm:text-3xl">แผนการเงินเปิดธุรกิจของตัวเอง</h1>
-            <p className="mt-1 text-sm text-slate-300">เลือกธุรกิจ ใส่เงินเก็บ แล้วดูว่าอีกกี่ปีถึงพร้อม — ตัวเลขอัปเดตทันที</p>
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 pt-4 pb-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-sky-200">📊 SME Planner</p>
+            <h1 className="truncate font-display text-lg font-bold sm:text-xl">แผนการเงินเปิดธุรกิจของตัวเอง</h1>
           </div>
-          <button onClick={reset} className="min-h-10 rounded-lg px-3 text-sm text-slate-300 ring-1 ring-white/20 hover:bg-white/10 hover:text-white">
+          <button onClick={reset} className="min-h-10 shrink-0 rounded-lg px-3 text-sm text-slate-300 ring-1 ring-white/20 hover:bg-white/10 hover:text-white">
             ↺ เริ่มใหม่
           </button>
         </div>
+        {/* สรุปสด: เห็นผลทันทีขณะกรอก (ซ่อนในหน้าผลลัพธ์) */}
+        {step < LAST && (
+          <div className="mx-auto max-w-2xl px-4 pb-3">
+            <button onClick={() => go(LAST)} className="flex w-full items-center gap-3 rounded-xl bg-white/10 px-3 py-2 text-left ring-1 ring-white/15 hover:bg-white/15">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] text-slate-300">ต้องมีทั้งหมด</span>
+                <span className="block font-display font-bold tabular-nums">{money(r.needToday)}</span>
+              </span>
+              <span className="text-right">
+                <span className="block text-[11px] text-slate-300">พร้อม</span>
+                <span className={`block font-display font-bold tabular-nums ${readyTone === "good" ? "text-emerald-300" : readyTone === "warn" ? "text-amber-300" : "text-rose-300"}`}>{Math.floor(r.readyPct)}%</span>
+              </span>
+              <span className="text-right">
+                <span className="block text-[11px] text-slate-300">เปิดได้ตอนอายุ</span>
+                <span className="block font-display font-bold tabular-nums">{readyAge ?? `${s.age + 40}+`}</span>
+              </span>
+            </button>
+          </div>
+        )}
+        <div className="h-1 bg-white/10">
+          <div className="h-full bg-sky-400 transition-all duration-300" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+        </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-4 p-4 pb-24 lg:pb-8">
-        {/* มือถือ: ผลลัพธ์ขึ้นก่อน · จอใหญ่: ผลลัพธ์อยู่ขวา ติดจอเฉพาะในแถวนี้ (ไม่ทับส่วนความเสี่ยง) */}
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
-        <div className="lg:sticky lg:top-4 lg:order-2">{results}</div>
-
-        <div className="space-y-4 lg:order-1">
-          <Panel step={1} title="ธุรกิจที่อยากทำ" desc="เลือกแบบที่ใกล้เคียง ตัวเลขเป็นค่าประมาณตั้งต้น แก้ได้ทุกช่อง">
-            <div className={picking ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "grid"}>
-              {TEMPLATES.filter((t) => picking || t.id === s.templateId).map((t) => {
-                const on = s.templateId === t.id;
-                const n = splitName(t.name);
-                return (
-                  <button
-                    key={t.id}
-                    className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
-                      on ? "border-sky-600 bg-sky-50 ring-2 ring-sky-600/30" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                    }`}
-                    onClick={() => {
-                      if (!picking) return setPicking(true);
-                      if (!on) setS((x) => fromTemplate(t, x));
-                      setPicking(false);
-                    }}
-                    aria-pressed={on}
-                    aria-expanded={!picking ? false : undefined}
-                  >
-                    <span className="text-2xl">{t.icon}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className={`block text-base leading-tight font-semibold ${on ? "text-sky-800" : "text-slate-900"}`}>{n.main}</span>
-                      {n.sub && <span className="block text-xs leading-tight text-slate-500">{n.sub}</span>}
-                    </span>
-                    {!picking && <span className="shrink-0 text-sm font-medium text-sky-700">เปลี่ยน ▾</span>}
-                  </button>
-                );
-              })}
-            </div>
-            {template?.note && <p className="mt-2 text-sm text-slate-500">{template.note}</p>}
-          </Panel>
-
-          <Panel step={2} title="เงินลงทุนเริ่มต้น" desc="จ่ายครั้งเดียวก่อนเปิด" right={<span className="shrink-0 font-semibold tabular-nums">{money(r.setupTotal)}</span>}>
-            <label className="mb-3 flex items-start gap-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
-              <input type="checkbox" className="mt-1 size-5 accent-sky-700" checked={s.ownSpace} onChange={(e) => set("ownSpace", e.target.checked)} />
-              <span>
-                <b className="text-slate-900">มีที่ดิน / ตึก / บ้านของตัวเองหรือครอบครัว</b>
-                <span className="block text-sm text-slate-500">ไม่ต้องจ่ายค่าเช่าและเงินมัดจำ</span>
-              </span>
-            </label>
-            <CostList items={s.setup} ownSpace={s.ownSpace} onChange={(xs) => set("setup", xs)} />
-          </Panel>
-
-          <Panel step={3} title="ค่าใช้จ่ายรายเดือน" desc="จ่ายทุกเดือนไม่ว่าจะขายได้หรือไม่" right={<span className="shrink-0 font-semibold tabular-nums">{money(r.monthlyBurn)}/ด.</span>}>
-            <CostList items={s.monthly} ownSpace={s.ownSpace} onChange={(xs) => set("monthly", xs)} />
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <MoneyInput label="เงินใช้จ่ายส่วนตัวต่อเดือน" value={s.ownerPay} onChange={(n) => set("ownerPay", n)} />
-              <NumberField label="กำไรขั้นต้น (หลังหักต้นทุนสินค้า)" suffix="%" value={s.margin} onChange={(n) => set("margin", n)} min={1} max={95} />
-            </div>
-          </Panel>
-
-          <Panel
-            step={4}
-            title="เงินหมุนเวียนสำรอง"
-            desc="แนะนำ 6–12 เดือน"
-            right={<span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${TONE[runwayTone].chip}`}>{s.runwayMonths < 6 ? "เสี่ยง" : s.runwayMonths >= 12 ? "ดีมาก" : "พอใช้"}</span>}
-          >
-            <Slider value={s.runwayMonths} min={3} max={18} onChange={(n) => set("runwayMonths", n)} label="จำนวนเดือน" unit="เดือน" />
-            <p className="mt-1 text-sm text-slate-500">รวม {money(r.runwayTotal)} · SME ไทยส่วนใหญ่มีสายป่านไม่ถึง 6 เดือน</p>
-          </Panel>
-
-          <Panel step={5} title="แหล่งเงินและการเก็บเงิน">
-            {/* เงินเก็บ: ไฮไลต์ เพราะเป็นตัวกำหนดว่าจะใช้เวลากี่ปี */}
-            <div className="space-y-3 rounded-xl bg-sky-50 p-4 ring-2 ring-sky-600/30">
-              <p className="flex items-center gap-2 text-sm font-semibold text-sky-800">💰 เงินเก็บของคุณ</p>
-              <MoneyInput label="เงินเก็บที่มีตอนนี้" value={s.savingsNow} onChange={(n) => set("savingsNow", n)} big />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <MoneyInput label="เก็บได้ต่อเดือน" value={s.savePerMonth} onChange={(n) => set("savePerMonth", n)} />
-                <NumberField label="เก็บเพิ่มขึ้นปีละ" suffix="%/ปี" value={s.saveGrowth} onChange={(n) => set("saveGrowth", n)} max={20} step={0.5} />
-              </div>
-            </div>
-            <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
-              <MoneyInput label="พ่อแม่ / ครอบครัวช่วย" value={s.family} onChange={(n) => set("family", n)} />
-              <MoneyInput label="กู้ธนาคาร / สินเชื่อ SME" value={s.loan} onChange={(n) => set("loan", n)} />
-            </div>
-            {s.loan > 0 && <p className="mt-2 text-xs text-slate-500">เงินกู้ต้องผ่อนตั้งแต่เดือนแรก — ใส่ค่าผ่อนในค่าใช้จ่ายรายเดือนด้วย</p>}
-          </Panel>
-
-          <Panel step={6} title="อายุและเป้าหมาย" desc={`อยากเปิดธุรกิจตอนอายุ ${targetAge}`}>
-            <div className="grid gap-4 sm:grid-cols-[10rem_1fr] sm:items-end">
-              <NumberField label="อายุตอนนี้" suffix="ปี" value={s.age} onChange={(n) => set("age", n)} min={0} max={90} />
-              <div>
-                <span className="label">อยากเริ่มในอีกกี่ปี</span>
-                <Slider value={s.targetYears} min={1} max={20} onChange={(n) => set("targetYears", n)} label="จำนวนปี" unit="ปี" />
-              </div>
-            </div>
-          </Panel>
-        </div>
-        </div>
-
-        {/* ความเสี่ยง: เต็มความกว้าง */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Panel title="โอกาสรอดของธุรกิจใหม่" desc="สัดส่วนธุรกิจที่ยังเปิดอยู่หลังเปิดกิจการ (ประมาณ)">
-            <SurvivalChart />
-            <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-600">
-              <li>ราวครึ่งหนึ่งปิดก่อนครบ 5 ปี และเหลือราว 1 ใน 3 เมื่อครบ 10 ปี</li>
-              <li>ร้านอาหาร/เครื่องดื่ม และก่อสร้าง ปิดกิจการมากที่สุดในไทยช่วงปี 2566–67</li>
-              <li>ความเสี่ยงปิดกิจการของ SME ไทยเฉลี่ยราว 7% ต่อปี</li>
-            </ul>
-          </Panel>
-
-          <Panel
-            title="ความพร้อมก่อนลงเงิน"
-            desc="ปัจจัยที่ช่วยให้รอดได้มากกว่าค่าเฉลี่ย"
-            right={
-              <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-semibold ring-1 ${TONE[okCount >= 5 ? "good" : okCount >= 3 ? "warn" : "bad"].chip}`}>
-                {okCount}/{factors.length}
-              </span>
-            }
-          >
-            <ul className="divide-y divide-slate-100">
-              {factors.map((f) => {
-                const auto = f.key === "runway" || f.key === "debt";
-                return (
-                  <li key={f.key} className="py-2">
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        className="mt-1 size-5 accent-sky-700"
-                        checked={f.ok}
-                        disabled={auto}
-                        onChange={(e) => set("checks", { ...s.checks, [f.key]: e.target.checked })}
-                      />
-                      <span className="min-w-0">
-                        <span className={`font-medium ${f.ok ? "text-emerald-700" : "text-slate-900"}`}>{f.label}</span>
-                        <span className="block text-xs text-slate-500">
-                          {f.hint}
-                          {auto && " (คำนวณจากแผน)"}
-                        </span>
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="mt-2 text-sm text-slate-700">
-              {okCount >= 5
-                ? "เตรียมตัวดีมาก โอกาสรอดน่าจะดีกว่าค่าเฉลี่ยของธุรกิจเกิดใหม่"
-                : okCount >= 3
-                  ? "เตรียมไว้พอสมควร ข้อที่ยังไม่ได้ทำคือการบ้านก่อนลงเงินจริง"
-                  : "ยังเสี่ยงสูง ใช้เวลาระหว่างเก็บเงินฝึกและทดลองข้อที่ยังไม่ได้ทำ"}
-            </p>
-          </Panel>
-
-          <p className="text-xs text-slate-400 lg:col-span-2">
-            แหล่งข้อมูล: สำนักงานสถิติแรงงานสหรัฐ (BLS) ข้อมูลการอยู่รอดของสถานประกอบการเกิดใหม่ · ศูนย์วิจัยกสิกรไทย · สสว. · ตัวเลขเป็นค่าประมาณเพื่อวางแผน ไม่ใช่คำแนะนำการลงทุน ·
-            ข้อมูลที่กรอกเก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น
-          </p>
-        </div>
+      <main className="mx-auto max-w-2xl px-4 pt-5 pb-44">
+        <p className="text-sm font-medium text-sky-700">
+          ขั้นที่ {step + 1} / {STEPS.length}
+        </p>
+        <h2 className="mt-0.5 font-display text-2xl font-bold text-slate-900">
+          {cur.icon} {cur.title}
+        </h2>
+        {cur.desc && <p className="mt-1 text-slate-500">{cur.desc}</p>}
+        {step === 1 && <p className="mt-2 font-display text-lg font-semibold text-slate-900">รวม {money(r.setupTotal)}</p>}
+        {step === 2 && <p className="mt-2 font-display text-lg font-semibold text-slate-900">รวม {money(r.monthlyBurn)}/เดือน (รวมเงินใช้ส่วนตัว)</p>}
+        <div className="mt-4">{pages[step]}</div>
       </main>
 
-      {/* แถบสรุปด้านล่าง (มือถือ) */}
-      <div
-        className={`fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-slate-900/95 text-white backdrop-blur transition-transform duration-300 lg:hidden ${heroOut ? "translate-y-0" : "translate-y-full"}`}
-        aria-hidden={!heroOut}
-      >
-        <button
-          className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] text-left"
-          onClick={() => heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          tabIndex={heroOut ? 0 : -1}
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-[11px] text-slate-400">ต้องมีทั้งหมด</span>
-            <span className="block text-lg leading-tight font-bold tabular-nums">{money(r.needToday)}</span>
-          </span>
-          <span className="text-right">
-            <span className="block text-[11px] text-slate-400">พร้อม</span>
-            <span className={`block text-lg leading-tight font-bold tabular-nums ${readyTone === "good" ? "text-emerald-400" : readyTone === "warn" ? "text-amber-300" : "text-rose-300"}`}>
-              {Math.floor(r.readyPct)}%
-            </span>
-          </span>
-          <span className="text-right">
-            <span className="block text-[11px] text-slate-400">เปิดได้ตอนอายุ</span>
-            <span className="block text-lg leading-tight font-bold tabular-nums">{readyAge ?? `${s.age + 40}+`}</span>
-          </span>
-          <span className="text-slate-400">▴</span>
-        </button>
-      </div>
+      {/* เมนูขั้นตอนด้านล่าง: แตะเพื่อย้อนกลับไปแก้ขั้นไหนก็ได้ */}
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.15)] backdrop-blur" aria-label="ขั้นตอน">
+        <div className="mx-auto max-w-2xl px-2 pt-2">
+          <ol className="grid grid-cols-7 gap-0.5">
+            {STEPS.map((st, i) => {
+              const on = i === step;
+              return (
+                <li key={st.short}>
+                  <button
+                    onClick={() => go(i)}
+                    aria-current={on ? "step" : undefined}
+                    className={`flex w-full flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${on ? "bg-sky-50 text-sky-800" : i < step ? "text-slate-700 hover:bg-slate-50" : "text-slate-400 hover:bg-slate-50"}`}
+                  >
+                    <span className={`flex size-8 items-center justify-center rounded-full text-base ${on ? "bg-sky-600 shadow-sm shadow-sky-600/30" : i < step ? "bg-sky-100" : "bg-slate-100"}`}>{st.icon}</span>
+                    <span className={`text-[11px] leading-tight ${on ? "font-semibold" : ""}`}>{st.short}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <div className="flex gap-2 py-2">
+            <button onClick={() => go(step - 1)} disabled={step === 0} className="min-h-12 flex-1 rounded-xl font-semibold text-slate-700 ring-1 ring-slate-300 transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-40">
+              ← ย้อนกลับ
+            </button>
+            {step < LAST ? (
+              <button onClick={() => go(step + 1)} className="min-h-12 flex-[2] rounded-xl bg-sky-600 font-semibold text-white shadow-sm shadow-sky-600/30 transition hover:bg-sky-700 active:scale-[0.98]">
+                {step === LAST - 1 ? "ดูผลลัพธ์ 📊" : "ถัดไป →"}
+              </button>
+            ) : (
+              <button onClick={() => go(0)} className="min-h-12 flex-[2] rounded-xl bg-sky-600 font-semibold text-white shadow-sm shadow-sky-600/30 transition hover:bg-sky-700 active:scale-[0.98]">
+                ✎ แก้แผนตั้งแต่ขั้นแรก
+              </button>
+            )}
+          </div>
+        </div>
+      </nav>
     </div>
   );
 }
