@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AUTO_INFLATION, plan, readiness, SURVIVAL_AVG_10Y, SURVIVAL_WEIGHT, survivalChance, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
+import { AUTO_INFLATION, LOAN_DEFAULT, plan, readiness, SURVIVAL_AVG_10Y, SURVIVAL_WEIGHT, survivalChance, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const money = (n: number) => (Number.isFinite(n) ? `฿${thb.format(Math.round(n))}` : "—");
@@ -24,6 +24,8 @@ function fromTemplate(t: Template, prev?: Partial<State>): State {
     runwayMonths: prev?.runwayMonths ?? 9,
     family: prev?.family ?? 0,
     loan: prev?.loan ?? 0,
+    loanRate: prev?.loanRate ?? LOAN_DEFAULT.rate,
+    loanYears: prev?.loanYears ?? LOAN_DEFAULT.years,
     savingsNow: prev?.savingsNow ?? 50_000,
     savePerMonth: prev?.savePerMonth ?? 5_000,
     saveGrowth: prev?.saveGrowth ?? 5,
@@ -520,6 +522,17 @@ export function SmeSimulator() {
     // 3 รายเดือน
     <div key="monthly" className="space-y-5">
       <CostList items={s.monthly} ownSpace={s.ownSpace} onChange={(xs) => set("monthly", xs)} />
+      {r.loanMonthly > 0 && (
+        <div className="flex items-center gap-3 rounded-xl bg-rose-50 p-3 ring-1 ring-rose-200">
+          <span className="min-w-0 flex-1 text-sm text-rose-900">
+            🏦 ผ่อนเงินกู้ {money(s.loan)}
+            <span className="block text-xs text-rose-700">
+              ดอกเบี้ย {s.loanRate ?? LOAN_DEFAULT.rate}% · {s.loanYears ?? LOAN_DEFAULT.years} ปี (คิดให้อัตโนมัติ แก้ได้ที่ขั้น “เงินเก็บ”)
+            </span>
+          </span>
+          <span className="shrink-0 font-display text-lg font-bold text-rose-900 tabular-nums">{money(r.loanMonthly)}</span>
+        </div>
+      )}
       <MoneyInput label="เงินใช้จ่ายส่วนตัวต่อเดือน" hint="ช่วงที่ร้านยังไม่มีกำไร ต้องมีเงินกินอยู่ด้วย" value={s.ownerPay} onChange={(n) => set("ownerPay", n)} quick={[10_000, 15_000, 20_000, 30_000]} />
       <Stepper label="กำไรขั้นต้น (หลังหักต้นทุนสินค้า)" unit="%" value={s.margin} onChange={(n) => set("margin", n)} min={1} max={95} step={5} />
     </div>,
@@ -544,7 +557,18 @@ export function SmeSimulator() {
       <div className="space-y-4 border-t border-slate-200 pt-4">
         <p className="text-sm font-semibold text-slate-700">เงินจากที่อื่น (ถ้ามี)</p>
         <MoneyInput label="พ่อแม่ / ครอบครัวช่วย" value={s.family} onChange={(n) => set("family", n)} />
-        <MoneyInput label="กู้ธนาคาร / สินเชื่อ SME" value={s.loan} onChange={(n) => set("loan", n)} hint={s.loan > 0 ? "เงินกู้ต้องผ่อนตั้งแต่เดือนแรก — ใส่ค่าผ่อนในค่าใช้จ่ายรายเดือนด้วย" : undefined} />
+        <MoneyInput label="กู้ธนาคาร / สินเชื่อ SME" value={s.loan} onChange={(n) => set("loan", n)} />
+        {s.loan > 0 && (
+          <div className="space-y-4 rounded-2xl bg-rose-50 p-4 ring-1 ring-rose-200">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Stepper label="ดอกเบี้ยต่อปี" unit="%" value={s.loanRate ?? LOAN_DEFAULT.rate} onChange={(n) => set("loanRate", n)} min={0} max={30} />
+              <Stepper label="ผ่อนกี่ปี" unit="ปี" value={s.loanYears ?? LOAN_DEFAULT.years} onChange={(n) => set("loanYears", n)} min={1} max={20} />
+            </div>
+            <p className="text-sm text-rose-900">
+              ค่าผ่อน <b className="font-display text-lg tabular-nums">{money(r.loanMonthly)}</b>/เดือน — เพิ่มเข้าค่าใช้จ่ายรายเดือนให้อัตโนมัติแล้ว (ต้องผ่อนตั้งแต่เดือนแรก แม้ร้านยังไม่มีกำไร)
+            </p>
+          </div>
+        )}
       </div>
     </div>,
 
@@ -666,6 +690,7 @@ export function SmeSimulator() {
               ["เงินเก็บตอนนี้", money(s.savingsNow)],
               ["เก็บต่อเดือน", `${money(s.savePerMonth)} (เพิ่มปีละ ${s.saveGrowth}%)`],
               ["ครอบครัวช่วย / เงินกู้", `${money(s.family)} / ${money(s.loan)}`],
+              ...(s.loan > 0 ? ([["ค่าผ่อนเงินกู้ (รวมในรายเดือนแล้ว)", `${money(r.loanMonthly)}/เดือน · ${s.loanRate ?? LOAN_DEFAULT.rate}% · ${s.loanYears ?? LOAN_DEFAULT.years} ปี`]] as const) : []),
               ["เงินเฟ้อ (อัตโนมัติ)", `${AUTO_INFLATION}%/ปี`],
             ] as const
           ).map(([k, v]) => (

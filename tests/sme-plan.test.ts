@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plan, SURVIVAL_AVG_10Y, survivalChance, TEMPLATES, type PlanInput } from "@/lib/sme/plan";
+import { loanPayment, plan, SURVIVAL_AVG_10Y, survivalChance, TEMPLATES, type PlanInput } from "@/lib/sme/plan";
 
 const base = (over: Partial<PlanInput> = {}): PlanInput => {
   const t = TEMPLATES[0];
@@ -74,5 +74,22 @@ describe("survivalChance", () => {
     const half = survivalChance(keys.map((key, i) => ({ key, ok: i % 2 === 0 })));
     expect(half).toBeGreaterThan(SURVIVAL_AVG_10Y - 10);
     expect(half).toBeLessThan(SURVIVAL_AVG_10Y + 15);
+  });
+});
+
+describe("loan payment", () => {
+  it("matches a standard amortised payment", () => {
+    // 500,000 บาท 7% 5 ปี ≈ 9,901 บาท/เดือน
+    expect(Math.round(loanPayment(500_000, 7, 5))).toBe(9901);
+    expect(loanPayment(120_000, 0, 1)).toBe(10_000);
+    expect(loanPayment(0)).toBe(0);
+  });
+  it("adds the payment to monthly costs, runway and break-even", () => {
+    const without = plan(base());
+    const withLoan = plan(base({ loan: 500_000, loanRate: 7, loanYears: 5 }));
+    expect(withLoan.loanMonthly).toBeCloseTo(loanPayment(500_000, 7, 5));
+    expect(withLoan.monthlyBusiness - without.monthlyBusiness).toBeCloseTo(withLoan.loanMonthly);
+    expect(withLoan.runwayTotal).toBeGreaterThan(without.runwayTotal);
+    expect(withLoan.breakEvenSales).toBeGreaterThan(without.breakEvenSales);
   });
 });

@@ -271,6 +271,10 @@ export type PlanInput = {
   family: number;
   /** กู้ธนาคาร/สินเชื่อ (บาท ตอนเริ่ม) */
   loan: number;
+  /** ดอกเบี้ยเงินกู้ต่อปี (%) · ไม่ใส่ = 7% (ราวสินเชื่อ SME ทั่วไป) */
+  loanRate?: number;
+  /** ผ่อนกี่ปี · ไม่ใส่ = 5 ปี */
+  loanYears?: number;
   savingsNow: number;
   savePerMonth: number;
   /** เก็บเงินได้เพิ่มขึ้นปีละกี่ % (เงินเดือนขึ้น) */
@@ -299,7 +303,10 @@ export function effectiveItems(p: Pick<PlanInput, "setup" | "monthly" | "ownSpac
 
 export type PlanResult = {
   setupTotal: number;
+  /** ค่าใช้จ่ายร้านต่อเดือน (รวมค่าผ่อนเงินกู้แล้ว) */
   monthlyBusiness: number;
+  /** ค่าผ่อนเงินกู้ต่อเดือน */
+  loanMonthly: number;
   /** ค่าใช้จ่ายต่อเดือนช่วงตั้งตัว (ธุรกิจ + ตัวเอง) */
   monthlyBurn: number;
   runwayTotal: number;
@@ -339,10 +346,22 @@ function simulate(p: PlanInput, perMonth: number, months: number) {
   return out;
 }
 
+export const LOAN_DEFAULT = { rate: 7, years: 5 };
+
+/** ค่าผ่อนเงินกู้ต่อเดือน (ผ่อนเท่ากันทุกเดือน ต้น+ดอกเบี้ย) */
+export function loanPayment(amount: number, ratePct = LOAN_DEFAULT.rate, years = LOAN_DEFAULT.years) {
+  if (amount <= 0 || years <= 0) return 0;
+  const n = Math.round(years * 12);
+  const i = ratePct / 100 / 12;
+  return i === 0 ? amount / n : (amount * i) / (1 - Math.pow(1 + i, -n));
+}
+
 export function plan(p: PlanInput): PlanResult {
   const items = effectiveItems(p);
   const setupTotal = sum(items.setup);
-  const monthlyBusiness = sum(items.monthly);
+  // มีเงินกู้ = มีค่าผ่อนทุกเดือนตั้งแต่เดือนแรก นับรวมในค่าใช้จ่ายรายเดือน (ทั้งเงินสำรองและจุดคุ้มทุน)
+  const loanMonthly = loanPayment(p.loan, p.loanRate, p.loanYears);
+  const monthlyBusiness = sum(items.monthly) + loanMonthly;
   const monthlyBurn = monthlyBusiness + p.ownerPay;
   const runwayTotal = monthlyBurn * p.runwayMonths;
   const needToday = setupTotal + runwayTotal;
@@ -387,6 +406,7 @@ export function plan(p: PlanInput): PlanResult {
   return {
     setupTotal,
     monthlyBusiness,
+    loanMonthly,
     monthlyBurn,
     runwayTotal,
     needToday,
