@@ -435,3 +435,18 @@ export function readiness(r: PlanResult, p: PlanInput, checks: Partial<Record<Re
     { key: "customers" as const, ok: !!checks.customers, label: "มีกลุ่มลูกค้า/ช่องทางขายชัดเจน", hint: "รู้ว่าใครจะซื้อ ซื้อเพราะอะไร และจะหาลูกค้าใหม่จากไหน" },
   ];
 }
+
+/**
+ * น้ำหนักของแต่ละปัจจัยต่อโอกาสอยู่รอดเกิน 10 ปี (คะแนน % ที่บวกเพิ่ม)
+ * ค่าเฉลี่ยธุรกิจเกิดใหม่รอดถึงปีที่ 10 ราว 35% (SURVIVAL) — คนที่เตรียมครบควรสูงกว่าค่าเฉลี่ยชัดเจน
+ * ส่วนคนที่ไม่ได้เตรียมเลยควรต่ำกว่า จึงตั้งฐาน 15% และเพิ่มได้สูงสุดถึง 70%
+ * เป็นการประมาณเพื่อชวนคิด ไม่ใช่โมเดลสถิติ
+ */
+const SURVIVAL_BASE = 15;
+export const SURVIVAL_WEIGHT: Record<ReadinessKey, number> = { runway: 10, experience: 10, tested: 10, customers: 9, breakeven: 8, debt: 8 };
+export const SURVIVAL_AVG_10Y = 35;
+
+/** โอกาสที่ธุรกิจจะเปิดได้เกิน 10 ปี (%) จากเช็กลิสต์ความพร้อม */
+export function survivalChance(factors: { key: ReadinessKey; ok: boolean }[]) {
+  return factors.reduce((pct, f) => pct + (f.ok ? SURVIVAL_WEIGHT[f.key] : 0), SURVIVAL_BASE);
+}

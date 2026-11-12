@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plan, TEMPLATES, type PlanInput } from "@/lib/sme/plan";
+import { plan, SURVIVAL_AVG_10Y, survivalChance, TEMPLATES, type PlanInput } from "@/lib/sme/plan";
 
 const base = (over: Partial<PlanInput> = {}): PlanInput => {
   const t = TEMPLATES[0];
@@ -63,5 +63,16 @@ describe("แผนเริ่มธุรกิจ", () => {
 
   it("เก็บไม่ไหวภายใน 40 ปี = null", () => {
     expect(plan(base({ savePerMonth: 0 })).yearsToReady).toBeNull();
+  });
+});
+
+describe("survivalChance", () => {
+  const keys = ["runway", "debt", "breakeven", "experience", "tested", "customers"] as const;
+  it("ranges from 15% (nothing ready) to 70% (all ready), average in between", () => {
+    expect(survivalChance(keys.map((key) => ({ key, ok: false })))).toBe(15);
+    expect(survivalChance(keys.map((key) => ({ key, ok: true })))).toBe(70);
+    const half = survivalChance(keys.map((key, i) => ({ key, ok: i % 2 === 0 })));
+    expect(half).toBeGreaterThan(SURVIVAL_AVG_10Y - 10);
+    expect(half).toBeLessThan(SURVIVAL_AVG_10Y + 15);
   });
 });
