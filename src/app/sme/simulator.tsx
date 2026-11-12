@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AUTO_INFLATION, plan, readiness, SURVIVAL, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
+import { AUTO_INFLATION, plan, readiness, SURVIVAL_AVG_10Y, SURVIVAL_WEIGHT, survivalChance, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const money = (n: number) => (Number.isFinite(n) ? `฿${thb.format(Math.round(n))}` : "—");
@@ -286,26 +286,6 @@ function Ring({ pct, tone }: { pct: number; tone: Tone }) {
   );
 }
 
-/** กราฟแท่งโอกาสรอดของธุรกิจใหม่ */
-function SurvivalChart() {
-  return (
-    <div className="flex h-40 items-end gap-3">
-      {SURVIVAL.map((x) => (
-        <div key={x.year} className="flex flex-1 flex-col items-center gap-1">
-          <span className="text-xs font-semibold tabular-nums text-slate-700">{x.pct}%</span>
-          <div className="flex h-28 w-full items-end overflow-hidden rounded-md bg-slate-100">
-            <div
-              className={`w-full rounded-md bg-gradient-to-t ${x.pct >= 60 ? "from-emerald-600 to-emerald-400" : x.pct >= 45 ? "from-amber-500 to-amber-300" : "from-rose-500 to-rose-300"}`}
-              style={{ height: `${x.pct}%` }}
-            />
-          </div>
-          <span className="text-xs text-slate-500">ปีที่ {x.year}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** กราฟเส้น: เงินเก็บสะสม vs เงินที่ต้องมี ในแต่ละปี */
 function Chart({ series, target, ready }: { series: { year: number; saved: number; need: number }[]; target: number; ready: number | null }) {
   const W = 640;
@@ -464,6 +444,8 @@ export function SmeSimulator() {
   const r = useMemo(() => plan(s), [s]);
   const factors = readiness(r, s, s.checks);
   const okCount = factors.filter((f) => f.ok).length;
+  const chance = survivalChance(factors);
+  const chanceTone: Tone = chance >= 50 ? "good" : chance >= SURVIVAL_AVG_10Y ? "warn" : "bad";
   const template = TEMPLATES.find((t) => t.id === s.templateId);
   const late = r.yearsToReady === null ? null : r.yearsToReady - s.targetYears;
   const resultRef = useRef<HTMLDivElement>(null);
@@ -695,46 +677,50 @@ export function SmeSimulator() {
         </dl>
       </Panel>
 
-      <Panel title="โอกาสรอดของธุรกิจใหม่" desc="สัดส่วนธุรกิจที่ยังเปิดอยู่หลังเปิดกิจการ (ประมาณ)">
-        <SurvivalChart />
-        <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-600">
-          <li>ราวครึ่งหนึ่งปิดก่อนครบ 5 ปี และเหลือราว 1 ใน 3 เมื่อครบ 10 ปี</li>
-          <li>ร้านอาหาร/เครื่องดื่ม และก่อสร้าง ปิดกิจการมากที่สุดในไทยช่วงปี 2566–67</li>
-          <li>ความเสี่ยงปิดกิจการของ SME ไทยเฉลี่ยราว 7% ต่อปี</li>
-        </ul>
-      </Panel>
+      <Panel title="โอกาสที่ร้านจะเปิดได้เกิน 10 ปี" desc="ประมาณจากความพร้อม 6 ข้อด้านล่าง ยิ่งติ๊กได้มาก ยิ่งรอดได้นาน">
+        <div className="flex items-end gap-3">
+          <p className={`font-display text-5xl leading-none font-bold tabular-nums ${TONE[chanceTone].text}`}>{chance}%</p>
+          <p className="pb-1 text-sm text-slate-500">ค่าเฉลี่ยธุรกิจใหม่ราว {SURVIVAL_AVG_10Y}%</p>
+        </div>
+        {/* แถบเทียบกับค่าเฉลี่ย */}
+        <div className="relative mt-3 h-3 rounded-full bg-slate-100">
+          <div className={`h-full rounded-full transition-all duration-500 ${TONE[chanceTone].bar}`} style={{ width: `${chance}%` }} />
+          <div className="absolute -top-1 h-5 w-0.5 bg-slate-500" style={{ left: `${SURVIVAL_AVG_10Y}%` }} title="ค่าเฉลี่ย" />
+        </div>
+        <p className="mt-3 text-sm text-slate-600">
+          จากสถิติ ธุรกิจเปิดใหม่ 10 ร้าน ราว 5 ร้านปิดก่อนครบ 5 ปี และเหลือเปิดอยู่ราว 3–4 ร้านเมื่อครบ 10 ปี สาเหตุหลักคือเงินสำรองหมดก่อนขายได้ถึงจุดคุ้มทุน
+          ส่วนคนที่เตรียมตัวครบมีโอกาสรอดสูงกว่าค่าเฉลี่ยชัดเจน
+        </p>
 
-      <Panel
-        title="ความพร้อมก่อนลงเงิน"
-        desc="ปัจจัยที่ช่วยให้รอดได้มากกว่าค่าเฉลี่ย"
-        right={<span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-semibold ring-1 ${TONE[okCount >= 5 ? "good" : okCount >= 3 ? "warn" : "bad"].chip}`}>{okCount}/{factors.length}</span>}
-      >
-        <ul className="divide-y divide-slate-100">
+        <p className="mt-4 text-sm font-semibold text-slate-800">ติ๊กข้อที่คุณมีแล้ว ({okCount}/{factors.length})</p>
+        <ul className="mt-1 divide-y divide-slate-100">
           {factors.map((f) => {
             const auto = f.key === "runway" || f.key === "debt";
             return (
               <li key={f.key}>
                 <label className="flex min-h-12 items-start gap-3 py-2.5">
                   <input type="checkbox" className="mt-0.5 size-6 accent-sky-700" checked={f.ok} disabled={auto} onChange={(e) => set("checks", { ...s.checks, [f.key]: e.target.checked })} />
-                  <span className="min-w-0">
+                  <span className="min-w-0 flex-1">
                     <span className={`font-medium ${f.ok ? "text-emerald-700" : "text-slate-900"}`}>{f.label}</span>
                     <span className="block text-xs text-slate-500">
                       {f.hint}
                       {auto && " (คำนวณจากแผน)"}
                     </span>
                   </span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ring-1 ${f.ok ? TONE.good.chip : TONE.neutral.chip}`}>+{SURVIVAL_WEIGHT[f.key]}%</span>
                 </label>
               </li>
             );
           })}
         </ul>
         <p className="mt-2 text-sm text-slate-700">
-          {okCount >= 5
-            ? "เตรียมตัวดีมาก โอกาสรอดน่าจะดีกว่าค่าเฉลี่ยของธุรกิจเกิดใหม่"
-            : okCount >= 3
-              ? "เตรียมไว้พอสมควร ข้อที่ยังไม่ได้ทำคือการบ้านก่อนลงเงินจริง"
-              : "ยังเสี่ยงสูง ใช้เวลาระหว่างเก็บเงินฝึกและทดลองข้อที่ยังไม่ได้ทำ"}
+          {chance >= 50
+            ? "เตรียมตัวดีมาก โอกาสรอดสูงกว่าค่าเฉลี่ยของธุรกิจเกิดใหม่"
+            : chance >= SURVIVAL_AVG_10Y
+              ? "พอ ๆ กับค่าเฉลี่ย ข้อที่ยังไม่ได้ติ๊กคือการบ้านก่อนลงเงินจริง"
+              : "ยังเสี่ยงสูง ใช้เวลาระหว่างเก็บเงิน ฝึกและทดลองข้อที่ยังไม่ได้ทำ"}
         </p>
+        <p className="mt-2 text-xs text-slate-400">ตัวเลขนี้เป็นการประมาณเพื่อช่วยวางแผน ไม่ใช่การรับประกัน</p>
       </Panel>
 
       <p className="text-xs text-slate-400">
