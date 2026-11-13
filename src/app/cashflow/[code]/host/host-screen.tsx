@@ -7,7 +7,7 @@ import { goalProgress, logText, TIME_LIMITS, type PublicPlayer, type PublicState
 import { GameBoard } from "../board";
 import { GameSummaryHeader, PlayerReportCard } from "../report";
 import { IntroSlide, INTRO_SLIDES } from "../intro";
-import { CardView, Dice, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom } from "../game-ui";
+import { CardView, Dice, PausedOverlay, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom } from "../game-ui";
 
 type Send = ReturnType<typeof useRoom>["send"];
 
@@ -164,11 +164,17 @@ export function HostScreen({ code, joinUrl, qrSvg }: { code: string; joinUrl: st
 
   const winner = state.players.find((p) => p.id === state.winner);
   const waiting = Object.entries(state.responders);
-  const secondsLeft = state.deadline ? Math.max(0, Math.ceil((state.deadline - now) / 1000)) : null;
+  // พักเกมอยู่: นับถอยหลังค้างไว้ที่ตอนกดพัก
+  const secondsLeft = state.deadline ? Math.max(0, Math.ceil((state.deadline - (state.pausedAt ?? now)) / 1000)) : null;
 
   return (
     <main className="flex min-h-dvh flex-col gap-3 p-4 landscape:h-dvh">
       <TopBar state={state} code={code} now={now} busy={busy} send={send} />
+      <PausedOverlay state={state}>
+        <button className="btn btn-primary w-full text-lg" disabled={busy} onClick={() => send({ type: "pause", paused: false })}>
+          ▶ เล่นต่อ
+        </button>
+      </PausedOverlay>
       <div className="grid gap-4 landscape:min-h-0 landscape:flex-1 landscape:grid-cols-[minmax(0,calc(100dvh-6.5rem))_minmax(15rem,1fr)] landscape:items-start">
       {data?.stale && (
         <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-4 bg-amber-100 p-3 text-amber-900 shadow">
@@ -363,6 +369,14 @@ function TopBar({ state, code, now, busy, send }: { state: PublicState; code: st
             </div>
           </div>
           <div className="flex shrink-0 gap-1">
+            <button
+              className="btn min-h-9 border border-stone-300 bg-white px-3 text-sm font-semibold hover:bg-stone-50"
+              disabled={busy}
+              title="พักทั้งเกม: นาฬิกาหยุด ทุกเครื่องกดอะไรไม่ได้จนกว่าจะเล่นต่อ"
+              onClick={() => send({ type: "pause", paused: state.pausedAt === undefined })}
+            >
+              {state.pausedAt === undefined ? "⏸ พักเกม" : "▶ เล่นต่อ"}
+            </button>
             <button className="btn-ghost min-h-9 px-2 text-sm" disabled={busy} title="ข้ามตา (กรณีค้าง)" onClick={() => send({ type: "skipTurn" })}>
               ⏭ ข้ามตา
             </button>

@@ -122,9 +122,25 @@ export function useRoom(code: string) {
 export function gameClock(state: PublicState, now: number) {
   const limit = (state.options?.minutes ?? 0) * 60_000;
   const start = state.startedAt ?? now;
-  const end = state.phase === "over" ? (state.endedAt ?? now) : now;
+  // พักเกมอยู่ = นาฬิกาค้างไว้ที่ตอนกดพัก
+  const end = state.phase === "over" ? (state.endedAt ?? now) : (state.pausedAt ?? now);
   const elapsed = Math.max(0, end - start);
   return { elapsed, limit, remaining: limit ? Math.max(0, limit - elapsed) : null, up: limit > 0 && elapsed >= limit };
+}
+
+/** จอพักเกม: บังทุกอย่างบนเครื่อง (host ใส่ปุ่มเล่นต่อเป็น children) */
+export function PausedOverlay({ state, children }: { state: PublicState; children?: React.ReactNode }) {
+  if (state.phase !== "playing" || state.pausedAt === undefined) return null;
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-stone-900/70 p-6 backdrop-blur-sm" role="alertdialog" aria-label="พักเกม">
+      <div className="card w-full max-w-sm space-y-3 p-6 text-center">
+        <p className="text-5xl">⏸</p>
+        <p className="text-2xl font-bold">พักเกมอยู่</p>
+        <p className="text-stone-600">นาฬิกาหยุดเดิน ข้อมูลทุกอย่างยังอยู่ครบ</p>
+        {children ?? <p className="text-sm text-stone-500">รอ host กดเล่นต่อ</p>}
+      </div>
+    </div>
+  );
 }
 
 /** 1:05:09 / 42:15 */

@@ -158,6 +158,8 @@ export type GameState = {
   gameId?: string;
   startedAt?: number;
   endedAt?: number;
+  /** host พักทั้งเกมตั้งแต่เวลานี้ (นาฬิกาหยุด ทุกคนกดอะไรไม่ได้) · ไม่มี = เล่นอยู่ */
+  pausedAt?: number;
   /** จบเพราะมีคนชนะ หรือ host กดจบเกม */
   endedBy?: "win" | "host" | "time";
   /** นับครั้งที่เปลี่ยนตา (ใช้ดูว่าเพิ่งจบตาไปหรือยัง) */
@@ -182,7 +184,8 @@ export type GameOptions = {
 export const TIME_LIMITS = [0, 30, 45, 60, 90, 120] as const;
 
 /** หมดเวลาเล่นแล้วหรือยัง */
-export function timeUp(s: Pick<GameState, "options" | "startedAt">, now: number) {
+export function timeUp(s: Pick<GameState, "options" | "startedAt" | "pausedAt">, now: number) {
+  if (s.pausedAt !== undefined) return false;
   const m = s.options?.minutes ?? 0;
   return m > 0 && s.startedAt !== undefined && now >= s.startedAt + m * 60_000;
 }
@@ -246,6 +249,8 @@ export type Action =
   | { type: "endTurn" }
   | { type: "collect" }
   | { type: "finish" }
+  /** host พักทั้งเกม / เล่นต่อ */
+  | { type: "pause"; paused: boolean }
   /** host พัก/ปลุกผู้เล่นคนไหนก็ได้ · ผู้เล่นพัก/กลับมาเองได้ */
   | { type: "setAway"; player: string; away: boolean }
   /** host เอาผู้เล่นออกจากเกม */
@@ -920,7 +925,17 @@ function endIfTimeUp(s: GameState, turnSeqBefore: number | undefined, now: numbe
   log(s, "⏰ หมดเวลาเล่น จบเกม ดูสรุปผลการเล่นได้เลย");
 }
 
+/** เล่นต่อหลังพัก: เลื่อนเวลาเริ่มและเส้นตายตอบการ์ดออกไปเท่าเวลาที่พัก (เวลาพักไม่นับเป็นเวลาเล่น) */
+function unpause(s: GameState, now: number) {
+  if (s.pausedAt === undefined) return;
+  const gap = Math.max(0, now - s.pausedAt);
+  if (s.startedAt !== undefined) s.startedAt += gap;
+  if (s.deadline) s.deadline += gap;
+  s.pausedAt = undefined;
+}
+
 export function tick(state: GameState, now: number): GameState | null {
+  if (state.pausedAt !== undefined) return null;
   if (state.phase !== "playing" || state.step !== "respond" || !state.deadline || now < state.deadline) return null;
   const s = structuredClone(state);
   const turnId = current(s).id;
@@ -999,9 +1014,24 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
 
   if (s.phase !== "playing") throw new GameError("เกมยังไม่เริ่ม หรือจบไปแล้ว");
 
+  if (action.type === "pause") {
+    if (!actor.host) throw new GameError("host เท่านั้นที่พักเกมได้");
+    if (action.paused) {
+      if (s.pausedAt !== undefined) return s;
+      s.pausedAt = ctx.now;
+      log(s, "⏸ host พักเกม (นาฬิกาหยุด)");
+    } else {
+      if (s.pausedAt === undefined) return s;
+      unpause(s, ctx.now);
+      log(s, "▶ เล่นต่อ");
+    }
+    return s;
+  }
+
   if (action.type === "finish") {
-    // host จบเกมก่อนมีคนชนะ (เช่น หมดเวลา) แล้วดูสรุปผล
+    // host จบเกมก่อนมีคนชนะ (เช่น หมดเวลา) แล้วดูสรุปผล — กดได้แม้กำลังพักเกมอยู่
     if (!actor.host) throw new GameError("host เท่านั้นที่จบเกมได้");
+    unpause(s, ctx.now);
     s.phase = "over";
     s.winner = null;
     s.endedBy = "host";
@@ -1009,6 +1039,9 @@ export function act(state: GameState, actor: Actor, action: Action, ctx: Ctx): G
     log(s, "host ยุติเกม ดูสรุปผลการเล่นได้เลย");
     return s;
   }
+
+  // พักเกมอยู่: ทำอะไรไม่ได้ จนกว่า host จะกดเล่นต่อ (ย้ายเครื่องยังทำได้)
+  if (s.pausedAt !== undefined && action.type !== "claim" && action.type !== "transfer") throw new GameError("พักเกมอยู่ รอ host กดเล่นต่อ");
 
   if (action.type === "claim") {
     const p = s.players.find((x) => x.transfer && x.transfer === action.code);
