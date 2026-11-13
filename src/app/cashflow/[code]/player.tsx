@@ -37,7 +37,7 @@ import {
   type PublicState,
 } from "@/lib/cashflow/engine";
 import { adviceFor } from "@/lib/cashflow/analysis";
-import { CardView, Dice, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom, type RoomData } from "./game-ui";
+import { CardView, Dice, PausedOverlay, PlayerTag, Rat, cardKey, fmtClock, gameClock, useNow, useRoom, type RoomData } from "./game-ui";
 import { GameBoard } from "./board";
 import { GameSummaryHeader, PlayerReportCard } from "./report";
 import { JournalCard } from "./journal";
@@ -96,7 +96,10 @@ export function PlayerScreen({ code, claim }: { code: string; claim?: string }) 
           )}
         </>
       ) : (
-        <GameTabs data={data} me={me} busy={busy} send={send} />
+        <>
+          <GameTabs data={data} me={me} busy={busy} send={send} />
+          <PausedOverlay state={state} />
+        </>
       )}
     </main>
   );
@@ -372,7 +375,7 @@ function ActionPanel({ state, me, busy, send }: { state: PublicState; me: Public
   }
 
   const mustRespond = state.step === "respond" && state.responders[me.id] === false;
-  const secondsLeft = state.deadline && !myTurn ? Math.max(0, Math.ceil((state.deadline - now) / 1000)) : null;
+  const secondsLeft = state.deadline && !myTurn ? Math.max(0, Math.ceil((state.deadline - (state.pausedAt ?? now)) / 1000)) : null;
 
   return (
     <div className="card space-y-3">

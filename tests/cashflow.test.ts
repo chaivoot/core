@@ -607,3 +607,47 @@ describe("ออกจากสนามแข่งหนู → ทางด�
     expect(() => run(s, { type: "loan" })).toThrow("ทางด่วน");
   });
 });
+
+describe("host พักทั้งเกม", () => {
+  const at = (now: number) => ({ ...ctx(), now });
+
+  it("พักแล้วทุกคนทำอะไรไม่ได้ เล่นต่อแล้วกลับมาเล่นได้", () => {
+    const s = started();
+    const paused = act(s, HOST, { type: "pause", paused: true }, at(5_000));
+    expect(paused.pausedAt).toBe(5_000);
+    expect(() => run(paused, { type: "roll" })).toThrow(GameError);
+    expect(() => act(paused, HOST, { type: "skipTurn" }, ctx())).toThrow(GameError);
+    const resumed = act(paused, HOST, { type: "pause", paused: false }, at(65_000));
+    expect(resumed.pausedAt).toBeUndefined();
+    expect(() => run(resumed, { type: "roll" }, me(resumed), [die(3)])).not.toThrow();
+  });
+
+  it("ผู้เล่นพักเกมเองไม่ได้", () => {
+    const s = started();
+    expect(() => run(s, { type: "pause", paused: true })).toThrow(GameError);
+  });
+
+  it("เวลาที่พักไม่นับเป็นเวลาเล่น: เลื่อนเวลาเริ่มและเส้นตายตอบการ์ดออกไป", () => {
+    const s = { ...started(), startedAt: 1_000, deadline: 40_000 };
+    const paused = act(s, HOST, { type: "pause", paused: true }, at(10_000));
+    // พักอยู่: ไม่หมดเวลา ไม่ตัดสินการ์ดแทน
+    expect(tick({ ...paused, step: "respond" }, 999_999_999)).toBeNull();
+    const resumed = act(paused, HOST, { type: "pause", paused: false }, at(70_000));
+    expect(resumed.startedAt).toBe(61_000);
+    expect(resumed.deadline).toBe(100_000);
+  });
+
+  it("หมดเวลาไม่ทำงานระหว่างพัก", () => {
+    const s = { ...started(), startedAt: 0, options: { minutes: 30 }, pausedAt: 10_000 };
+    const publicView = publicState(s);
+    expect(publicView.pausedAt).toBe(10_000);
+    expect(() => act(s, HOST, { type: "pause", paused: false }, at(31 * 60_000))).not.toThrow();
+  });
+
+  it("ยุติเกมได้แม้พักอยู่", () => {
+    const paused = act(started(), HOST, { type: "pause", paused: true }, at(5_000));
+    const over = act(paused, HOST, { type: "finish" }, at(9_000));
+    expect(over.phase).toBe("over");
+    expect(over.pausedAt).toBeUndefined();
+  });
+});

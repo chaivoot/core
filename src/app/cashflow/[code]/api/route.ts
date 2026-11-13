@@ -26,6 +26,7 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("collect") }),
   z.object({ type: z.literal("finish") }),
   z.object({ type: z.literal("setAway"), player: z.string().max(20), away: z.boolean() }),
+  z.object({ type: z.literal("pause"), paused: z.boolean() }),
   z.object({ type: z.literal("leave"), player: z.string().max(20) }),
   z.object({ type: z.literal("transfer"), player: z.string().max(20) }),
   z.object({ type: z.literal("claim"), code: z.string().min(8).max(40) }),
@@ -38,7 +39,7 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("payoff"), debt: z.enum(["house", "car", "card"]) }),
 ]);
 
-const HOST_ACTIONS = new Set(["start", "skipTurn", "setOptions", "intro", "finish", "leave", "transfer"]);
+const HOST_ACTIONS = new Set(["start", "skipTurn", "setOptions", "intro", "finish", "leave", "transfer", "pause"]);
 
 /** ห้องที่เริ่มเล่นด้วยชุดการ์ดเก่า เล่นต่อไม่ได้ (ลำดับการ์ดในสถานะเก่าชี้ไปคนละใบ) */
 const isStale = (room: Room) => room.state.phase !== "lobby" && room.state.deckVersion !== DECK_VERSION;
