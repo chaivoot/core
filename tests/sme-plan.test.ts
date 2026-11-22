@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loanPayment, plan, SURVIVAL_AVG_10Y, survivalChance, TEMPLATES, type PlanInput } from "@/lib/sme/plan";
+import { freedom, loanPayment, plan, SURVIVAL_AVG_10Y, survivalChance, TEMPLATES, type PlanInput } from "@/lib/sme/plan";
 
 const base = (over: Partial<PlanInput> = {}): PlanInput => {
   const t = TEMPLATES[0];
@@ -91,5 +91,26 @@ describe("loan payment", () => {
     expect(withLoan.monthlyBusiness - without.monthlyBusiness).toBeCloseTo(withLoan.loanMonthly);
     expect(withLoan.runwayTotal).toBeGreaterThan(without.runwayTotal);
     expect(withLoan.breakEvenSales).toBeGreaterThan(without.breakEvenSales);
+  });
+});
+
+describe("freedom (passive income)", () => {
+  it("passive = gross profit - shop costs - manager; free when it covers personal expenses", () => {
+    const p = { margin: 50, ownerPay: 20_000, loan: 0 };
+    const r = { monthlyBusiness: 40_000, loanMonthly: 0 };
+    const f = freedom(p, r, 5_000, 20_000); // 5,000×26×50% = 65,000
+    expect(f.grossProfit).toBe(65_000);
+    expect(f.passive).toBe(5_000);
+    expect(f.free).toBe(false);
+    expect(f.gap).toBe(15_000);
+    expect(f.pct).toBe(25);
+    // ยอดที่ต้องขาย: (40k+20k+20k)/0.5/26
+    expect(f.dailyNeeded).toBeCloseTo(80_000 / 0.5 / 26);
+    expect(freedom(p, r, f.dailyNeeded, 20_000).free).toBe(true);
+  });
+  it("reports the higher passive income after the loan is repaid", () => {
+    const f = freedom({ margin: 50, ownerPay: 20_000, loan: 100_000, loanYears: 3 }, { monthlyBusiness: 43_000, loanMonthly: 3_000 }, 5_000, 20_000);
+    expect(f.afterLoan).toBe(f.passive + 3_000);
+    expect(f.loanYears).toBe(3);
   });
 });

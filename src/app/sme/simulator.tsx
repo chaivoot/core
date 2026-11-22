@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AUTO_INFLATION, LOAN_DEFAULT, plan, readiness, SURVIVAL_AVG_10Y, SURVIVAL_WEIGHT, survivalChance, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
+import { AUTO_INFLATION, freedom, LOAN_DEFAULT, plan, readiness, SURVIVAL_AVG_10Y, SURVIVAL_WEIGHT, survivalChance, TEMPLATES, type CostItem, type PlanInput, type ReadinessKey, type Template } from "@/lib/sme/plan";
 
 const thb = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 const money = (n: number) => (Number.isFinite(n) ? `฿${thb.format(Math.round(n))}` : "—");
@@ -9,7 +9,15 @@ const short = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toLocaleString("th-TH", { maximumFractionDigits: 1 })} ล้าน` : `${Math.round(n / 1000).toLocaleString("th-TH")}k`;
 const years = (y: number) => (Number.isInteger(y) ? `${y}` : y.toLocaleString("th-TH", { maximumFractionDigits: 1 }));
 
-type State = PlanInput & { templateId: string; age: number; checks: Partial<Record<ReadinessKey, boolean>> };
+type State = PlanInput & {
+  templateId: string;
+  age: number;
+  checks: Partial<Record<ReadinessKey, boolean>>;
+  /** ยอดขายต่อวันเมื่อร้านอยู่ตัว (ไม่ใส่ = ประมาณให้จากจุดคุ้มทุน) */
+  dailySales?: number;
+  /** ค่าจ้างคนดูแลร้านแทนเรา ต่อเดือน */
+  managerPay?: number;
+};
 
 const STORAGE_KEY = "sme-plan-v1";
 
@@ -405,6 +413,7 @@ const STEPS = [
   { icon: "🛟", short: "สำรอง", title: "เงินหมุนเวียนสำรอง", desc: "เงินจ่ายค่าใช้จ่ายรายเดือนช่วงที่ร้านยังไม่มีกำไร" },
   { icon: "💰", short: "เงินเก็บ", title: "เงินเก็บของคุณ", desc: "ตัวกำหนดว่าจะใช้เวลาเก็บกี่ปี" },
   { icon: "🎯", short: "เป้าหมาย", title: "อายุและเป้าหมาย", desc: "อยากเปิดร้านภายในกี่ปี" },
+  { icon: "🕊️", short: "อิสรภาพ", title: "รายได้ที่ไม่ต้องเฝ้า (Passive Income)", desc: "เมื่อร้านเดินได้เองแล้ว รายได้จากร้านพอจ่ายค่าใช้จ่ายของคุณหรือยัง" },
   { icon: "📊", short: "ผลลัพธ์", title: "ผลลัพธ์แผนของคุณ", desc: "" },
 ] as const;
 const LAST = STEPS.length - 1;
@@ -478,7 +487,59 @@ export function SmeSimulator() {
   const readyAge = r.yearsToReady === null ? null : Math.floor(s.age + r.yearsToReady);
   const targetAge = s.age + s.targetYears;
   const bizName = template ? splitName(template.name).main : "ธุรกิจ";
+  // ยอดขายเมื่ออยู่ตัว: ยังไม่กรอก = ประมาณ 1.2 เท่าของจุดคุ้มทุน (ปัดหลักร้อย) — ตั้งต่ำไว้ก่อน ไม่ให้ดูง่ายเกินจริง
+  const suggestedDaily = Number.isFinite(r.breakEvenSales) ? Math.ceil((r.breakEvenSales / 26) * 1.2 / 100) * 100 : 0;
+  const dailySales = s.dailySales ?? suggestedDaily;
+  const managerPay = s.managerPay ?? 20_000;
+  const fr = freedom(s, r, dailySales, managerPay);
+  const frTone: Tone = fr.free ? "good" : fr.pct >= 50 ? "warn" : "bad";
   const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+
+  /** สรุปอิสรภาพทางการเงิน: passive income เทียบกับค่าใช้จ่ายส่วนตัว */
+  const freedomCard = (compact = false) => {
+    const max = Math.max(fr.expenses, fr.passive, 1);
+    return (
+      <section className={`rounded-2xl p-4 ring-1 sm:p-5 ${TONE[frTone].chip}`}>
+        <p className="font-display text-lg font-bold">🕊️ อิสรภาพทางการเงิน</p>
+        <p className="text-sm">รายได้จากร้านหลังทำระบบเสร็จแล้ว (ไม่ต้องเฝ้า) เทียบกับค่าใช้จ่ายของคุณ</p>
+        <div className="mt-3 space-y-2 text-sm">
+          <div>
+            <div className="flex justify-between gap-3">
+              <span>Passive income จากร้าน</span>
+              <b className="font-display tabular-nums">{money(fr.passive)}/เดือน</b>
+            </div>
+            <div className="mt-1 h-3 overflow-hidden rounded-full bg-white/70">
+              <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${(Math.max(0, fr.passive) / max) * 100}%` }} />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between gap-3">
+              <span>ค่าใช้จ่ายส่วนตัวของคุณ</span>
+              <b className="font-display tabular-nums">{money(fr.expenses)}/เดือน</b>
+            </div>
+            <div className="mt-1 h-3 overflow-hidden rounded-full bg-white/70">
+              <div className="h-full rounded-full bg-slate-500 transition-all duration-500" style={{ width: `${(fr.expenses / max) * 100}%` }} />
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 font-display text-3xl font-bold tabular-nums">{fr.free ? "🎉 มีอิสรภาพแล้ว" : `${Math.floor(fr.pct)}% ของอิสรภาพ`}</p>
+        <p className="mt-1 text-sm">
+          {fr.free
+            ? `รายได้จากร้านมากกว่าค่าใช้จ่ายของคุณ ${money(fr.passive - fr.expenses)}/เดือน — ไม่ต้องทำงานก็อยู่ได้`
+            : fr.passive <= 0
+              ? `ตอนนี้ร้านยังไม่มีกำไรเหลือหลังจ้างคนดูแลแทน ต้องขายได้วันละ ${money(fr.dailyNeeded)} ถึงจะมีอิสรภาพ`
+              : `ยังขาดอีก ${money(fr.gap)}/เดือน — ต้องขายได้วันละ ${money(fr.dailyNeeded)} ถึงจะมีอิสรภาพ`}
+        </p>
+        {fr.afterLoan !== null && <p className="mt-1 text-sm">ผ่อนเงินกู้หมดใน {fr.loanYears} ปี passive income จะเพิ่มเป็น {money(fr.afterLoan)}/เดือน</p>}
+        {!compact && (
+          <div className="mt-3 border-t border-current/15 pt-3 text-xs">
+            วิธีคิด: ยอดขาย {money(dailySales)} × {26} วัน × กำไรขั้นต้น {s.margin}% = {money(fr.grossProfit)} − ค่าใช้จ่ายร้าน {money(r.monthlyBusiness)}
+            {r.loanMonthly > 0 ? " (รวมค่าผ่อน)" : ""} − ค่าจ้างคนดูแลแทน {money(managerPay)}
+          </div>
+        )}
+      </section>
+    );
+  };
 
   const pages: React.ReactNode[] = [
     // 1 ธุรกิจ
@@ -581,7 +642,26 @@ export function SmeSimulator() {
       </p>
     </div>,
 
-    // 7 ผลลัพธ์
+    // 7 อิสรภาพ
+    <div key="freedom" className="space-y-5">
+      <div className="rounded-2xl bg-amber-50 p-4 text-amber-950 ring-1 ring-amber-300">
+        <p className="font-semibold">⚠️ นับเฉพาะรายได้หลังจาก “ทำระบบเสร็จแล้ว”</p>
+        <p className="mt-1 text-sm">
+          คือร้านเดินได้เองโดยคุณไม่ต้องไปยืนเฝ้า มีคนดูแลแทน มีระบบขาย ระบบบัญชี ระบบสต็อก ถ้ายังต้องไปเฝ้าร้านเองทุกวัน รายได้นั้นคือ <b>ค่าแรงของคุณ</b> ยังไม่ใช่ passive income
+        </p>
+      </div>
+      <MoneyInput
+        label="ยอดขายต่อวัน เมื่อร้านอยู่ตัวแล้ว"
+        hint={`จุดคุ้มทุนของคุณคือวันละ ${money(r.breakEvenSales / 26)} · ค่าตั้งต้นประมาณ 1.2 เท่าของจุดคุ้มทุน แก้ให้ตรงกับที่คิดว่าขายได้จริง`}
+        value={dailySales}
+        onChange={(n) => set("dailySales", n)}
+      />
+      <MoneyInput label="ค่าจ้างคนดูแลร้านแทนคุณ ต่อเดือน" hint="ผู้จัดการร้าน/หัวหน้าร้าน ที่ทำหน้าที่แทนคุณ" value={managerPay} onChange={(n) => set("managerPay", n)} quick={[15_000, 20_000, 30_000]} />
+      <MoneyInput label="ค่าใช้จ่ายส่วนตัวทั้งหมดต่อเดือน" hint="ค่ากิน ค่าบ้าน ค่าเดินทาง ค่าครอบครัว (ใช้ตัวเลขเดียวกับขั้นรายเดือน)" value={s.ownerPay} onChange={(n) => set("ownerPay", n)} quick={[15_000, 20_000, 30_000, 50_000]} />
+      {freedomCard()}
+    </div>,
+
+    // 8 ผลลัพธ์
     <div key="result" ref={resultRef} className="space-y-4">
       <div data-no-pdf="1" className="flex flex-wrap items-center gap-2">
         <button onClick={savePdf} disabled={pdfBusy} className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60">
@@ -676,6 +756,8 @@ export function SmeSimulator() {
         />
       </Panel>
 
+      {freedomCard(true)}
+
       <Panel title="ข้อมูลที่ใช้คำนวณ" right={<span data-no-pdf="1"><button onClick={() => go(1)} className="min-h-9 rounded-lg px-3 text-sm font-semibold text-sky-700 ring-1 ring-sky-600 hover:bg-sky-50">✎ แก้ไข</button></span>}>
         <dl className="grid grid-cols-1 gap-x-6 text-sm sm:grid-cols-2">
           {(
@@ -692,6 +774,8 @@ export function SmeSimulator() {
               ["ครอบครัวช่วย / เงินกู้", `${money(s.family)} / ${money(s.loan)}`],
               ...(s.loan > 0 ? ([["ค่าผ่อนเงินกู้ (รวมในรายเดือนแล้ว)", `${money(r.loanMonthly)}/เดือน · ${s.loanRate ?? LOAN_DEFAULT.rate}% · ${s.loanYears ?? LOAN_DEFAULT.years} ปี`]] as const) : []),
               ["เงินเฟ้อ (อัตโนมัติ)", `${AUTO_INFLATION}%/ปี`],
+              ["ยอดขาย/วัน เมื่ออยู่ตัว", money(dailySales)],
+              ["ค่าจ้างคนดูแลร้านแทน", `${money(managerPay)}/เดือน`],
             ] as const
           ).map(([k, v]) => (
             <div key={k} className="flex justify-between gap-3 border-b border-slate-100 py-1.5">
@@ -808,7 +892,7 @@ export function SmeSimulator() {
       {/* เมนูขั้นตอนด้านล่าง: แตะเพื่อย้อนกลับไปแก้ขั้นไหนก็ได้ */}
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.15)] backdrop-blur" aria-label="ขั้นตอน">
         <div className="mx-auto max-w-2xl px-2 pt-2">
-          <ol className="grid grid-cols-7 gap-0.5">
+          <ol className="grid grid-cols-8 gap-0.5">
             {STEPS.map((st, i) => {
               const on = i === step;
               return (
