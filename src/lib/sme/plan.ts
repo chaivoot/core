@@ -470,3 +470,32 @@ export const SURVIVAL_AVG_10Y = 35;
 export function survivalChance(factors: { key: ReadinessKey; ok: boolean }[]) {
   return factors.reduce((pct, f) => pct + (f.ok ? SURVIVAL_WEIGHT[f.key] : 0), SURVIVAL_BASE);
 }
+
+/**
+ * รายได้ passive จากธุรกิจ "หลังทำระบบเสร็จแล้ว" = ร้านเดินได้เองโดยเจ้าของไม่ต้องเฝ้า
+ * จึงต้องหักค่าจ้างคนดูแลร้านแทนเจ้าของด้วย (ถ้ายังต้องเฝ้าเอง รายได้นั้นคือค่าแรง ไม่ใช่ passive)
+ * ถ้า passive ≥ ค่าใช้จ่ายส่วนตัวต่อเดือน = มีอิสรภาพทางการเงิน
+ */
+export const OPEN_DAYS = 26;
+
+export function freedom(p: Pick<PlanInput, "margin" | "ownerPay" | "loan" | "loanRate" | "loanYears">, r: Pick<PlanResult, "monthlyBusiness" | "loanMonthly">, dailySales: number, managerPay: number) {
+  const m = p.margin / 100;
+  const grossProfit = dailySales * OPEN_DAYS * m;
+  const passive = grossProfit - r.monthlyBusiness - managerPay;
+  const expenses = p.ownerPay;
+  const pct = expenses > 0 ? (Math.max(0, passive) / expenses) * 100 : passive > 0 ? 100 : 0;
+  // ยอดขายต่อวันที่ทำให้ passive เท่ากับค่าใช้จ่ายส่วนตัวพอดี
+  const dailyNeeded = m > 0 ? (r.monthlyBusiness + managerPay + expenses) / m / OPEN_DAYS : Infinity;
+  return {
+    grossProfit,
+    passive,
+    expenses,
+    pct,
+    free: passive >= expenses && expenses > 0,
+    gap: Math.max(0, expenses - passive),
+    dailyNeeded,
+    /** ผ่อนเงินกู้หมดแล้ว passive เพิ่มขึ้นเท่าค่าผ่อน */
+    afterLoan: r.loanMonthly > 0 ? passive + r.loanMonthly : null,
+    loanYears: p.loanYears ?? LOAN_DEFAULT.years,
+  };
+}
